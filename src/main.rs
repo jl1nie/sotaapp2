@@ -1,78 +1,186 @@
-// This starter uses the `axum` crate to create an asyncrohnous web server
-// The async runtime being used, is `tokio`
-// This starter also has logging, powered by `tracing` and `tracing-subscriber`
+use anyhow::{Error, Result};
+use std::collections::HashMap;
 
-use axum::{http::StatusCode, response::IntoResponse, routing::get, Json, Router};
-use std::net::SocketAddr;
+use axum::{
+    extract::{Multipart, Query, State},
+    response::{Html, IntoResponse},
+    routing::{get, post},
+    Json, Router,
+};
+use chrono::{DateTime, Utc};
+use csv::ReaderBuilder;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sqlx::{sqlite::SqlitePoolOptions, FromRow, Pool, QueryBuilder, Sqlite, SqlitePool};
+use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
 
-// This derive macro allows our main function to run asyncrohnous code. Without it, the main function would run syncrohnously
-#[tokio::main]
-async fn main() {
-    // First, we initialize the tracing subscriber with default configuration
-    // This is what allows us to print things to the console
-    tracing_subscriber::fmt::init();
-
-    // Then, we create a router, which is a way of routing requests to different handlers
-    let app = Router::new()
-        // In order to add a route, we use the `route` method on the router
-        // The `route` method takes a path (as a &str), and a handler (MethodRouter)
-        // In our invocation below, we create a route, that goes to "/"
-        // We specify what HTTP method we want to accept on the route (via the `get` function)
-        // And finally, we provide our route handler
-        // The code of the root function is below
-        .route("/", get(root))
-        // This can be repeated as many times as you want to create more routes
-        // We are also going to create a more complex route, using `impl IntoResponse`
-        // The code of the complex function is below
-        .route("/complex", get(complex));
-
-    // Next, we need to run our app with `hyper`, which is the HTTP server used by `axum`
-    // We need to create a `SocketAddr` to run our server on
-    // Before we can create that, we need to get the port we wish to serve on
-    // This code attempts to get the port from the environment variable `PORT`
-    // If it fails to get the port, it will default to "3000"
-    // We then parse the `String` into a `u16`, to which if it fails, we panic
-    let port: u16 = std::env::var("PORT")
-        .unwrap_or("3000".into())
-        .parse()
-        .expect("failed to convert to number");
-    // We then create a socket address, listening on 0.0.0.0:PORT
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    // We then log the address we are listening on, using the `info!` macro
-    // The info macro is provided by `tracing`, and allows us to log stuff at an info log level
-    tracing::info!("listening on {}", addr);
-    // Then, we run the server, using the `bind` method on `Server`
-    // `axum::Server` is a re-export of `hyper::Server`
-    axum::Server::bind(&addr)
-        // We then convert our Router into a `Service`, provided by `tower`
-        .serve(app.into_make_service())
-        // This function is async, so we need to await it
-        .await
-        // Then, we unwrap the result, to which if it fails, we panic
-        .unwrap();
+#[derive(Debug, Clone)]
+pub struct AppState {
+    pub pool: Pool<Sqlite>,
 }
 
-// This is our route handler, for the route root
-// Make sure the function is `async`
-// We specify our return type, `&'static str`, however a route handler can return anything that implements `IntoResponse`
-
-async fn root() -> &'static str {
-    "Hello, World!"
+impl AppState {
+    pub fn new(pool: Pool<Sqlite>) -> Self {
+        Self { pool }
+    }
 }
 
-// This is our route handler, for the route complex
-// Make sure the function is async
-// We specify our return type, this time using `impl IntoResponse`
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+struct PotaCSVData {
+    id: Option<u32>,
+    potaref: String,
+    name: String,
+    location: String,
+    locid: String,
+    parktype: String,
+    namek: String,
+    lat: f32,
+    lng: f32,
+    updates: Option<String>,
+}
 
-async fn complex() -> impl IntoResponse {
-    // For this route, we are going to return a Json response
-    // We create a tuple, with the first parameter being a `StatusCode`
-    // Our second parameter, is the response body, which in this example is a `Json` instance
-    // We construct data for the `Json` struct using the `serde_json::json!` macro
-    (
-        StatusCode::OK,
-        Json(serde_json::json!({
-            "message": "Hello, World!"
-        })),
+async fn insert_list(pool: &SqlitePool, pota_list: &[PotaCSVData]) -> Result<()> {
+    let mut tx = pool.begin().await?;
+
+    sqlx::query!(
+        r#"
+            DELETE FROM PotaCSVData
+        "#
     )
+    .execute(&mut *tx)
+    .await?;
+
+    for (id, pota) in pota_list.iter().enumerate() {
+        let id = id as u32;
+        sqlx::query!(
+        r#"
+            INSERT INTO PotaCSVData (id, potaref, name, location, locid, parktype, namek, lat, lng, updates)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        "#,
+        id,
+        pota.potaref,
+        pota.name,
+        pota.location,
+        pota.locid,
+        pota.parktype,
+        pota.namek,
+        pota.lat,
+        pota.lng,
+        pota.updates)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn upload_csv(
+    State(state): State<AppState>,
+    mut multipart: Multipart,
+) -> Result<impl IntoResponse, String> {
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let data = field.bytes().await.unwrap();
+        let data = String::from_utf8(data.to_vec()).unwrap();
+
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        let mut pota_ref_list = Vec::new();
+        for result in rdr.deserialize() {
+            let pota_ref: PotaCSVData = result.unwrap();
+            pota_ref_list.push(pota_ref);
+        }
+
+        insert_list(&state.pool, &pota_ref_list).await.unwrap();
+
+        return Ok(Json(json!({
+            "length": pota_ref_list.len()
+        })));
+    }
+    Ok(Json(json!({
+        "length": 0
+    })))
+}
+
+async fn pota_list(
+    State(state): State<AppState>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, String> {
+    let page: Option<i32> = params
+        .get("page")
+        .and_then(|value| value.to_string().parse::<i32>().ok());
+
+    let count: Option<i32> = params
+        .get("count")
+        .and_then(|value| value.to_string().parse::<i32>().ok());
+
+    let update: Option<bool> = params
+        .get("update")
+        .and_then(|value| value.to_string().parse::<bool>().ok());
+
+    let count = count.unwrap_or(10); // 指定されない場合は10件ページャ
+    let offset = count * page.unwrap_or(0); // ページ指定がない場合は先頭ページ
+    let update = update.unwrap_or(true);
+
+    let init = if update {
+        "SELECT * FROM PotaCSVData WHERE updates IS NOT NULL ORDER BY id LIMIT "
+    } else {
+        "SELECT * FROM PotaCSVData ORDER BY id LIMIT "
+    };
+
+    let entities: Vec<PotaCSVData> = QueryBuilder::new(init)
+        .push_bind(count)
+        .push(" OFFSET ")
+        .push_bind(offset)
+        .build_query_as()
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(Json(json!({
+        "list": entities
+    })))
+}
+
+async fn pota_admin(State(state): State<AppState>) -> Result<impl IntoResponse, String> {
+    Ok(Html(include_str!("../views/index.html")))
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 環境変数初期化
+    dotenvy::dotenv().unwrap();
+
+    // logger初期化
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::WARN)
+        .with_ansi(true)
+        .init();
+
+    // DBへの接続プール作成
+    let uri = std::env::var("DATABASE_URL")?;
+    let pool = SqlitePoolOptions::new()
+        //.max_connections(4)
+        .connect(&uri)
+        .await?;
+
+    // Router定義
+    let app = Router::new()
+        .route("/api/v2/pota-upload", post(upload_csv))
+        .route("/api/v2/pota-list", get(pota_list))
+        .route("/api/v2/potaadmin", get(pota_admin))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().level(tracing::Level::DEBUG))
+                .on_request(DefaultOnRequest::new().level(tracing::Level::DEBUG))
+                .on_response(DefaultOnResponse::new().level(tracing::Level::DEBUG)),
+        )
+        .with_state(AppState::new(pool));
+
+    // サーバー起動
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:5000").await?;
+    axum::serve(listener, app).await?;
+
+    Ok(())
 }
