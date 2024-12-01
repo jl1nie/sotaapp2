@@ -1,5 +1,5 @@
 use crate::database::ConnectionPool;
-use crate::HealthCheck;
+use application::HealthCheck;
 use async_trait::async_trait;
 use derive_new::new;
 

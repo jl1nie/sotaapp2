@@ -6,7 +6,6 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn new() -> Result<Self> {
-        dotenvy::dotenv().unwrap();
         let database = DatabaseConfig {
             url: std::env::var("DATABASE_URL")?,
         };
