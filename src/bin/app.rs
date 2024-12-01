@@ -6,6 +6,7 @@ use registry::AppRegistry;
 use std::net::{Ipv4Addr, SocketAddr};
 use tokio::net::TcpListener;
 use web_api::handler::health::build_health_chek_routers;
+use web_api::handler::sota::build_sota_routers;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -19,6 +20,7 @@ async fn bootstrap() -> Result<()> {
 
     let app = Router::new()
         .merge(build_health_chek_routers())
+        .merge(build_sota_routers())
         .with_state(registry);
 
     let addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8080);
