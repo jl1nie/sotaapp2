@@ -5,4 +5,9 @@ edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
-dotenvy.workspace = true
+axum.workspace = true
+derive-new.workspace = true
+geo-types.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

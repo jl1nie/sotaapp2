@@ -5,4 +5,8 @@ edition = "2021"
 
 [dependencies]
 registry.workspace = true
+serde.workspace = true
 axum.workspace = true
+application.workspace = true
+geo-types.workspace = true
+common.workspace = true
