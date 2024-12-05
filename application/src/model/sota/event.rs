@@ -1,6 +1,8 @@
-use crate::model::sota::SOTAReference;
+use crate::model::sota::{SOTABriefReference, SOTAReference};
+use geo_types::Rect;
 
 pub struct CreateRef(pub SOTAReference);
+
 pub struct UpdateRef {
     pub summit_code: String,
     pub summit_name: Option<String>,
@@ -16,8 +18,26 @@ pub struct DeleteRef {
 }
 
 pub struct CreateRefs {
-    pub refrences: Vec<SOTAReference>,
+    pub requests: Vec<CreateRef>,
 }
 pub struct UpdateRefs {
-    pub refrences: Vec<UpdateRef>,
+    pub requests: Vec<UpdateRef>,
 }
+
+#[derive(Default)]
+pub struct SearchRefs {
+    pub summit_code: Option<String>,
+    pub keyword: Option<String>,
+    pub elevation: Option<i32>,
+    pub max_results: Option<usize>,
+    pub region: Option<Rect>,
+}
+
+#[derive(Debug, Default)]
+pub struct SearchResults {
+    pub results: Option<Vec<SOTAReference>>,
+    pub brief_results: Option<Vec<SOTABriefReference>>,
+    pub counts: usize,
+}
+
+pub struct UploadCSV {}

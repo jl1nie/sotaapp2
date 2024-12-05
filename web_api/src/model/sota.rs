@@ -1,11 +1,11 @@
 use application::model::sota::{
     event::{CreateRef, UpdateRef},
-    SOTAReference,
+    SOTABriefReference, SOTAReference,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct CreateRefRequest {
     pub summit_code: String,
     pub association_name: String,
@@ -16,8 +16,8 @@ pub struct CreateRefRequest {
     pub city_j: Option<String>,
     pub alt_m: i32,
     pub alt_ft: i32,
-    pub grid_ref1: i32,
-    pub gird_ref2: i32,
+    pub grid_ref1: String,
+    pub grid_ref2: String,
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
     pub points: i32,
@@ -42,7 +42,7 @@ impl From<CreateRefRequest> for CreateRef {
             alt_m,
             alt_ft,
             grid_ref1,
-            gird_ref2,
+            grid_ref2,
             longitude,
             lattitude,
             points,
@@ -64,7 +64,7 @@ impl From<CreateRefRequest> for CreateRef {
             alt_m,
             alt_ft,
             grid_ref1,
-            gird_ref2,
+            grid_ref2,
             longitude,
             lattitude,
             points,
@@ -118,11 +118,13 @@ impl From<UpdateRefRequest> for UpdateRef {
 
 #[derive(Debug, Deserialize)]
 pub struct GetParam {
-    pub min_lon: f64,
-    pub min_lat: f64,
-    pub max_lon: f64,
-    pub max_lat: f64,
-    pub breif: bool,
+    pub min_lon: Option<f64>,
+    pub min_lat: Option<f64>,
+    pub max_lon: Option<f64>,
+    pub max_lat: Option<f64>,
+    pub elevation: Option<i32>,
+    pub key: Option<String>,
+    pub limit: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -137,8 +139,8 @@ pub struct SOTARefResponse {
     pub city_j: Option<String>,
     pub alt_m: i32,
     pub alt_ft: Option<i32>,
-    pub grid_ref1: Option<i32>,
-    pub gird_ref2: Option<i32>,
+    pub grid_ref1: Option<String>,
+    pub grid_ref2: Option<String>,
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
     pub points: i32,
@@ -164,7 +166,7 @@ impl From<SOTAReference> for SOTARefResponse {
             alt_m,
             alt_ft,
             grid_ref1,
-            gird_ref2,
+            grid_ref2,
             longitude,
             lattitude,
             points,
@@ -187,7 +189,7 @@ impl From<SOTAReference> for SOTARefResponse {
             alt_m,
             alt_ft: None,
             grid_ref1: None,
-            gird_ref2: None,
+            grid_ref2: None,
             longitude,
             lattitude,
             points,
@@ -213,9 +215,9 @@ pub struct SOTARefShortResponse {
     pub points: i32,
 }
 
-impl From<SOTAReference> for SOTARefShortResponse {
-    fn from(value: SOTAReference) -> Self {
-        let SOTAReference {
+impl From<SOTABriefReference> for SOTARefShortResponse {
+    fn from(value: SOTABriefReference) -> Self {
+        let SOTABriefReference {
             summit_code,
             summit_name,
             summit_name_j,

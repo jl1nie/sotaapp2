@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-registry.workspace = true
 serde.workspace = true
 axum.workspace = true
-application.workspace = true
+csv.workspace = true
 geo-types.workspace = true
+application.workspace = true
+registry.workspace = true
 common.workspace = true

@@ -11,3 +11,7 @@ derive-new.workspace = true
 common.workspace = true
 geo-types.workspace = true
 sqlx.workspace = true
+
+[dev-dependencies]
+csv.workspace = true
+web_api.workspace = true
