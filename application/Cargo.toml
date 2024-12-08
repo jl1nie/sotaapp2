@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 async-trait.workspace = true
-geo-types.workspace = true
+chrono.workspace = true
 anyhow.workspace = true
 common.workspace = true
+derive-new.workspace = true
+serde.workspace = true
+csv.workspace = true

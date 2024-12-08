@@ -1,43 +1,40 @@
-use crate::model::sota::{SOTABriefReference, SOTAReference};
-use geo_types::Rect;
-
-pub struct CreateRef(pub SOTAReference);
-
-pub struct UpdateRef {
-    pub summit_code: String,
-    pub summit_name: Option<String>,
-    pub summit_name_j: Option<String>,
-    pub city: Option<String>,
-    pub city_j: Option<String>,
-    pub alt_m: Option<i32>,
-    pub longitude: Option<f64>,
-    pub lattitude: Option<f64>,
-}
-pub struct DeleteRef {
-    pub summit_code: String,
+use crate::model::sota::{SOTARefOptInfo, SOTAReference};
+use common::error::{AppError, AppResult};
+use csv::ReaderBuilder;
+pub struct UploadSOTACSV {
+    pub data: String,
 }
 
-pub struct CreateRefs {
-    pub requests: Vec<CreateRef>,
-}
-pub struct UpdateRefs {
-    pub requests: Vec<UpdateRef>,
+impl From<UploadSOTACSV> for AppResult<Vec<SOTAReference>> {
+    fn from(csv: UploadSOTACSV) -> AppResult<Vec<SOTAReference>> {
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(csv.data.as_bytes());
+
+        let mut sotalist: Vec<SOTAReference> = Vec::new();
+        for result in rdr.deserialize() {
+            let req: SOTAReference = result.map_err(AppError::CSVReadError)?;
+            sotalist.push(req);
+        }
+        Ok(sotalist)
+    }
 }
 
-#[derive(Default)]
-pub struct SearchRefs {
-    pub summit_code: Option<String>,
-    pub keyword: Option<String>,
-    pub elevation: Option<i32>,
-    pub max_results: Option<usize>,
-    pub region: Option<Rect>,
+pub struct UploadSOTAOptCSV {
+    pub data: String,
 }
 
-#[derive(Debug, Default)]
-pub struct SearchResults {
-    pub results: Option<Vec<SOTAReference>>,
-    pub brief_results: Option<Vec<SOTABriefReference>>,
-    pub counts: usize,
-}
+impl From<UploadSOTAOptCSV> for AppResult<Vec<SOTARefOptInfo>> {
+    fn from(csv: UploadSOTAOptCSV) -> AppResult<Vec<SOTARefOptInfo>> {
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(csv.data.as_bytes());
 
-pub struct UploadCSV {}
+        let mut sotalist: Vec<SOTARefOptInfo> = Vec::new();
+        for result in rdr.deserialize() {
+            let req: SOTARefOptInfo = result.map_err(AppError::CSVReadError)?;
+            sotalist.push(req);
+        }
+        Ok(sotalist)
+    }
+}

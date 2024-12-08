@@ -15,6 +15,8 @@ pub enum AppError {
     SpecificOperationError(#[source] sqlx::Error),
     #[error("No rows affected: {0}")]
     NoRowsAffectedError(String),
+    #[error("CSVの読み込みに失敗しました。")]
+    CSVReadError(#[source] csv::Error),
     /*
     #[error("{0}")]
     KeyValueStoreError(#[from] redis::RedisError),
@@ -37,6 +39,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         let status_code = match self {
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            AppError::CSVReadError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::EntityNotFound(_) => StatusCode::NOT_FOUND,
             /*
                 AppError::ValidationError(_) | AppError::ConvertToUuidError(_) => {

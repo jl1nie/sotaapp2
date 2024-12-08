@@ -11,9 +11,6 @@ pub struct CreateRefRequest {
     pub association_name: String,
     pub region_name: String,
     pub summit_name: String,
-    pub summit_name_j: Option<String>,
-    pub city: Option<String>,
-    pub city_j: Option<String>,
     pub alt_m: i32,
     pub alt_ft: i32,
     pub grid_ref1: String,
@@ -36,9 +33,6 @@ impl From<CreateRefRequest> for CreateRef {
             association_name,
             region_name,
             summit_name,
-            summit_name_j,
-            city,
-            city_j,
             alt_m,
             alt_ft,
             grid_ref1,
@@ -58,9 +52,9 @@ impl From<CreateRefRequest> for CreateRef {
             association_name,
             region_name,
             summit_name,
-            summit_name_j,
-            city,
-            city_j,
+            summit_name_j: None,
+            city: None,
+            city_j: None,
             alt_m,
             alt_ft,
             grid_ref1,
@@ -205,7 +199,7 @@ impl From<SOTAReference> for SOTARefResponse {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SOTARefShortResponse {
+pub struct SOTARefSearchResponse {
     pub summit_code: String,
     pub summit_name: String,
     pub summit_name_j: Option<String>,
@@ -213,11 +207,12 @@ pub struct SOTARefShortResponse {
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
     pub points: i32,
+    pub activation_count: i32,
 }
 
-impl From<SOTABriefReference> for SOTARefShortResponse {
-    fn from(value: SOTABriefReference) -> Self {
-        let SOTABriefReference {
+impl From<SOTAReference> for SOTARefSearchResponse {
+    fn from(value: SOTAReference) -> Self {
+        let SOTAReference {
             summit_code,
             summit_name,
             summit_name_j,
@@ -225,6 +220,7 @@ impl From<SOTABriefReference> for SOTARefShortResponse {
             longitude,
             lattitude,
             points,
+            activation_count,
             ..
         } = value;
 
@@ -236,6 +232,7 @@ impl From<SOTABriefReference> for SOTARefShortResponse {
             longitude,
             lattitude,
             points,
+            activation_count,
         }
     }
 }
