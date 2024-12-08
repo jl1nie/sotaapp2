@@ -9,7 +9,6 @@ anyhow.workspace = true
 async-trait.workspace = true
 derive-new.workspace = true
 common.workspace = true
-geo-types.workspace = true
 sqlx.workspace = true
 
 [dev-dependencies]

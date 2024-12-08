@@ -18,28 +18,7 @@ pub struct SOTADatabaseImpl {
 
 impl SOTADatabaseImpl {
     async fn create(&self, event: CreateRef, db: &mut PgConnection) -> AppResult<()> {
-        let SOTAReference {
-            summit_code,
-            association_name,
-            region_name,
-            summit_name,
-            summit_name_j,
-            city,
-            city_j,
-            alt_m,
-            alt_ft,
-            grid_ref1,
-            grid_ref2,
-            longitude,
-            lattitude,
-            points,
-            bonus_points,
-            valid_from,
-            valid_to,
-            activation_count,
-            activation_date,
-            activation_call,
-        } = event.0;
+        let r = event.inner_ref();
         sqlx::query!(
             r#"
                 INSERT INTO sota_references(
@@ -66,27 +45,26 @@ impl SOTADatabaseImpl {
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ST_SetSRID(ST_MakePoint($12, $13), 4326), 
                 $14, $15, TO_DATE($16,'DD/MM/YYYY'), TO_DATE($17,'DD/MM/YYYY'), $18, TO_DATE($19,'DD/MM/YYYY'), $20)
             "#,
-            summit_code,
-            association_name,
-            region_name,
-            summit_name,
-            summit_name_j,
-            city,
-            city_j,
-            alt_m,
-            alt_ft,
-            grid_ref1,
-            grid_ref2,
-            longitude,
-            lattitude,
-            points,
-            bonus_points,
-            valid_from,
-            valid_to,
-            activation_count,
-            activation_date,
-            activation_call
-        )
+            r.summit_code,
+            r.association_name,
+            r.region_name,
+            r.summit_name,
+            r.summit_name_j,
+            r.city,
+            r.city_j,
+            r.alt_m,
+            r.alt_ft,
+            r.grid_ref1,
+            r.grid_ref2,
+            r.longitude,
+            r.lattitude,
+            r.points,
+            r.bonus_points,
+            r.valid_from,
+            r.valid_to,
+            r.activation_count,
+            r.activation_date,
+            r.activation_call)
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
@@ -94,28 +72,7 @@ impl SOTADatabaseImpl {
     }
 
     async fn upsert(&self, event: CreateRef, db: &mut PgConnection) -> AppResult<()> {
-        let SOTAReference {
-            summit_code,
-            association_name,
-            region_name,
-            summit_name,
-            summit_name_j,
-            city,
-            city_j,
-            alt_m,
-            alt_ft,
-            grid_ref1,
-            grid_ref2,
-            longitude,
-            lattitude,
-            points,
-            bonus_points,
-            valid_from,
-            valid_to,
-            activation_count,
-            activation_date,
-            activation_call,
-        } = event.0;
+        let r = event.inner_ref();
         sqlx::query!(
             r#"
                 INSERT INTO sota_references(
@@ -163,26 +120,26 @@ impl SOTADatabaseImpl {
                         activation_call = EXCLUDED.activation_call
                 
             "#,
-            summit_code,
-            association_name,
-            region_name,
-            summit_name,
-            summit_name_j,
-            city,
-            city_j,
-            alt_m,
-            alt_ft,
-            grid_ref1,
-            grid_ref2,
-            longitude,
-            lattitude,
-            points,
-            bonus_points,
-            valid_from,
-            valid_to,
-            activation_count,
-            activation_date,
-            activation_call
+            r.summit_code,
+            r.association_name,
+            r.region_name,
+            r.summit_name,
+            r.summit_name_j,
+            r.city,
+            r.city_j,
+            r.alt_m,
+            r.alt_ft,
+            r.grid_ref1,
+            r.grid_ref2,
+            r.longitude,
+            r.lattitude,
+            r.points,
+            r.bonus_points,
+            r.valid_from,
+            r.valid_to,
+            r.activation_count,
+            r.activation_date,
+            r.activation_call
         )
         .execute(db)
         .await
@@ -545,11 +502,14 @@ mod tests {
 
         let file = File::open("../data/summitslist.csv")?;
 
-        let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(file);
 
         let mut sota_ref_list: Vec<CreateRef> = Vec::new();
-        for result in rdr.deserialize() {
-            let req: CreateRefRequest = result.unwrap();
+        for result in rdr.records().skip(2) {
+            let req: CreateRefRequest = result?.deserialize(None)?;
             sota_ref_list.push(req.into());
         }
 
@@ -594,7 +554,7 @@ mod tests {
         let SearchResults { counts, .. } = counts;
         println!("counts = {:?}", counts);
         assert_eq!(counts, 7205usize);
-        panic!();
+        //panic!();
         Ok(())
     }
 }

@@ -16,11 +16,9 @@ application = { path = "./application" }
 data_access = { path = "./data_access" }
 registry = { path = "./registry" }
 common = { path = "./common" }
-
-anyhow = "1.0"
+anyhow = "1.0.94"
 derive-new = "0.7.0"
 uuid = { version = "^1.11", features = ["v4", "fast-rng", "macro-diagnostics"] }
-geo-types = "0.7.14"
 async-trait = "0.1.83"
 axum = { version = "0.7.9", features = ["macros", "http2", "multipart", "ws"] }
 axum-extra = { version = "0.9.6", features = [
