@@ -1,0 +1,11 @@
+[package]
+name = "domain"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono.workspace = true
+derive-new.workspace = true
+csv.workspace = true
+serde.workspace = true
+common.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "application"
+name = "service"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,9 @@ edition = "2021"
 async-trait.workspace = true
 chrono.workspace = true
 anyhow.workspace = true
-common.workspace = true
-derive-new.workspace = true
 serde.workspace = true
 csv.workspace = true
+shaku.workspace = true
+common.workspace = true
+domain.workspace = true
+data_access.workspace = true

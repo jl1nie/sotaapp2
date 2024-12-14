@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
-use crate::model::common::{Alert, Spot};
+use crate::model::common::activation::{Alert, Spot};
 
 pub type POTAAlert = Alert;
 pub type POTASpot = Spot;

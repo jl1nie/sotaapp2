@@ -1,18 +1,48 @@
-use anyhow::Result;
+use std::time::Duration;
 
+#[derive(Default, Clone)]
 pub struct AppConfig {
-    pub database: DatabaseConfig,
+    pub database: String,
+    pub alert_expire: Duration,
+    pub spot_expire: Duration,
 }
 
-impl AppConfig {
-    pub fn new() -> Result<Self> {
-        let database = DatabaseConfig {
-            url: std::env::var("DATABASE_URL")?,
-        };
-        Ok(Self { database })
+pub struct AppConfigBuilder {
+    config: AppConfig,
+}
+
+impl Default for AppConfigBuilder {
+    fn default() -> Self {
+        Self {
+            config: AppConfig {
+                ..Default::default()
+            },
+        }
     }
 }
 
-pub struct DatabaseConfig {
-    pub url: String,
+impl AppConfigBuilder {
+    pub fn database(mut self, name: Option<&str>) -> Self {
+        if let Some(name) = name {
+            self.config.database = name.to_string();
+        } else {
+            let name = std::env::var("DATABASE_URL").unwrap_or_default();
+            self.config.database = name;
+        }
+        self
+    }
+
+    pub fn alert_expire(mut self, expire: Duration) -> Self {
+        self.config.alert_expire = expire;
+        self
+    }
+
+    pub fn spot_expire(mut self, expire: Duration) -> Self {
+        self.config.spot_expire = expire;
+        self
+    }
+
+    pub fn build(self) -> AppConfig {
+        self.config
+    }
 }

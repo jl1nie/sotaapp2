@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod event;
-use crate::model::common::{Alert, Spot};
+use crate::model::common::activation::{Alert, Spot};
 pub type SOTAAlert = Alert;
 pub type SOTASpot = Spot;
 

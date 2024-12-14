@@ -8,14 +8,16 @@ name = "app"
 path = "src/bin/app.rs"
 
 [workspace]
-members = ["web_api", "application", "data_access", "common", "registry"]
+members = ["web_api", "service", "data_access", "common", "registry", "domain"]
 
 [workspace.dependencies]
+domain = { path = "./domain" }
+common = { path = "./common" }
 web_api = { path = "./web_api" }
-application = { path = "./application" }
+service = { path = "./service" }
 data_access = { path = "./data_access" }
 registry = { path = "./registry" }
-common = { path = "./common" }
+
 anyhow = "1.0.94"
 derive-new = "0.7.0"
 uuid = { version = "^1.11", features = ["v4", "fast-rng", "macro-diagnostics"] }
@@ -48,13 +50,17 @@ chrono = { version = "0.4.34", features = ["serde"] }
 chrono-tz = { version = "^0.10", features = ["filter-by-regex", "serde"] }
 csv = "1.3.1"
 rstest = "0.23.0"
+shaku = "0.6.2"
+shaku_axum = "0.5.0"
 
 [dependencies]
 web_api.workspace = true
-application.workspace = true
+service.workspace = true
 common.workspace = true
+domain.workspace = true
 data_access.workspace = true
 registry.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 tokio.workspace = true
+shaku_axum.workspace = true
