@@ -1,12 +1,13 @@
-use anyhow::{Error, Result};
 use axum::Router;
-use common::config::AppConfig;
-use data_access::database::connect_database_with;
-use registry::AppRegistry;
+
+use anyhow::{Error, Result};
+use common::config::AppConfigBuilder;
+use registry::{AppRegistry, AppState};
 use std::net::{Ipv4Addr, SocketAddr};
+use std::time::Duration;
 use tokio::net::TcpListener;
 use web_api::handler::health::build_health_chek_routers;
-use web_api::handler::sota::build_sota_routers;
+//use web_api::handler::sota::build_sota_routers;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -14,14 +15,19 @@ async fn main() -> Result<()> {
 }
 
 async fn bootstrap() -> Result<()> {
-    let app_config = AppConfig::new()?;
-    let pool = connect_database_with(&app_config.database)?;
-    let registry = AppRegistry::new(pool);
+    let config = AppConfigBuilder::default()
+        .database(None)
+        .alert_expire(Duration::from_secs(3600u64 * 48))
+        .spot_expire(Duration::from_secs(3600u64 * 48))
+        .build();
+
+    let module = AppRegistry::new(config);
+    let app_state = AppState::new(module);
 
     let app = Router::new()
         .merge(build_health_chek_routers())
-        .merge(build_sota_routers())
-        .with_state(registry);
+        // .merge(build_sota_routers())
+        .with_state(app_state);
 
     let addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8080);
     let listener = TcpListener::bind(&addr).await?;

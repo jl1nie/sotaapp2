@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
-use std::{collections::HashSet, time::Duration};
+use std::time::Duration;
 
-use crate::model::{pota::POTAReference, sota::SOTAReference};
+use crate::model::AwardProgram;
 
 #[derive(new)]
 pub struct BoundingBox {
@@ -28,7 +28,7 @@ impl<T> From<Vec<T>> for CreateRef<T> {
 
 #[derive(Default)]
 pub struct FindRef {
-    pub program: HashSet<String>,
+    pub program: Vec<AwardProgram>,
     pub ref_id: Option<String>,
     pub name: Option<String>,
     pub bbox: Option<BoundingBox>,
@@ -46,7 +46,7 @@ pub struct FindRefBuilder {
 impl Default for FindRefBuilder {
     fn default() -> Self {
         let param = FindRef {
-            program: HashSet::<String>::new(),
+            program: Vec::<AwardProgram>::new(),
             ..Default::default()
         };
         Self { param }
@@ -54,8 +54,8 @@ impl Default for FindRefBuilder {
 }
 
 impl FindRefBuilder {
-    pub fn program(mut self, program: String) -> Self {
-        self.param.program.insert(program);
+    pub fn program(mut self, program: AwardProgram) -> Self {
+        self.param.program.push(program);
         self
     }
 
@@ -109,6 +109,9 @@ impl FindRefBuilder {
 pub struct CreateRef<T> {
     pub requests: Vec<T>,
 }
+pub struct UpdateRef<T> {
+    pub request: T,
+}
 
 #[derive(Debug)]
 pub struct FindResult<T> {
@@ -117,12 +120,8 @@ pub struct FindResult<T> {
 }
 
 pub struct FindAppResult<SOTA, POTA> {
-    pub sota: FindResult<SOTA>,
-    pub pota: FindResult<POTA>,
-}
-
-pub struct UpdateRef<T> {
-    pub request: T,
+    pub sota: Option<FindResult<SOTA>>,
+    pub pota: Option<FindResult<POTA>>,
 }
 
 pub struct DeleteRef<T> {

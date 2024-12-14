@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-application.workspace = true
+domain.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 derive-new.workspace = true
 common.workspace = true
 sqlx.workspace = true
+shaku.workspace = true
 
 [dev-dependencies]
 csv.workspace = true
-web_api.workspace = true

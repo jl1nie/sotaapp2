@@ -1,5 +1,5 @@
 use anyhow::Result;
-use common::config::DatabaseConfig;
+use common::config::AppConfig;
 use sqlx::postgres::PgPool;
 
 #[derive(Clone)]
@@ -15,7 +15,7 @@ impl ConnectionPool {
     }
 }
 
-pub fn connect_database_with(cfg: &DatabaseConfig) -> Result<ConnectionPool> {
-    let pool = ConnectionPool(PgPool::connect_lazy(&cfg.url)?);
+pub fn connect_database_with(cfg: &AppConfig) -> Result<ConnectionPool> {
+    let pool = ConnectionPool(PgPool::connect_lazy(&cfg.database)?);
     Ok(pool)
 }

@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum.workspace = true
+shaku.workspace = true
 data_access.workspace = true
-application.workspace = true
+service.workspace = true
+common.workspace = true
