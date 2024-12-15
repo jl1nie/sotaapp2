@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload</title>
+</head>
+
+<body>
+    <h1>Import SOTA Summits list </h1>
+    <form action="/sota/import" method="post" enctype="multipart/form-data"> <input type="file" name="file"> <button
+            type="submit">Upload</button> </form>
+
+    <h1>Import SOTA JA Summits list </h1>
+    <form action="/sota/import/ja" method="post" enctype="multipart/form-data"> <input type="file" name="file"> <button
+            type="submit">Upload</button> </form>
+
+
+    <h1>Search by ref_id</h1>
+    <form action="/sota" method="get">
+        <label for="ref_id">SOTA Reference:</label>
+        <input type="text" id="ref_id" name="ref_id"><br><br>
+        <input type="submit" value="送信">
+    </form>
+
+    <h1>Search name</h1>
+    <form action="/sota" method="get">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" value="JA"><br><br>
+
+        <label for="limit">Limit:</label>
+        <input type="text" id="limit" name="limit" value="10"><br><br>
+
+        <label for="offset">Offset:</label>
+        <input type="text" id="offset" name="offset" value="100"><br><br>
+
+        <input type="submit" value="送信">
+    </form>
+
+    <h1>Search Location</h1>
+    <form action="/sota" method="get">
+        <label for="min_lon">Min Lon:</label>
+        <input type="text" id="min_lon" name="min_lon" value="138.860"><br><br>
+
+        <label for="min_lat">Min Lat:</label>
+        <input type="text" id="min_lat" name="min_lat" value="35.3726"><br><br>
+
+        <label for="max_lon">Max Lon:</label>
+        <input type="text" id="max_lon" name="max_lon" value="139.7213"><br><br>
+
+        <label for="max_lat">Max Lat:</label>
+        <input type="text" id="max_lat" name="max_lat" value="35.7480"><br><br>
+
+        <label for="min_elev">Min Elev:</label>
+        <input type="text" id="min_elev" name="min_elev" value="1500"><br><br>
+
+        <input type="submit" value="送信">
+    </form>
+</body>
