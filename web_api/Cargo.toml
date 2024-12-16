@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 serde.workspace = true
 axum.workspace = true
-csv.workspace = true
 service.workspace = true
 registry.workspace = true
 common.workspace = true
+domain.workspace = true
 shaku_axum.workspace = true

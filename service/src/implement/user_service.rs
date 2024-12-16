@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use domain::model::pota::{POTAAlert, POTAReference, POTASpot};
 use domain::model::sota::{SOTAAlert, SOTAReference, SOTASpot};
-use domain::model::AwardProgram;
 
 use domain::model::common::event::{FindAct, FindAppResult, FindRef};
 
@@ -35,14 +34,13 @@ impl UserService for UserServiceImpl {
         &self,
         event: FindRef,
     ) -> AppResult<FindAppResult<SOTAReference, POTAReference>> {
-        let program = &event.program;
-        let sota = if program.contains(&AwardProgram::SOTA) {
+        let sota = if event.is_sota() {
             Some(self.sota_db.find_reference(&event).await?)
         } else {
             None
         };
 
-        let pota = if program.contains(&AwardProgram::POTA) {
+        let pota = if event.is_pota() {
             Some(self.pota_db.find_reference(&event).await?)
         } else {
             None

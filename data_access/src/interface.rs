@@ -11,8 +11,7 @@ use domain::model::common::event::{
 
 #[async_trait]
 pub trait SOTADatabase: Send + Sync + Interface {
-    async fn create_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()>;
-    async fn create_reference_opt(&self, event: CreateRef<SOTARefOptInfo>) -> AppResult<()>;
+    async fn import_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()>;
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<SOTAReference>>;
     async fn update_reference_opt(&self, event: UpdateRef<SOTARefOptInfo>) -> AppResult<()>;
     async fn delete_reference_opt(&self, event: DeleteRef<SummitCode>) -> AppResult<()>;
@@ -30,7 +29,7 @@ pub trait SOTAActivationDatabase: Send + Sync + Interface {
 
 #[async_trait]
 pub trait POTADatabase: Send + Sync + Interface {
-    async fn create_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()>;
+    async fn import_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()>;
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>>;
     async fn update_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()>;
     async fn delete_reference(&self, event: DeleteRef<ParkCode>) -> AppResult<()>;

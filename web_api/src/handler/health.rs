@@ -8,12 +8,14 @@ pub async fn health_check() -> StatusCode {
     StatusCode::OK
 }
 
-pub async fn health_check_db(worker: Inject<AppRegistry, dyn AdminService>) -> AppResult<()> {
-    if worker.health_check().await? {
+pub async fn health_check_db(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+) -> AppResult<()> {
+    if admin_service.health_check().await? {
         Ok(())
     } else {
         Err(common::error::AppError::ConversionEntityError(
-            "Health check faild".to_string(),
+            "health check faild".to_string(),
         ))
     }
 }

@@ -30,7 +30,7 @@ axum-extra = { version = "0.9.6", features = [
     "multipart",
 ] }
 tower = "0.5.1"
-tower-http = { version = "^0.6", features = ["trace", "cors"] }
+tower-http = { version = "^0.6", features = ["trace", "cors", "fs"] }
 tokio = { version = "^1.41.1", features = ["full"] }
 sqlx = { version = "^0.8", features = [
     "runtime-tokio",
@@ -63,4 +63,5 @@ registry.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 tokio.workspace = true
+tower-http.workspace = true
 shaku_axum.workspace = true

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{Local, NaiveDate};
 use common::config::AppConfig;
 use common::error::AppResult;
 use domain::model::common::event::CreateRef;
@@ -17,6 +18,8 @@ use domain::model::{
     },
     sota::SOTAReference,
 };
+
+use crate::model::sota::{SOTACSVFile, SOTACSVOptFile};
 
 use data_access::interface::{HealthCheck, POTADatabase, SOTADatabase};
 
@@ -37,9 +40,25 @@ pub struct AdminServiceImpl {
 #[async_trait]
 impl AdminService for AdminServiceImpl {
     async fn import_summit_list(&self, UploadSOTACSV { data }: UploadSOTACSV) -> AppResult<()> {
-        let requests: Vec<SOTAReference> = csv_reader(data)?;
-        let req = CreateRef { requests };
-        self.sota_db.create_reference(req).await?;
+        let today = Local::now().date_naive();
+        let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
+
+        let is_valid_summit = |r: &SOTAReference| -> bool {
+            let validfrom = NaiveDate::parse_from_str(r.valid_from.as_ref().unwrap(), "%d/%m/%Y")
+                .unwrap_or(today);
+            let validto = NaiveDate::parse_from_str(r.valid_to.as_ref().unwrap(), "%d/%m/%Y")
+                .unwrap_or(today);
+            r.summit_code.starts_with("JA") && today <= validto && today >= validfrom
+        };
+        let req = CreateRef {
+            requests: csv
+                .into_iter()
+                .map(SOTAReference::from)
+                .filter(is_valid_summit)
+                .collect(),
+        };
+        eprintln!("import {} references.", req.requests.len());
+        self.sota_db.import_reference(req).await?;
         Ok(())
     }
 
@@ -47,16 +66,18 @@ impl AdminService for AdminServiceImpl {
         &self,
         UploadSOTAOptCSV { data }: UploadSOTAOptCSV,
     ) -> AppResult<()> {
-        let requests: Vec<SOTARefOptInfo> = csv_reader(data)?;
-        let req = CreateRef { requests };
-        self.sota_db.create_reference_opt(req).await?;
+        let csv: Vec<SOTACSVOptFile> = csv_reader(data, 1)?;
+        let req = UpdateRef {
+            requests: csv.into_iter().map(SOTARefOptInfo::from).collect(),
+        };
+        self.sota_db.update_reference_opt(req).await?;
         Ok(())
     }
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
-        let requests: Vec<POTAReference> = csv_reader(data)?;
+        let requests: Vec<POTAReference> = csv_reader(data, 1)?;
         let req = CreateRef { requests };
-        self.pota_db.create_reference(req).await?;
+        self.pota_db.import_reference(req).await?;
         Ok(())
     }
 
@@ -70,7 +91,9 @@ impl AdminService for AdminServiceImpl {
     }
 
     async fn delete_sota_reference_opt(&self, event: DeleteRef<SummitCode>) -> AppResult<()> {
-        let req = DeleteRef { id: event.id };
+        let req = DeleteRef {
+            ref_id: event.ref_id,
+        };
         self.sota_db.delete_reference_opt(req).await?;
         Ok(())
     }

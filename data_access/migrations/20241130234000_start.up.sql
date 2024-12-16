@@ -1,7 +1,7 @@
 -- Add up migration script here
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE TABLE IF NOT EXISTS sota_references (
- summit_code VARCHAR(255) NOT NULL UNIQUE,
+ summit_code VARCHAR(255) NOT NULL PRIMARY KEY,
  association_name VARCHAR(255) NOT NULL,
  region_name VARCHAR(255) NOT NULL,
  summit_name VARCHAR(255) NOT NULL,
@@ -15,10 +15,10 @@ CREATE TABLE IF NOT EXISTS sota_references (
  coordinates GEOMETRY(Point, 4326),
  points INTEGER NOT NULL,
  bonus_points INTEGER NOT NULL,
- valid_from DATE NOT NULL,
- valid_to DATE NOT NULL,
+ valid_from VARCHAR(255) NOT NULL,
+ valid_to VARCHAR(255) NOT NULL,
  activation_count INTEGER NOT NULL,
- activation_date DATE,
+ activation_date VARCHAR(255),
  activation_call VARCHAR(255)
 );
 
