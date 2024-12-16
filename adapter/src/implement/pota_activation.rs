@@ -9,7 +9,7 @@ use domain::model::pota::{POTAAlert, POTASpot};
 use domain::model::common::event::{DeleteAct, FindAct, FindResult, UpdateAct};
 
 use crate::database::ConnectionPool;
-use crate::interface::POTActivationDatabase;
+use domain::repository::pota::POTActivationDatabase;
 
 #[derive(Component)]
 #[shaku(interface = POTActivationDatabase)]

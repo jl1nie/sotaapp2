@@ -3,7 +3,7 @@ use common::error::AppResult;
 use shaku_axum::Inject;
 
 use registry::{AppRegistry, AppState};
-use service::interface::AdminService;
+use service::services::AdminService;
 pub async fn health_check() -> StatusCode {
     StatusCode::OK
 }

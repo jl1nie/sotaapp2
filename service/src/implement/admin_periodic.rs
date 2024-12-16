@@ -8,10 +8,9 @@ use common::error::AppResult;
 use domain::model::common::event::UpdateAct;
 use domain::model::pota::{POTAAlert, POTASpot};
 use domain::model::sota::{SOTAAlert, SOTASpot};
+use domain::repository::{pota::POTActivationDatabase, sota::SOTAActivationDatabase};
 
-use data_access::interface::{POTActivationDatabase, SOTAActivationDatabase};
-
-use crate::interface::AdminPeriodicService;
+use crate::services::AdminPeriodicService;
 
 #[derive(Component)]
 #[shaku(interface = AdminPeriodicService)]

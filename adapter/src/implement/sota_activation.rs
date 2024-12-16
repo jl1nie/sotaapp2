@@ -8,7 +8,7 @@ use domain::model::common::event::{DeleteAct, FindAct, FindResult, UpdateAct};
 use domain::model::sota::{SOTAAlert, SOTASpot};
 
 use crate::database::ConnectionPool;
-use crate::interface::SOTAActivationDatabase;
+use domain::repository::sota::SOTAActivationDatabase;
 
 #[derive(Component)]
 #[shaku(interface = SOTAActivationDatabase)]

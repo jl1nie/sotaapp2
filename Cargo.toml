@@ -8,14 +8,14 @@ name = "app"
 path = "src/bin/app.rs"
 
 [workspace]
-members = ["web_api", "service", "data_access", "common", "registry", "domain"]
+members = ["api", "service", "adapter", "common", "registry", "domain"]
 
 [workspace.dependencies]
 domain = { path = "./domain" }
 common = { path = "./common" }
-web_api = { path = "./web_api" }
+api = { path = "./api" }
 service = { path = "./service" }
-data_access = { path = "./data_access" }
+adapter = { path = "./adapter" }
 registry = { path = "./registry" }
 
 anyhow = "1.0.94"
@@ -54,11 +54,11 @@ shaku = "0.6.2"
 shaku_axum = "0.5.0"
 
 [dependencies]
-web_api.workspace = true
+api.workspace = true
 service.workspace = true
 common.workspace = true
 domain.workspace = true
-data_access.workspace = true
+adapter.workspace = true
 registry.workspace = true
 anyhow.workspace = true
 axum.workspace = true

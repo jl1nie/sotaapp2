@@ -1,4 +1,4 @@
-pub mod health;
+pub mod healthcheck;
 pub mod pota_activation;
 pub mod pota_database;
 pub mod querybuilder;

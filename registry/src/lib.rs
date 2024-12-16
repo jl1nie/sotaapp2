@@ -2,16 +2,17 @@ use axum::extract::FromRef;
 use shaku::module;
 use std::sync::Arc;
 
-use common::config::AppConfig;
-use data_access::{
+use adapter::{
     database::connect_database_with,
     implement::{
-        health::HealthCheckImplParameters, pota_activation::POTActivationDatabaseImplParameters,
+        healthcheck::HealthCheckImplParameters,
+        pota_activation::POTActivationDatabaseImplParameters,
         pota_database::POTADatabaseImplParameters,
         sota_activation::SOTAActivationDatabaseImplParameters,
         sota_database::SOTADatabaseImplParameters,
     },
 };
+use common::config::AppConfig;
 
 use service::implement::{
     admin_periodic::{AdminPeriodicServiceImpl, AdminPeriodicServiceImplParameters},
@@ -19,8 +20,8 @@ use service::implement::{
     user_service::{UserServiceImpl, UserServiceImplParameters},
 };
 
-use data_access::implement::{
-    health::HealthCheckImpl, pota_activation::POTActivationDatabaseImpl,
+use adapter::implement::{
+    healthcheck::HealthCheckImpl, pota_activation::POTActivationDatabaseImpl,
     pota_database::POTADatabaseImpl, sota_activation::SOTAActivationDatabaseImpl,
     sota_database::SOTADatabaseImpl,
 };

@@ -9,10 +9,9 @@ use domain::model::sota::{SOTAAlert, SOTAReference, SOTASpot};
 
 use domain::model::common::event::{FindAct, FindAppResult, FindRef};
 
-use crate::interface::UserService;
-use data_access::interface::{
-    POTADatabase, POTActivationDatabase, SOTAActivationDatabase, SOTADatabase,
-};
+use crate::services::UserService;
+use domain::repository::pota::{POTADatabase, POTActivationDatabase};
+use domain::repository::sota::{SOTAActivationDatabase, SOTADatabase};
 
 #[derive(Component)]
 #[shaku(interface = UserService)]

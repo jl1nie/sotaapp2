@@ -12,10 +12,11 @@ use crate::model::sota::{
 };
 use common::error::{AppError, AppResult};
 use domain::model::common::event::{DeleteRef, FindRefBuilder};
-use domain::model::sota::event::{UploadSOTACSV, UploadSOTAOptCSV};
 use domain::model::sota::SummitCode;
 use registry::{AppRegistry, AppState};
-use service::interface::AdminService;
+
+use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
+use service::services::AdminService;
 
 pub async fn health_check() -> StatusCode {
     StatusCode::OK
