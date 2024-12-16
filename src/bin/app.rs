@@ -1,15 +1,16 @@
+use anyhow::{Error, Result};
 use axum::extract::DefaultBodyLimit;
 use axum::Router;
-use tower_http::services::ServeDir;
-
-use anyhow::{Error, Result};
-use common::config::AppConfigBuilder;
-use registry::{AppRegistry, AppState};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpListener;
-use web_api::handler::health::build_health_chek_routers;
-use web_api::handler::sota::build_sota_routers;
+use tower_http::services::ServeDir;
+
+use common::config::AppConfigBuilder;
+
+use api::handler::health::build_health_chek_routers;
+use api::handler::sota::build_sota_routers;
+use registry::{AppRegistry, AppState};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -30,7 +31,7 @@ async fn bootstrap() -> Result<()> {
         .merge(build_health_chek_routers())
         .merge(build_sota_routers())
         .with_state(app_state)
-        .nest_service("/", ServeDir::new("data"))
+        .nest_service("/", ServeDir::new("static"))
         .layer(DefaultBodyLimit::max(1024 * 1024 * 1024));
 
     let addr: SocketAddr = "0.0.0.0:8000".parse().unwrap();

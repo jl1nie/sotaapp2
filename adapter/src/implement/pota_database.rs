@@ -9,7 +9,7 @@ use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, UpdateRef};
 
 use crate::database::ConnectionPool;
-use crate::interface::POTADatabase;
+use domain::repository::pota::POTADatabase;
 
 #[derive(Component)]
 #[shaku(interface = POTADatabase)]

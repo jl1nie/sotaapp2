@@ -9,7 +9,7 @@ use domain::model::sota::{SOTARefOptInfo, SOTAReference, SummitCode};
 
 use crate::database::ConnectionPool;
 use crate::implement::querybuilder::query_builder;
-use crate::interface::SOTADatabase;
+use domain::repository::sota::SOTADatabase;
 
 #[derive(Component)]
 #[shaku(interface = SOTADatabase)]
@@ -125,7 +125,7 @@ impl SOTADatabaseImpl {
 
     async fn select_by_condition(
         &self,
-        query: &String,
+        query: &str,
         // params: &Vec<String>,
     ) -> AppResult<Vec<SOTAReference>> {
         let mut select = r#"
@@ -232,7 +232,7 @@ mod tests {
     use super::*;
     use crate::database::ConnectionPool;
     use common::config::AppConfigBuilder;
-    use domain::model::common::csv_reader::csv_reader;
+    use common::csv_reader::csv_reader;
     use serde::Deserialize;
     use std::{
         fs::{read, File},

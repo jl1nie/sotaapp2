@@ -1,5 +1,4 @@
 use sqlx::FromRow;
-pub mod event;
 use crate::model::common::activation::{Alert, Spot};
 pub type SOTAAlert = Alert;
 pub type SOTASpot = Spot;

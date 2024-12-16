@@ -12,4 +12,4 @@ csv.workspace = true
 shaku.workspace = true
 common.workspace = true
 domain.workspace = true
-data_access.workspace = true
+adapter.workspace = true

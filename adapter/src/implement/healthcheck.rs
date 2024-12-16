@@ -3,7 +3,7 @@ use common::error::AppResult;
 use shaku::Component;
 
 use crate::database::ConnectionPool;
-use crate::interface::HealthCheck;
+use domain::repository::healthcheck::HealthCheck;
 
 #[derive(Component)]
 #[shaku(interface = HealthCheck)]
