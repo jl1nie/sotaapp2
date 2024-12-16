@@ -11,7 +11,9 @@ use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, Up
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::SOTAReference;
 use domain::model::sota::{SOTARefOptInfo, SummitCode};
-use domain::repository::{healthcheck::HealthCheck, pota::POTADatabase, sota::SOTADatabase};
+use domain::repository::{
+    healthcheck::HealthCheckRepositry, pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
+};
 
 use crate::model::pota::UploadPOTACSV;
 use crate::model::sota::{SOTACSVFile, SOTACSVOptFile};
@@ -23,11 +25,11 @@ use crate::services::AdminService;
 #[shaku(interface = AdminService)]
 pub struct AdminServiceImpl {
     #[shaku(inject)]
-    sota_db: Arc<dyn SOTADatabase>,
+    sota_repo: Arc<dyn SOTAReferenceReposity>,
     #[shaku(inject)]
-    pota_db: Arc<dyn POTADatabase>,
+    pota_repo: Arc<dyn POTAReferenceRepositry>,
     #[shaku(inject)]
-    check_db: Arc<dyn HealthCheck>,
+    check_repo: Arc<dyn HealthCheckRepositry>,
     config: AppConfig,
 }
 
@@ -52,7 +54,7 @@ impl AdminService for AdminServiceImpl {
                 .collect(),
         };
         eprintln!("import {} references.", req.requests.len());
-        self.sota_db.import_reference(req).await?;
+        self.sota_repo.import_reference(req).await?;
         Ok(())
     }
 
@@ -64,23 +66,23 @@ impl AdminService for AdminServiceImpl {
         let req = UpdateRef {
             requests: csv.into_iter().map(SOTARefOptInfo::from).collect(),
         };
-        self.sota_db.update_reference_opt(req).await?;
+        self.sota_repo.update_reference_opt(req).await?;
         Ok(())
     }
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
         let requests: Vec<POTAReference> = csv_reader(data, 1)?;
         let req = CreateRef { requests };
-        self.pota_db.import_reference(req).await?;
+        self.pota_repo.import_reference(req).await?;
         Ok(())
     }
 
     async fn find_sota_reference(&self, event: FindRef) -> AppResult<FindResult<SOTAReference>> {
-        Ok(self.sota_db.find_reference(&event).await?)
+        Ok(self.sota_repo.find_reference(&event).await?)
     }
 
     async fn update_sota_reference_opt(&self, event: UpdateRef<SOTARefOptInfo>) -> AppResult<()> {
-        self.sota_db.update_reference_opt(event).await?;
+        self.sota_repo.update_reference_opt(event).await?;
         Ok(())
     }
 
@@ -88,25 +90,25 @@ impl AdminService for AdminServiceImpl {
         let req = DeleteRef {
             ref_id: event.ref_id,
         };
-        self.sota_db.delete_reference_opt(req).await?;
+        self.sota_repo.delete_reference_opt(req).await?;
         Ok(())
     }
 
     async fn find_pota_reference(&self, event: FindRef) -> AppResult<FindResult<POTAReference>> {
-        Ok(self.pota_db.find_reference(&event).await?)
+        Ok(self.pota_repo.find_reference(&event).await?)
     }
 
     async fn update_pota_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()> {
-        self.pota_db.update_reference(event).await?;
+        self.pota_repo.update_reference(event).await?;
         Ok(())
     }
 
     async fn delete_pota_reference(&self, event: DeleteRef<ParkCode>) -> AppResult<()> {
-        self.pota_db.delete_reference(event).await?;
+        self.pota_repo.delete_reference(event).await?;
         Ok(())
     }
 
     async fn health_check(&self) -> AppResult<bool> {
-        Ok(self.check_db.check_database().await?)
+        Ok(self.check_repo.check_database().await?)
     }
 }

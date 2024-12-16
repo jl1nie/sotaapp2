@@ -10,20 +10,20 @@ use domain::model::sota::{SOTAAlert, SOTAReference, SOTASpot};
 use domain::model::common::event::{FindAct, FindAppResult, FindRef};
 
 use crate::services::UserService;
-use domain::repository::pota::{POTADatabase, POTActivationDatabase};
-use domain::repository::sota::{SOTAActivationDatabase, SOTADatabase};
+use domain::repository::pota::{POTAActivationRepositry, POTAReferenceRepositry};
+use domain::repository::sota::{SOTAActivationRepositry, SOTAReferenceReposity};
 
 #[derive(Component)]
 #[shaku(interface = UserService)]
 pub struct UserServiceImpl {
     #[shaku(inject)]
-    sota_db: Arc<dyn SOTADatabase>,
+    sota_repo: Arc<dyn SOTAReferenceReposity>,
     #[shaku(inject)]
-    pota_db: Arc<dyn POTADatabase>,
+    pota_repo: Arc<dyn POTAReferenceRepositry>,
     #[shaku(inject)]
-    sota_act_db: Arc<dyn SOTAActivationDatabase>,
+    sota_act_repo: Arc<dyn SOTAActivationRepositry>,
     #[shaku(inject)]
-    pota_act_db: Arc<dyn POTActivationDatabase>,
+    pota_act_repo: Arc<dyn POTAActivationRepositry>,
     config: AppConfig,
 }
 
@@ -34,13 +34,13 @@ impl UserService for UserServiceImpl {
         event: FindRef,
     ) -> AppResult<FindAppResult<SOTAReference, POTAReference>> {
         let sota = if event.is_sota() {
-            Some(self.sota_db.find_reference(&event).await?)
+            Some(self.sota_repo.find_reference(&event).await?)
         } else {
             None
         };
 
         let pota = if event.is_pota() {
-            Some(self.pota_db.find_reference(&event).await?)
+            Some(self.pota_repo.find_reference(&event).await?)
         } else {
             None
         };
@@ -49,15 +49,15 @@ impl UserService for UserServiceImpl {
     }
 
     async fn find_alert(&self, event: FindAct) -> AppResult<FindAppResult<SOTAAlert, POTAAlert>> {
-        let sota = Some(self.sota_act_db.find_alert(&event).await?);
-        let pota = Some(self.pota_act_db.find_alert(&event).await?);
+        let sota = Some(self.sota_act_repo.find_alert(&event).await?);
+        let pota = Some(self.pota_act_repo.find_alert(&event).await?);
 
         Ok(FindAppResult { sota, pota })
     }
 
     async fn find_spot(&self, event: FindAct) -> AppResult<FindAppResult<SOTASpot, POTASpot>> {
-        let sota = Some(self.sota_act_db.find_spot(&event).await?);
-        let pota = Some(self.pota_act_db.find_spot(&event).await?);
+        let sota = Some(self.sota_act_repo.find_spot(&event).await?);
+        let pota = Some(self.pota_act_repo.find_spot(&event).await?);
 
         Ok(FindAppResult { sota, pota })
     }

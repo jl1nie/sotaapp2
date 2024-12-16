@@ -9,17 +9,17 @@ use domain::model::pota::{POTAAlert, POTASpot};
 use domain::model::common::event::{DeleteAct, FindAct, FindResult, UpdateAct};
 
 use crate::database::ConnectionPool;
-use domain::repository::pota::POTActivationDatabase;
+use domain::repository::pota::POTAActivationRepositry;
 
 #[derive(Component)]
-#[shaku(interface = POTActivationDatabase)]
-pub struct POTActivationDatabaseImpl {
+#[shaku(interface = POTAActivationRepositry)]
+pub struct POTActivationRepositryImpl {
     config: AppConfig,
     pool: ConnectionPool,
 }
 
 #[async_trait]
-impl POTActivationDatabase for POTActivationDatabaseImpl {
+impl POTAActivationRepositry for POTActivationRepositryImpl {
     async fn update_alert(&self, event: UpdateAct<POTAAlert>) -> AppResult<()> {
         todo!()
     }

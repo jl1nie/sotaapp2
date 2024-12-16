@@ -9,16 +9,16 @@ use domain::model::sota::{SOTARefOptInfo, SOTAReference, SummitCode};
 
 use crate::database::ConnectionPool;
 use crate::implement::querybuilder::query_builder;
-use domain::repository::sota::SOTADatabase;
+use domain::repository::sota::SOTAReferenceReposity;
 
 #[derive(Component)]
-#[shaku(interface = SOTADatabase)]
-pub struct SOTADatabaseImpl {
+#[shaku(interface = SOTAReferenceReposity)]
+pub struct SOTAReferenceReposityImpl {
     config: AppConfig,
     pool: ConnectionPool,
 }
 
-impl SOTADatabaseImpl {
+impl SOTAReferenceReposityImpl {
     async fn create(&self, r: SOTAReference, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
@@ -167,7 +167,7 @@ impl SOTADatabaseImpl {
 }
 
 #[async_trait]
-impl SOTADatabase for SOTADatabaseImpl {
+impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
     async fn import_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()> {
         let mut tx = self
             .pool
@@ -263,7 +263,7 @@ mod tests {
     async fn upload_summit_list(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let pool = ConnectionPool::new(pool.clone());
         let config = AppConfigBuilder::default().database(None).build();
-        let sotadb = SOTADatabaseImpl { config, pool };
+        let sotadb = SOTAReferenceReposityImpl { config, pool };
 
         let mut file = File::open("../data/summitslist.csv")?;
         let mut rdr = String::new();

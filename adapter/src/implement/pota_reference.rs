@@ -9,17 +9,17 @@ use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, UpdateRef};
 
 use crate::database::ConnectionPool;
-use domain::repository::pota::POTADatabase;
+use domain::repository::pota::POTAReferenceRepositry;
 
 #[derive(Component)]
-#[shaku(interface = POTADatabase)]
-pub struct POTADatabaseImpl {
+#[shaku(interface = POTAReferenceRepositry)]
+pub struct POTAReferenceRepositryImpl {
     config: AppConfig,
     pool: ConnectionPool,
 }
 
 #[async_trait]
-impl POTADatabase for POTADatabaseImpl {
+impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
     async fn import_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()> {
         todo!()
     }

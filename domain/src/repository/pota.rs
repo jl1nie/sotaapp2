@@ -8,7 +8,7 @@ use crate::model::common::event::{
 use crate::model::pota::{POTAAlert, POTAReference, POTASpot, ParkCode};
 
 #[async_trait]
-pub trait POTADatabase: Send + Sync + Interface {
+pub trait POTAReferenceRepositry: Send + Sync + Interface {
     async fn import_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()>;
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>>;
     async fn update_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()>;
@@ -16,16 +16,11 @@ pub trait POTADatabase: Send + Sync + Interface {
 }
 
 #[async_trait]
-pub trait POTActivationDatabase: Send + Sync + Interface {
+pub trait POTAActivationRepositry: Send + Sync + Interface {
     async fn update_alert(&self, event: UpdateAct<POTAAlert>) -> AppResult<()>;
     async fn find_alert(&self, event: &FindAct) -> AppResult<FindResult<POTAAlert>>;
     async fn delete_alert(&self, event: DeleteAct) -> AppResult<()>;
     async fn update_spot(&self, event: UpdateAct<POTASpot>) -> AppResult<()>;
     async fn find_spot(&self, event: &FindAct) -> AppResult<FindResult<POTASpot>>;
     async fn delete_spot(&self, event: DeleteAct) -> AppResult<()>;
-}
-
-#[async_trait]
-pub trait HealthCheck: Send + Sync + Interface {
-    async fn check_database(&self) -> AppResult<bool>;
 }

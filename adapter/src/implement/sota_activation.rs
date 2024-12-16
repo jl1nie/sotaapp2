@@ -8,17 +8,17 @@ use domain::model::common::event::{DeleteAct, FindAct, FindResult, UpdateAct};
 use domain::model::sota::{SOTAAlert, SOTASpot};
 
 use crate::database::ConnectionPool;
-use domain::repository::sota::SOTAActivationDatabase;
+use domain::repository::sota::SOTAActivationRepositry;
 
 #[derive(Component)]
-#[shaku(interface = SOTAActivationDatabase)]
-pub struct SOTAActivationDatabaseImpl {
+#[shaku(interface = SOTAActivationRepositry)]
+pub struct SOTAActivationRepositryImpl {
     config: AppConfig,
     pool: ConnectionPool,
 }
 
 #[async_trait]
-impl SOTAActivationDatabase for SOTAActivationDatabaseImpl {
+impl SOTAActivationRepositry for SOTAActivationRepositryImpl {
     async fn update_alert(&self, event: UpdateAct<SOTAAlert>) -> AppResult<()> {
         todo!()
     }
