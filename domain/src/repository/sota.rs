@@ -8,7 +8,7 @@ use crate::model::common::event::{
 use crate::model::sota::{SOTAAlert, SOTARefOptInfo, SOTAReference, SOTASpot, SummitCode};
 
 #[async_trait]
-pub trait SOTADatabase: Send + Sync + Interface {
+pub trait SOTAReferenceReposity: Send + Sync + Interface {
     async fn import_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()>;
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<SOTAReference>>;
     async fn update_reference_opt(&self, event: UpdateRef<SOTARefOptInfo>) -> AppResult<()>;
@@ -16,7 +16,7 @@ pub trait SOTADatabase: Send + Sync + Interface {
 }
 
 #[async_trait]
-pub trait SOTAActivationDatabase: Send + Sync + Interface {
+pub trait SOTAActivationRepositry: Send + Sync + Interface {
     async fn update_alert(&self, event: UpdateAct<SOTAAlert>) -> AppResult<()>;
     async fn find_alert(&self, event: &FindAct) -> AppResult<FindResult<SOTAAlert>>;
     async fn delete_alert(&self, event: DeleteAct) -> AppResult<()>;

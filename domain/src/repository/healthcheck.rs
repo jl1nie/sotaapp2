@@ -3,6 +3,6 @@ use common::error::AppResult;
 use shaku::Interface;
 
 #[async_trait]
-pub trait HealthCheck: Send + Sync + Interface {
+pub trait HealthCheckRepositry: Send + Sync + Interface {
     async fn check_database(&self) -> AppResult<bool>;
 }

@@ -5,11 +5,11 @@ use std::sync::Arc;
 use adapter::{
     database::connect_database_with,
     implement::{
-        healthcheck::HealthCheckImplParameters,
-        pota_activation::POTActivationDatabaseImplParameters,
-        pota_database::POTADatabaseImplParameters,
-        sota_activation::SOTAActivationDatabaseImplParameters,
-        sota_database::SOTADatabaseImplParameters,
+        healthcheck::HealthCheckRepositryImplParameters,
+        pota_activation::POTActivationRepositryImplParameters,
+        pota_reference::POTAReferenceRepositryImplParameters,
+        sota_activation::SOTAActivationRepositryImplParameters,
+        sota_reference::SOTAReferenceReposityImplParameters,
     },
 };
 use common::config::AppConfig;
@@ -21,16 +21,16 @@ use service::implement::{
 };
 
 use adapter::implement::{
-    healthcheck::HealthCheckImpl, pota_activation::POTActivationDatabaseImpl,
-    pota_database::POTADatabaseImpl, sota_activation::SOTAActivationDatabaseImpl,
-    sota_database::SOTADatabaseImpl,
+    healthcheck::HealthCheckRepositryImpl, pota_activation::POTActivationRepositryImpl,
+    pota_reference::POTAReferenceRepositryImpl, sota_activation::SOTAActivationRepositryImpl,
+    sota_reference::SOTAReferenceReposityImpl,
 };
 
 module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,
-        SOTADatabaseImpl,SOTAActivationDatabaseImpl,POTADatabaseImpl,POTActivationDatabaseImpl,
-        HealthCheckImpl],
+        SOTAReferenceReposityImpl,SOTAActivationRepositryImpl,POTAReferenceRepositryImpl,POTActivationRepositryImpl,
+        HealthCheckRepositryImpl],
         providers = [],
     }
 }
@@ -39,22 +39,26 @@ impl AppRegistry {
     pub fn new(config: AppConfig) -> Self {
         let pool = connect_database_with(&config).unwrap();
         AppRegistry::builder()
-            .with_component_parameters::<SOTADatabaseImpl>(SOTADatabaseImplParameters {
-                config: config.clone(),
-                pool: pool.clone(),
-            })
-            .with_component_parameters::<SOTAActivationDatabaseImpl>(
-                SOTAActivationDatabaseImplParameters {
+            .with_component_parameters::<SOTAReferenceReposityImpl>(
+                SOTAReferenceReposityImplParameters {
                     config: config.clone(),
                     pool: pool.clone(),
                 },
             )
-            .with_component_parameters::<POTADatabaseImpl>(POTADatabaseImplParameters {
-                config: config.clone(),
-                pool: pool.clone(),
-            })
-            .with_component_parameters::<POTActivationDatabaseImpl>(
-                POTActivationDatabaseImplParameters {
+            .with_component_parameters::<SOTAActivationRepositryImpl>(
+                SOTAActivationRepositryImplParameters {
+                    config: config.clone(),
+                    pool: pool.clone(),
+                },
+            )
+            .with_component_parameters::<POTAReferenceRepositryImpl>(
+                POTAReferenceRepositryImplParameters {
+                    config: config.clone(),
+                    pool: pool.clone(),
+                },
+            )
+            .with_component_parameters::<POTActivationRepositryImpl>(
+                POTActivationRepositryImplParameters {
                     config: config.clone(),
                     pool: pool.clone(),
                 },
@@ -70,9 +74,9 @@ impl AppRegistry {
                     config: config.clone(),
                 },
             )
-            .with_component_parameters::<HealthCheckImpl>(HealthCheckImplParameters {
-                pool: pool.clone(),
-            })
+            .with_component_parameters::<HealthCheckRepositryImpl>(
+                HealthCheckRepositryImplParameters { pool: pool.clone() },
+            )
             .build()
     }
 }
