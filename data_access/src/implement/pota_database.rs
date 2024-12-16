@@ -20,7 +20,7 @@ pub struct POTADatabaseImpl {
 
 #[async_trait]
 impl POTADatabase for POTADatabaseImpl {
-    async fn create_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()> {
+    async fn import_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()> {
         todo!()
     }
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>> {

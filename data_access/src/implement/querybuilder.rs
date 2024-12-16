@@ -15,12 +15,12 @@ pub fn query_builder(r: &FindRef) -> String {
         if r.is_sota() {
             let name = format!("'{}%'", name);
             query.push_str(&format!(
-                "(summit_code LIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND",
+                "(summit_code ILIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND",
                 name, name, name
             ));
         } else {
             query.push_str(&format!(
-                "(park_reference LIKE {} OR park_name LIKE {} OR park_name_j LIKE {}) AND",
+                "(park_reference ILIKE {} OR park_name LIKE {} OR park_name_j LIKE {}) AND",
                 name, name, name
             ));
         }

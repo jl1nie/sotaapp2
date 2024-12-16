@@ -9,3 +9,4 @@ derive-new.workspace = true
 csv.workspace = true
 serde.workspace = true
 common.workspace = true
+sqlx.workspace = true

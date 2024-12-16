@@ -1,13 +1,15 @@
+use axum::extract::DefaultBodyLimit;
 use axum::Router;
+use tower_http::services::ServeDir;
 
 use anyhow::{Error, Result};
 use common::config::AppConfigBuilder;
 use registry::{AppRegistry, AppState};
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use web_api::handler::health::build_health_chek_routers;
-//use web_api::handler::sota::build_sota_routers;
+use web_api::handler::sota::build_sota_routers;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,10 +28,12 @@ async fn bootstrap() -> Result<()> {
 
     let app = Router::new()
         .merge(build_health_chek_routers())
-        // .merge(build_sota_routers())
-        .with_state(app_state);
+        .merge(build_sota_routers())
+        .with_state(app_state)
+        .nest_service("/", ServeDir::new("data"))
+        .layer(DefaultBodyLimit::max(1024 * 1024 * 1024));
 
-    let addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8080);
+    let addr: SocketAddr = "0.0.0.0:8000".parse().unwrap();
     let listener = TcpListener::bind(&addr).await?;
 
     println!("Listening on {}", addr);

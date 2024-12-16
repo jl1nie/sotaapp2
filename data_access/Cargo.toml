@@ -14,3 +14,4 @@ shaku.workspace = true
 
 [dev-dependencies]
 csv.workspace = true
+serde.workspace = true

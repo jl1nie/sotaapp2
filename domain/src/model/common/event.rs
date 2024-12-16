@@ -39,6 +39,20 @@ pub struct FindRef {
     pub offset: Option<i32>,
 }
 
+impl FindRef {
+    pub fn is_sota(&self) -> bool {
+        self.program.contains(&AwardProgram::SOTA)
+    }
+
+    pub fn is_pota(&self) -> bool {
+        self.program.contains(&AwardProgram::POTA)
+    }
+
+    pub fn is_wwff(&self) -> bool {
+        self.program.contains(&AwardProgram::WWFF)
+    }
+}
+
 pub struct FindRefBuilder {
     pub param: FindRef,
 }
@@ -59,8 +73,23 @@ impl FindRefBuilder {
         self
     }
 
+    pub fn sota(mut self) -> Self {
+        self.param.program.push(AwardProgram::SOTA);
+        self
+    }
+
+    pub fn pota(mut self) -> Self {
+        self.param.program.push(AwardProgram::POTA);
+        self
+    }
+
+    pub fn wwff(mut self) -> Self {
+        self.param.program.push(AwardProgram::WWFF);
+        self
+    }
+
     pub fn ref_id(mut self, id: String) -> Self {
-        self.param.ref_id = Some(id);
+        self.param.ref_id = Some(id.to_uppercase());
         self
     }
 
@@ -109,14 +138,14 @@ impl FindRefBuilder {
 pub struct CreateRef<T> {
     pub requests: Vec<T>,
 }
+
 pub struct UpdateRef<T> {
-    pub request: T,
+    pub requests: Vec<T>,
 }
 
-#[derive(Debug)]
 pub struct FindResult<T> {
     pub counts: usize,
-    pub results: Option<T>,
+    pub results: Option<Vec<T>>,
 }
 
 pub struct FindAppResult<SOTA, POTA> {
@@ -125,7 +154,7 @@ pub struct FindAppResult<SOTA, POTA> {
 }
 
 pub struct DeleteRef<T> {
-    pub id: T,
+    pub ref_id: T,
 }
 
 pub struct UpdateAct<T> {
