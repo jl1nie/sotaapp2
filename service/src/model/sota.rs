@@ -75,11 +75,11 @@ pub struct SOTACSVOptFile {
     pub summit_code: String,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
-    pub alt_m: i32,
     pub points: i32,
+    pub alt_m: i32,
     pub summit_name: String,
-    pub summit_name_j: String,
     pub city: String,
+    pub summit_name_j: String,
     pub city_j: String,
 }
 
