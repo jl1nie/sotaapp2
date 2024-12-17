@@ -68,6 +68,10 @@ impl Default for FindRefBuilder {
 }
 
 impl FindRefBuilder {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     pub fn program(mut self, program: AwardProgram) -> Self {
         self.param.program.push(program);
         self
@@ -148,13 +152,20 @@ pub struct FindResult<T> {
     pub results: Option<Vec<T>>,
 }
 
+impl<T> FindResult<T> {
+    pub fn get_reference(self) -> Option<T> {
+        self.results.and_then(|mut r| r.pop())
+    }
+}
+
 pub struct FindAppResult<SOTA, POTA> {
     pub sota: Option<FindResult<SOTA>>,
     pub pota: Option<FindResult<POTA>>,
 }
 
-pub struct DeleteRef<T> {
-    pub ref_id: T,
+pub enum DeleteRef<T> {
+    Delete(T),
+    DeleteAll,
 }
 
 pub struct UpdateAct<T> {

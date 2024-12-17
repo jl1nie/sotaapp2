@@ -9,7 +9,7 @@ use crate::model::pota::{POTAAlert, POTAReference, POTASpot, ParkCode};
 
 #[async_trait]
 pub trait POTAReferenceRepositry: Send + Sync + Interface {
-    async fn import_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()>;
+    async fn create_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()>;
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>>;
     async fn update_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()>;
     async fn delete_reference(&self, event: DeleteRef<ParkCode>) -> AppResult<()>;

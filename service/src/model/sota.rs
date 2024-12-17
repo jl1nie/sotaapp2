@@ -1,4 +1,4 @@
-use domain::model::sota::{SOTARefOptInfo, SOTAReference};
+use domain::model::sota::SOTAReference;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -16,8 +16,8 @@ pub struct SOTACSVFile {
     pub latitude: Option<f64>,
     pub points: i32,
     pub bonus_points: i32,
-    pub valid_from: Option<String>,
-    pub valid_to: Option<String>,
+    pub valid_from: String,
+    pub valid_to: String,
     pub activation_count: i32,
     pub activation_date: Option<String>,
     pub activation_call: Option<String>,
@@ -78,35 +78,9 @@ pub struct SOTACSVOptFile {
     pub alt_m: i32,
     pub points: i32,
     pub summit_name: String,
-    pub city: String,
     pub summit_name_j: String,
+    pub city: String,
     pub city_j: String,
-}
-
-impl From<SOTACSVOptFile> for SOTARefOptInfo {
-    fn from(csv: SOTACSVOptFile) -> SOTARefOptInfo {
-        let SOTACSVOptFile {
-            summit_code,
-            longitude,
-            latitude,
-            points,
-            alt_m,
-            summit_name,
-            city,
-            summit_name_j,
-            city_j,
-        } = csv;
-        Self {
-            summit_code,
-            summit_name,
-            summit_name_j,
-            city,
-            city_j,
-            alt_m,
-            longitude,
-            latitude,
-        }
-    }
 }
 
 pub struct UploadSOTACSV {

@@ -1,5 +1,5 @@
-use sqlx::FromRow;
 use crate::model::common::activation::{Alert, Spot};
+use sqlx::FromRow;
 pub type SOTAAlert = Alert;
 pub type SOTASpot = Spot;
 
@@ -30,19 +30,9 @@ pub struct SOTAReference {
     pub latitude: Option<f64>,
     pub points: i32,
     pub bonus_points: i32,
-    pub valid_from: Option<String>,
-    pub valid_to: Option<String>,
+    pub valid_from: String,
+    pub valid_to: String,
     pub activation_count: i32,
     pub activation_date: Option<String>,
     pub activation_call: Option<String>,
-}
-pub struct SOTARefOptInfo {
-    pub summit_code: String,
-    pub summit_name: String,
-    pub summit_name_j: String,
-    pub city: String,
-    pub city_j: String,
-    pub alt_m: i32,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
 }
