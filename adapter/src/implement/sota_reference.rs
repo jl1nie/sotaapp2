@@ -5,7 +5,7 @@ use sqlx::PgConnection;
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, UpdateRef};
-use domain::model::sota::{SOTARefOptInfo, SOTAReference, SummitCode};
+use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::database::ConnectionPool;
 use crate::implement::querybuilder::query_builder;
@@ -72,21 +72,50 @@ impl SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn update_opt(&self, r: SOTARefOptInfo, db: &mut PgConnection) -> AppResult<()> {
+    async fn update(&self, r: SOTAReference, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 UPDATE sota_references SET
-                    summit_name = $1,
-                    summit_name_j = $2,
-                    city = $3,
-                    city_j = $4
-               WHERE summit_code = $5
+                    association_name = $2,
+                    region_name = $3,
+                    summit_name = $4,
+                    summit_name_j = $5,
+                    city = $6,
+                    city_j = $7,
+                    alt_m = $8,
+                    alt_ft = $9,
+                    grid_ref1 = $10,
+                    grid_ref2 = $11,
+                    coordinates = ST_SetSRID(ST_MakePoint($12, $13), 4326),
+                    points = $14,
+                    bonus_points = $15,
+                    valid_from = $16,
+                    valid_to = $17,
+                    activation_count = $18,
+                    activation_date = $19,
+                    activation_call = $20
+                WHERE summit_code = $1
             "#,
+            r.summit_code,
+            r.association_name,
+            r.region_name,
             r.summit_name,
             r.summit_name_j,
             r.city,
             r.city_j,
-            r.summit_code,
+            r.alt_m,
+            r.alt_ft,
+            r.grid_ref1,
+            r.grid_ref2,
+            r.longitude,
+            r.latitude,
+            r.points,
+            r.bonus_points,
+            r.valid_from,
+            r.valid_to,
+            r.activation_count,
+            r.activation_date,
+            r.activation_call
         )
         .execute(db)
         .await
@@ -94,13 +123,10 @@ impl SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn delete_opt(&self, ref_id: SummitCode, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete(&self, ref_id: SummitCode, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
-                UPDATE sota_references SET
-                    summit_name_j = NULL,
-                    city = NULL,
-                    city_j = NULL
+                DELETE FROM sota_references
                WHERE summit_code = $1
             "#,
             ref_id.inner_ref(),
@@ -168,15 +194,13 @@ impl SOTAReferenceReposityImpl {
 
 #[async_trait]
 impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
-    async fn import_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()> {
+    async fn create_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-
-        self.delete_all(&mut tx).await?;
 
         for r in event.requests.into_iter().enumerate() {
             self.create(r.1, &mut tx).await?;
@@ -188,7 +212,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn update_reference_opt(&self, event: UpdateRef<SOTARefOptInfo>) -> AppResult<()> {
+    async fn update_reference(&self, event: UpdateRef<SOTAReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -196,7 +220,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
             .await
             .map_err(AppError::TransactionError)?;
         for r in event.requests.into_iter().enumerate() {
-            self.update_opt(r.1, &mut tx).await?;
+            self.update(r.1, &mut tx).await?;
             if r.0 % 1000 == 0 {
                 eprintln!("update db {} rescords", r.0);
             }
@@ -205,14 +229,17 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn delete_reference_opt(&self, event: DeleteRef<SummitCode>) -> AppResult<()> {
+    async fn delete_reference(&self, event: DeleteRef<SummitCode>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        self.delete_opt(event.ref_id, &mut tx).await?;
+        match event {
+            DeleteRef::Delete(code) => self.delete(code, &mut tx).await?,
+            DeleteRef::DeleteAll => self.delete_all(&mut tx).await?,
+        }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
@@ -228,49 +255,4 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::database::ConnectionPool;
-    use common::config::AppConfigBuilder;
-    use common::csv_reader::csv_reader;
-    use serde::Deserialize;
-    use std::{
-        fs::{read, File},
-        io::Read,
-    };
-
-    #[derive(Debug, Deserialize)]
-    pub struct SOTACSVFile {
-        pub summit_code: String,
-        pub association_name: String,
-        pub region_name: String,
-        pub summit_name: String,
-        pub alt_m: i32,
-        pub alt_ft: i32,
-        pub grid_ref1: String,
-        pub grid_ref2: String,
-        pub longitude: Option<f64>,
-        pub latitude: Option<f64>,
-        pub points: i32,
-        pub bonus_points: i32,
-        pub valid_from: Option<String>,
-        pub valid_to: Option<String>,
-        pub activation_count: i32,
-        pub activation_date: Option<String>,
-        pub activation_call: Option<String>,
-    }
-    #[sqlx::test]
-    async fn upload_summit_list(pool: sqlx::PgPool) -> anyhow::Result<()> {
-        let pool = ConnectionPool::new(pool.clone());
-        let config = AppConfigBuilder::default().database(None).build();
-        let sotadb = SOTAReferenceReposityImpl { config, pool };
-
-        let mut file = File::open("../data/summitslist.csv")?;
-        let mut rdr = String::new();
-        file.read_to_string(&mut rdr);
-
-        let reflist: Vec<SOTACSVFile> = csv_reader(rdr, 2).unwrap();
-
-        Ok(())
-    }
-}
+mod tests {}

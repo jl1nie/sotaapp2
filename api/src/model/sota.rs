@@ -1,42 +1,78 @@
 use domain::model::common::event::UpdateRef;
-use domain::model::sota::{SOTARefOptInfo, SOTAReference};
+use domain::model::sota::SOTAReference;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CreateRefRequest {
     pub summit_code: String,
+    pub association_name: String,
+    pub region_name: String,
     pub summit_name: String,
     pub summit_name_j: String,
     pub city: String,
     pub city_j: String,
     pub alt_m: i32,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub alt_ft: i32,
+    pub grid_ref1: String,
+    pub grid_ref2: String,
+    pub longitude: f64,
+    pub latitude: f64,
+    pub points: i32,
+    pub bonus_points: i32,
+    pub valid_from: String,
+    pub valid_to: String,
+    pub activation_count: i32,
+    pub activation_date: Option<String>,
+    pub activation_call: Option<String>,
 }
 
-impl From<CreateRefRequest> for UpdateRef<SOTARefOptInfo> {
+impl From<CreateRefRequest> for UpdateRef<SOTAReference> {
     fn from(value: CreateRefRequest) -> Self {
         let CreateRefRequest {
             summit_code,
+            association_name,
+            region_name,
             summit_name,
             summit_name_j,
             city,
             city_j,
             alt_m,
+            alt_ft,
+            grid_ref1,
+            grid_ref2,
             longitude,
             latitude,
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
         } = value;
         Self {
-            requests: vec![SOTARefOptInfo {
+            requests: vec![SOTAReference {
                 summit_code,
+                association_name,
+                region_name,
                 summit_name,
-                summit_name_j,
-                city,
-                city_j,
+                summit_name_j: Some(summit_name_j),
+                city: Some(city),
+                city_j: Some(city_j),
                 alt_m,
-                longitude,
-                latitude,
+                alt_ft,
+                grid_ref1,
+                grid_ref2,
+                longitude: Some(longitude),
+                latitude: Some(latitude),
+                points,
+                bonus_points,
+                valid_from,
+                valid_to,
+                activation_count,
+                activation_date,
+                activation_call,
             }],
         }
     }
@@ -46,36 +82,72 @@ impl From<CreateRefRequest> for UpdateRef<SOTARefOptInfo> {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateRefRequest {
     pub summit_code: String,
+    pub association_name: String,
+    pub region_name: String,
     pub summit_name: String,
     pub summit_name_j: String,
     pub city: String,
     pub city_j: String,
     pub alt_m: i32,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub alt_ft: i32,
+    pub grid_ref1: String,
+    pub grid_ref2: String,
+    pub longitude: f64,
+    pub latitude: f64,
+    pub points: i32,
+    pub bonus_points: i32,
+    pub valid_from: String,
+    pub valid_to: String,
+    pub activation_count: i32,
+    pub activation_date: Option<String>,
+    pub activation_call: Option<String>,
 }
 
-impl From<UpdateRefRequest> for UpdateRef<SOTARefOptInfo> {
+impl From<UpdateRefRequest> for UpdateRef<SOTAReference> {
     fn from(value: UpdateRefRequest) -> Self {
         let UpdateRefRequest {
             summit_code,
+            association_name,
+            region_name,
             summit_name,
             summit_name_j,
             city,
             city_j,
             alt_m,
+            alt_ft,
+            grid_ref1,
+            grid_ref2,
             longitude,
             latitude,
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
         } = value;
-        let request = SOTARefOptInfo {
+        let request = SOTAReference {
             summit_code,
+            association_name,
+            region_name,
             summit_name,
-            summit_name_j,
-            city,
-            city_j,
+            summit_name_j: Some(summit_name_j),
+            city: Some(city),
+            city_j: Some(city_j),
             alt_m,
-            longitude,
-            latitude,
+            alt_ft,
+            grid_ref1,
+            grid_ref2,
+            longitude: Some(longitude),
+            latitude: Some(latitude),
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
         };
         Self {
             requests: vec![request],

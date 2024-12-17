@@ -27,7 +27,7 @@ pub async fn update_sota_reference(
     Json(req): Json<UpdateRefRequest>,
 ) -> AppResult<StatusCode> {
     admin_service
-        .update_sota_reference_opt(req.into())
+        .update_sota_reference(req.into())
         .await
         .map(|_| StatusCode::CREATED)
 }
@@ -72,11 +72,9 @@ pub async fn delete_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
 ) -> AppResult<StatusCode> {
-    let req = DeleteRef {
-        ref_id: SummitCode::new(summit_code),
-    };
+    let req = DeleteRef::Delete(SummitCode::new(summit_code));
     admin_service
-        .delete_sota_reference_opt(req)
+        .delete_sota_reference(req)
         .await
         .map(|_| StatusCode::OK)
 }

@@ -5,14 +5,14 @@ use shaku::Interface;
 use crate::model::common::event::{
     CreateRef, DeleteAct, DeleteRef, FindAct, FindRef, FindResult, UpdateAct, UpdateRef,
 };
-use crate::model::sota::{SOTAAlert, SOTARefOptInfo, SOTAReference, SOTASpot, SummitCode};
+use crate::model::sota::{SOTAAlert, SOTAReference, SOTASpot, SummitCode};
 
 #[async_trait]
 pub trait SOTAReferenceReposity: Send + Sync + Interface {
-    async fn import_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()>;
+    async fn create_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()>;
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<SOTAReference>>;
-    async fn update_reference_opt(&self, event: UpdateRef<SOTARefOptInfo>) -> AppResult<()>;
-    async fn delete_reference_opt(&self, event: DeleteRef<SummitCode>) -> AppResult<()>;
+    async fn update_reference(&self, event: UpdateRef<SOTAReference>) -> AppResult<()>;
+    async fn delete_reference(&self, event: DeleteRef<SummitCode>) -> AppResult<()>;
 }
 
 #[async_trait]

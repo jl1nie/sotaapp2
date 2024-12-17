@@ -5,7 +5,7 @@ use domain::model::common::event::{
     DeleteRef, FindAct, FindAppResult, FindRef, FindResult, UpdateAct, UpdateRef,
 };
 use domain::model::pota::{POTAAlert, POTAReference, POTASpot, ParkCode};
-use domain::model::sota::{SOTAAlert, SOTARefOptInfo, SOTAReference, SOTASpot, SummitCode};
+use domain::model::sota::{SOTAAlert, SOTAReference, SOTASpot, SummitCode};
 
 use crate::model::pota::UploadPOTACSV;
 use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
@@ -28,8 +28,8 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
 
     async fn find_sota_reference(&self, event: FindRef) -> AppResult<FindResult<SOTAReference>>;
-    async fn update_sota_reference_opt(&self, event: UpdateRef<SOTARefOptInfo>) -> AppResult<()>;
-    async fn delete_sota_reference_opt(&self, event: DeleteRef<SummitCode>) -> AppResult<()>;
+    async fn update_sota_reference(&self, event: UpdateRef<SOTAReference>) -> AppResult<()>;
+    async fn delete_sota_reference(&self, event: DeleteRef<SummitCode>) -> AppResult<()>;
 
     async fn find_pota_reference(&self, event: FindRef) -> AppResult<FindResult<POTAReference>>;
     async fn update_pota_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()>;

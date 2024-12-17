@@ -1,16 +1,19 @@
 use async_trait::async_trait;
 use chrono::{Local, NaiveDate};
 use shaku::Component;
+use std::collections::HashMap;
+use std::panic::resume_unwind;
 use std::sync::Arc;
 
 use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
-use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, UpdateRef};
+use domain::model::common::event::{
+    CreateRef, DeleteRef, FindRef, FindRefBuilder, FindResult, UpdateRef,
+};
 use domain::model::pota::{POTAReference, ParkCode};
-use domain::model::sota::SOTAReference;
-use domain::model::sota::{SOTARefOptInfo, SummitCode};
+use domain::model::sota::{SOTAReference, SummitCode};
 use domain::repository::{
     healthcheck::HealthCheckRepositry, pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
 };
@@ -40,10 +43,8 @@ impl AdminService for AdminServiceImpl {
         let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
 
         let is_valid_summit = |r: &SOTAReference| -> bool {
-            let validfrom = NaiveDate::parse_from_str(r.valid_from.as_ref().unwrap(), "%d/%m/%Y")
-                .unwrap_or(today);
-            let validto = NaiveDate::parse_from_str(r.valid_to.as_ref().unwrap(), "%d/%m/%Y")
-                .unwrap_or(today);
+            let validfrom = NaiveDate::parse_from_str(&r.valid_from, "%d/%m/%Y").unwrap_or(today);
+            let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
             r.summit_code.starts_with("JA") && today <= validto && today >= validfrom
         };
         let req = CreateRef {
@@ -54,7 +55,10 @@ impl AdminService for AdminServiceImpl {
                 .collect(),
         };
         eprintln!("import {} references.", req.requests.len());
-        self.sota_repo.import_reference(req).await?;
+        self.sota_repo
+            .delete_reference(DeleteRef::DeleteAll)
+            .await?;
+        self.sota_repo.create_reference(req).await?;
         Ok(())
     }
 
@@ -63,17 +67,38 @@ impl AdminService for AdminServiceImpl {
         UploadSOTAOptCSV { data }: UploadSOTAOptCSV,
     ) -> AppResult<()> {
         let csv: Vec<SOTACSVOptFile> = csv_reader(data, 1)?;
-        let req = UpdateRef {
-            requests: csv.into_iter().map(SOTARefOptInfo::from).collect(),
-        };
-        self.sota_repo.update_reference_opt(req).await?;
+        let ja_hash: HashMap<_, _> = csv
+            .into_iter()
+            .map(|r| (r.summit_code.clone(), r))
+            .collect();
+        let query = FindRefBuilder::new().sota().name("JA".to_string()).build();
+        let result = self.sota_repo.find_reference(&query).await?;
+        if let Some(target) = result.results {
+            let newref = target
+                .into_iter()
+                .filter(|r| ja_hash.contains_key(&r.summit_code))
+                .map(|mut r| {
+                    let ja = ja_hash.get(&r.summit_code).unwrap();
+                    r.summit_name = ja.summit_name.clone();
+                    r.summit_name_j = Some(ja.summit_name_j.clone());
+                    r.city = Some(ja.city.clone());
+                    r.city_j = Some(ja.city_j.clone());
+                    r.longitude = ja.longitude;
+                    r.latitude = ja.latitude;
+                    r.alt_m = ja.alt_m;
+                    r
+                })
+                .collect();
+            let req = UpdateRef { requests: newref };
+            self.sota_repo.update_reference(req).await?;
+        }
         Ok(())
     }
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
         let requests: Vec<POTAReference> = csv_reader(data, 1)?;
         let req = CreateRef { requests };
-        self.pota_repo.import_reference(req).await?;
+        self.pota_repo.create_reference(req).await?;
         Ok(())
     }
 
@@ -81,16 +106,13 @@ impl AdminService for AdminServiceImpl {
         Ok(self.sota_repo.find_reference(&event).await?)
     }
 
-    async fn update_sota_reference_opt(&self, event: UpdateRef<SOTARefOptInfo>) -> AppResult<()> {
-        self.sota_repo.update_reference_opt(event).await?;
+    async fn update_sota_reference(&self, event: UpdateRef<SOTAReference>) -> AppResult<()> {
+        self.sota_repo.update_reference(event).await?;
         Ok(())
     }
 
-    async fn delete_sota_reference_opt(&self, event: DeleteRef<SummitCode>) -> AppResult<()> {
-        let req = DeleteRef {
-            ref_id: event.ref_id,
-        };
-        self.sota_repo.delete_reference_opt(req).await?;
+    async fn delete_sota_reference(&self, event: DeleteRef<SummitCode>) -> AppResult<()> {
+        self.sota_repo.delete_reference(event).await?;
         Ok(())
     }
 
