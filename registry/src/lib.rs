@@ -1,4 +1,5 @@
 use axum::extract::FromRef;
+use common::config::AppConfig;
 use shaku::module;
 use std::sync::Arc;
 
@@ -12,7 +13,6 @@ use adapter::{
         sota_reference::SOTAReferenceReposityImplParameters,
     },
 };
-use common::config::AppConfig;
 
 use service::implement::{
     admin_periodic::{AdminPeriodicServiceImpl, AdminPeriodicServiceImplParameters},
@@ -36,8 +36,8 @@ module! {
 }
 
 impl AppRegistry {
-    pub fn new(config: AppConfig) -> Self {
-        let pool = connect_database_with(&config).unwrap();
+    pub fn new(config: &AppConfig) -> Self {
+        let pool = connect_database_with(config).unwrap();
         AppRegistry::builder()
             .with_component_parameters::<SOTAReferenceReposityImpl>(
                 SOTAReferenceReposityImplParameters {
@@ -83,7 +83,7 @@ impl AppRegistry {
 
 #[derive(Clone)]
 pub struct AppState {
-    module: Arc<AppRegistry>,
+    pub module: Arc<AppRegistry>,
 }
 
 impl AppState {

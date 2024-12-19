@@ -4,10 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow.workspace = true
 serde.workspace = true
 axum.workspace = true
+apalis.workspace = true
+apalis-cron.workspace = true
+tokio.workspace = true
+chrono.workspace = true
 service.workspace = true
 registry.workspace = true
 common.workspace = true
 domain.workspace = true
 shaku_axum.workspace = true
+shaku.workspace = true
