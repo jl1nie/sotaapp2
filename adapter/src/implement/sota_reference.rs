@@ -221,7 +221,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
             .map_err(AppError::TransactionError)?;
         for r in event.requests.into_iter().enumerate() {
             self.update(r.1, &mut tx).await?;
-            if r.0 % 1000 == 0 {
+            if r.0 % 50 == 0 {
                 eprintln!("update db {} rescords", r.0);
             }
         }

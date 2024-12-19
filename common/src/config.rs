@@ -4,7 +4,9 @@ use std::time::Duration;
 pub struct AppConfig {
     pub database: String,
     pub alert_expire: Duration,
+    pub alert_schedule: String,
     pub spot_expire: Duration,
+    pub spot_schedule: String,
 }
 
 pub struct AppConfigBuilder {
@@ -37,8 +39,18 @@ impl AppConfigBuilder {
         self
     }
 
+    pub fn alert_schedule(mut self, schedule: &str) -> Self {
+        self.config.alert_schedule = schedule.to_string();
+        self
+    }
+
     pub fn spot_expire(mut self, expire: Duration) -> Self {
         self.config.spot_expire = expire;
+        self
+    }
+
+    pub fn spot_schedule(mut self, schedule: &str) -> Self {
+        self.config.spot_schedule = schedule.to_string();
         self
     }
 

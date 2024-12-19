@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use chrono::{Local, NaiveDate};
 use shaku::Component;
-use std::collections::HashMap;
-use std::panic::resume_unwind;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use common::config::AppConfig;
@@ -67,30 +66,40 @@ impl AdminService for AdminServiceImpl {
         UploadSOTAOptCSV { data }: UploadSOTAOptCSV,
     ) -> AppResult<()> {
         let csv: Vec<SOTACSVOptFile> = csv_reader(data, 1)?;
+
         let ja_hash: HashMap<_, _> = csv
             .into_iter()
             .map(|r| (r.summit_code.clone(), r))
             .collect();
-        let query = FindRefBuilder::new().sota().name("JA".to_string()).build();
-        let result = self.sota_repo.find_reference(&query).await?;
-        if let Some(target) = result.results {
-            let newref = target
-                .into_iter()
-                .filter(|r| ja_hash.contains_key(&r.summit_code))
-                .map(|mut r| {
-                    let ja = ja_hash.get(&r.summit_code).unwrap();
-                    r.summit_name = ja.summit_name.clone();
-                    r.summit_name_j = Some(ja.summit_name_j.clone());
-                    r.city = Some(ja.city.clone());
-                    r.city_j = Some(ja.city_j.clone());
-                    r.longitude = ja.longitude;
-                    r.latitude = ja.latitude;
-                    r.alt_m = ja.alt_m;
-                    r
-                })
-                .collect();
-            let req = UpdateRef { requests: newref };
-            self.sota_repo.update_reference(req).await?;
+
+        let associations: HashSet<String> = ja_hash
+            .keys()
+            .cloned()
+            .map(|s| s.split("/").next().unwrap_or("").to_owned() + "/")
+            .collect();
+
+        for assoc in associations {
+            let query = FindRefBuilder::new().sota().name(assoc).build();
+            let result = self.sota_repo.find_reference(&query).await?;
+            if let Some(target) = result.results {
+                let newref = target
+                    .into_iter()
+                    .filter(|r| ja_hash.contains_key(&r.summit_code))
+                    .map(|mut r| {
+                        let ja = ja_hash.get(&r.summit_code).unwrap();
+                        r.summit_name = ja.summit_name.clone();
+                        r.summit_name_j = Some(ja.summit_name_j.clone());
+                        r.city = Some(ja.city.clone());
+                        r.city_j = Some(ja.city_j.clone());
+                        r.longitude = ja.longitude;
+                        r.latitude = ja.latitude;
+                        r.alt_m = ja.alt_m;
+                        r
+                    })
+                    .collect();
+                let req = UpdateRef { requests: newref };
+                self.sota_repo.update_reference(req).await?;
+            }
         }
         Ok(())
     }
