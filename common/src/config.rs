@@ -3,8 +3,11 @@ use std::time::Duration;
 #[derive(Default, Clone)]
 pub struct AppConfig {
     pub database: String,
-    pub alert_expire: Duration,
+
+    pub sota_endpoint: String,
+    pub pota_endpoint: String,
     pub alert_schedule: String,
+    pub alert_expire: Duration,
     pub spot_expire: Duration,
     pub spot_schedule: String,
 }
@@ -31,6 +34,16 @@ impl AppConfigBuilder {
             let name = std::env::var("DATABASE_URL").unwrap_or_default();
             self.config.database = name;
         }
+        self
+    }
+
+    pub fn sota_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.sota_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn pota_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.pota_endpoint = endpoint.to_string();
         self
     }
 

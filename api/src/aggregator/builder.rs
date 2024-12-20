@@ -19,17 +19,17 @@ async fn spot_executer(job: DateTime<Utc>, svc: Data<UpdateSpots>) {
     let _ = svc.update().await;
 }
 
-pub async fn build(config: &AppConfig, state: AppState) -> Result<()> {
+pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
     let alert_schedule =
         Schedule::from_str(&config.alert_schedule.clone()).expect("bad cron format");
     let alert_job = WorkerBuilder::new("update-alerts")
-        .data(UpdateAlerts::new(config, state.clone()))
+        .data(UpdateAlerts::new(config, state))
         .backend(CronStream::new(alert_schedule))
         .build_fn(alert_executer);
 
     let spot_schedule = Schedule::from_str(&config.spot_schedule).expect("bad cron format");
     let spot_job = WorkerBuilder::new("update-spots")
-        .data(UpdateSpots::new(config, state.clone()))
+        .data(UpdateSpots::new(config, state))
         .backend(CronStream::new(spot_schedule))
         .build_fn(spot_executer);
 

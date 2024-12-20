@@ -83,7 +83,7 @@ impl AppRegistry {
 
 #[derive(Clone)]
 pub struct AppState {
-    pub module: Arc<AppRegistry>,
+    module: Arc<AppRegistry>,
 }
 
 impl AppState {
@@ -96,6 +96,12 @@ impl AppState {
 
 impl FromRef<AppState> for Arc<AppRegistry> {
     fn from_ref(app_state: &AppState) -> Arc<AppRegistry> {
+        app_state.module.clone()
+    }
+}
+
+impl From<&AppState> for Arc<AppRegistry> {
+    fn from(app_state: &AppState) -> Arc<AppRegistry> {
         app_state.module.clone()
     }
 }
