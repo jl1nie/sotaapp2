@@ -20,21 +20,27 @@ pub struct SOTAActivationRepositryImpl {
 #[async_trait]
 impl SOTAActivationRepositry for SOTAActivationRepositryImpl {
     async fn update_alert(&self, event: UpdateAct<SOTAAlert>) -> AppResult<()> {
-        todo!()
+        eprintln!("Update SOTA alerts for {} refrences.", event.requests.len());
+        Ok(())
     }
     async fn find_alert(&self, event: &FindAct) -> AppResult<FindResult<SOTAAlert>> {
+        eprintln!("Find SOTA alerts with {:?} ", event);
         todo!()
     }
     async fn delete_alert(&self, event: DeleteAct) -> AppResult<()> {
-        todo!()
+        eprintln!("Delete SOTA alerts with {:?} ", event);
+        Ok(())
     }
     async fn update_spot(&self, event: UpdateAct<SOTASpot>) -> AppResult<()> {
-        todo!()
+        eprintln!("Update SOTA spots for {} refrences.", event.requests.len());
+        Ok(())
     }
     async fn find_spot(&self, event: &FindAct) -> AppResult<FindResult<SOTASpot>> {
+        eprintln!("Find SOTA spots with {:?} ", event);
         todo!()
     }
     async fn delete_spot(&self, event: DeleteAct) -> AppResult<()> {
-        todo!()
+        eprintln!("Delete SOTA spots with {:?} ", event);
+        Ok(())
     }
 }

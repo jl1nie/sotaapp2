@@ -6,6 +6,7 @@ use crate::model::common::activation::{Alert, Spot};
 pub type POTAAlert = Alert;
 pub type POTASpot = Spot;
 
+#[derive(Debug)]
 pub struct ParkCode(String);
 impl ParkCode {
     pub fn inner_ref(&self) -> &String {

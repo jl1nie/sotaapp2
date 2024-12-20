@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use crate::model::AwardProgram;
 
-#[derive(new)]
+#[derive(new, Debug)]
 pub struct BoundingBox {
     pub min_lon: f64,
     pub min_lat: f64,
@@ -13,7 +13,7 @@ pub struct BoundingBox {
 }
 
 // 中心位置と中心位置からの距離を指定するための構造体
-#[derive(new)]
+#[derive(new, Debug)]
 pub struct CenterRadius {
     pub lon: f64,
     pub lat: f64,
@@ -26,7 +26,7 @@ impl<T> From<Vec<T>> for CreateRef<T> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FindRef {
     pub program: Vec<AwardProgram>,
     pub ref_id: Option<String>,
@@ -162,7 +162,7 @@ pub struct FindAppResult<SOTA, POTA> {
     pub sota: Option<FindResult<SOTA>>,
     pub pota: Option<FindResult<POTA>>,
 }
-
+#[derive(Debug)]
 pub enum DeleteRef<T> {
     Delete(T),
     DeleteAll,
@@ -178,7 +178,7 @@ impl<T> From<Vec<T>> for UpdateAct<T> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FindAct {
     pub after: Option<DateTime<Utc>>,
     pub before: Option<DateTime<Utc>>,
@@ -210,6 +210,7 @@ impl FindActBuilder {
         self.param
     }
 }
+#[derive(Debug)]
 pub struct DeleteAct {
     pub before: DateTime<Utc>,
 }

@@ -21,21 +21,27 @@ pub struct POTActivationRepositryImpl {
 #[async_trait]
 impl POTAActivationRepositry for POTActivationRepositryImpl {
     async fn update_alert(&self, event: UpdateAct<POTAAlert>) -> AppResult<()> {
-        todo!()
+        eprintln!("Update POTA alerts for {} refrences.", event.requests.len());
+        Ok(())
     }
     async fn find_alert(&self, event: &FindAct) -> AppResult<FindResult<POTAAlert>> {
+        eprintln!("Find POTA alerts with {:?} ", event);
         todo!()
     }
     async fn delete_alert(&self, event: DeleteAct) -> AppResult<()> {
-        todo!()
+        eprintln!("Delete POTA alerts with {:?} ", event);
+        Ok(())
     }
     async fn update_spot(&self, event: UpdateAct<POTASpot>) -> AppResult<()> {
-        todo!()
+        eprintln!("Update POTA spots for {} refrences.", event.requests.len());
+        Ok(())
     }
     async fn find_spot(&self, event: &FindAct) -> AppResult<FindResult<POTASpot>> {
+        eprintln!("Find POTA spots with {:?} ", event);
         todo!()
     }
     async fn delete_spot(&self, event: DeleteAct) -> AppResult<()> {
-        todo!()
+        eprintln!("Delete POTA spots with {:?} ", event);
+        Ok(())
     }
 }

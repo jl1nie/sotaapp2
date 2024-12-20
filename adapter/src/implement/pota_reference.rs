@@ -21,15 +21,20 @@ pub struct POTAReferenceRepositryImpl {
 #[async_trait]
 impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
     async fn create_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()> {
-        todo!()
+        eprintln!("Create POTA {} refrences.", event.requests.len());
+        Ok(())
     }
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>> {
+        eprintln!("Find POTA references with {:?}.", event);
         todo!()
     }
+
     async fn update_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()> {
-        todo!()
+        eprintln!("Update POTA {} refrences.", event.requests.len());
+        Ok(())
     }
     async fn delete_reference(&self, event: DeleteRef<ParkCode>) -> AppResult<()> {
-        todo!()
+        eprintln!("Delete POTA {:?}", event);
+        Ok(())
     }
 }

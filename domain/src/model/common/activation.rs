@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 
+#[derive(Debug)]
 pub struct Alert {
     pub alert_id: i32,
     pub user_id: i32,
@@ -15,6 +16,7 @@ pub struct Alert {
     pub poster: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct Spot {
     pub spot_id: i32,
     pub reference: String,
