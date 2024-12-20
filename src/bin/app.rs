@@ -2,7 +2,6 @@ use anyhow::{Error, Result};
 use axum::extract::DefaultBodyLimit;
 use axum::Router;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
@@ -22,8 +21,10 @@ async fn main() -> Result<()> {
 async fn bootstrap() -> Result<()> {
     let config = AppConfigBuilder::default()
         .database(None)
+        .sota_endpoint("https://api2.sota.org.uk/api")
+        .pota_endpoint("https://api.pota.app")
         .alert_expire(Duration::from_secs(3600u64 * 48))
-        .alert_schedule("0 */10 * * * *")
+        .alert_schedule("0 */5 * * * *")
         .spot_expire(Duration::from_secs(3600u64 * 48))
         .spot_schedule("0 */1 * * * *")
         .build();
@@ -44,7 +45,7 @@ async fn bootstrap() -> Result<()> {
     println!("Listening on {}", addr);
 
     let http = async { axum::serve(listener, app).await.map_err(Error::from) };
-    let job_monitor = async { api::aggregator::builder::build(&config, job_state).await };
+    let job_monitor = async { api::aggregator::builder::build(&config, &job_state).await };
 
     let _res = tokio::join!(job_monitor, http);
 
