@@ -1,0 +1,115 @@
+"DX Entity","Location","HASC","Reference","Park Name","First QSO Date","QSOs"
+"Alaska","Alaska","US-AK","US-0143","Alaska Maritime National Wildlife Refuge","2022-07-30",1
+"Australia","New South Wales","AU-NSW","AU-1606","Yengo National Park","2016-04-02",1
+"Australia","New South Wales","AU-NSW","AU-1716","Sydney Harbour National Park","2021-11-28",1
+"Australia","New South Wales","AU-NSW","AU-1735","Royal National Park","2017-03-11",1
+"Australia","New South Wales","AU-NSW","AU-1979","Dural Nature Reserve","2023-02-05",1
+"Australia","New South Wales","AU-NSW","AU-1990","Dharawal National Park","2018-04-08",1
+"Australia","New South Wales","AU-NSW","AU-2091","Booti Booti National Park","2017-06-09",2
+"Australia","New South Wales","AU-NSW","AU-2100","Blue Mountains National Park","2017-10-21",1
+"Australia","Victoria","AU-VIC","AU-0316","Mount Lawson State Park","2019-11-04",1
+"Bouvet","Bouvet Island","BV-BV","BV-0001","Bouvet Nature Reserve","2023-02-11",1
+"Japan","Aichi","JP-AI","JP-0125","Tenryu-Okumikawa Quasi-National Park","2020-05-09",1
+"Japan","Aichi","JP-AI","JP-0129","Mikawa Wan Quasi-National Park","2024-04-09",1
+"Japan","Aichi","JP-AI","JP-1461","Obata Ryokuchi Prefectural Park","2024-04-11",1
+"Japan","Akita","JP-AK","JP-0111","Oga Quasi-National Park","2023-09-17",1
+"Japan","Akita","JP-AK","JP-1059","Hachimori Iwadate Prefectural Nature Park","2021-09-25",1
+"Japan","Akita","JP-AK","JP-1062","Kimimachi-zaka Prefectural Nature Park","2021-09-25",1
+"Japan","Akita","JP-AK","JP-1068","Hokuo no Mori Prefectural Park","2021-09-25",1
+"Japan","Akita","JP-AK","JP-2055","Fureai Ryokuchi Prefectural Park","2023-06-04",1
+"Japan","Aomori","JP-AO","JP-1028","Kuroishi Onsenkyo Prefectural Nature Park","2023-12-16",1
+"Japan","Chiba","JP-CH","JP-0116","Minami-Boso Quasi-National Park","2023-01-03",3
+"Japan","Chiba","JP-CH","JP-1187","Tomisan Prefectural Nature Park","2023-03-12",1
+"Japan","Chiba","JP-CH","JP-1189","Kasamori Tsurumai Prefectural Nature Park","2022-04-09",1
+"Japan","Fukuoka","JP-FO","JP-1704","Central Prefectural Park","2023-12-16",1
+"Japan","Fukushima","JP-FS","JP-1089","Kasumigajo Prefectural Nature Park","2023-01-03",1
+"Japan","Fukushima","JP-FS","JP-1090","Nanko Prefectural Nature Park","2022-04-16",1
+"Japan","Fukushima","JP-FS","JP-1096","Okawa Hatori Prefectural Nature Park","2023-12-13",1
+"Japan","Fukushima","JP-FS","JP-1098","Natsuigawa Keikoku Prefectural Nature Park","2023-09-17",1
+"Japan","Gifu","JP-GF","JP-1425","Ibuki Prefectural Nature Park","2023-12-11",1
+"Japan","Gunma","JP-GM","JP-0012","Joshinetsu Kogen National Park","2021-08-02",16
+"Japan","Gunma","JP-GM","JP-0115","Myogi-Arafune-Saku Kogen Quasi-National Park","2022-03-19",3
+"Japan","Gunma","JP-GM","JP-1318","Akagi Prefectural Park","2022-03-19",2
+"Japan","Gunma","JP-GM","JP-1845","Ikaho Forest Prefectural Park","2023-12-14",1
+"Japan","Gunma","JP-GM","JP-1850","Mikabo Forest Prefectural Park","2024-05-11",1
+"Japan","Hokkaido","JP-HK","JP-0004","Kushiroshitsugen National Park","2021-08-28",1
+"Japan","Ibaraki","JP-IB","JP-0114","Suigo-Tsukuba Quasi-National Park","2022-11-27",3
+"Japan","Ibaraki","JP-IB","JP-1107","Takasuzu Prefectural Nature Park","2022-03-20",1
+"Japan","Ibaraki","JP-IB","JP-1114","Kasama Prefectural Nature Park","2022-01-30",1
+"Japan","Kagawa","JP-KG","JP-2045","Kagawayosui Memorial Prefectural Park","2024-04-06",1
+"Japan","Kagoshima","JP-KS","JP-0155","Koshikishima Quasi-National Park","2024-03-08",1
+"Japan","Kanagawa","JP-KN","JP-0118","Tanzawa-Oyama Quasi-National Park","2023-01-08",1
+"Japan","Kanagawa","JP-KN","JP-1289","Tanzawa Oyama Prefectural Nature Park","2022-01-14",4
+"Japan","Kanagawa","JP-KN","JP-1290","Jinba Sagamiko Prefectural Nature Park","2022-12-26",1
+"Japan","Kanagawa","JP-KN","JP-1304","Hodogaya Prefectural Park","2021-12-25",2
+"Japan","Kanagawa","JP-KN","JP-1307","Shikinomori Prefectural Park","2023-01-03",1
+"Japan","Kanagawa","JP-KN","JP-1310","Chigasaki Satoyama Prefectural Park","2023-01-07",1
+"Japan","Kanagawa","JP-KN","JP-1311","Shonan Kaigan Prefectural Park","2023-09-03",1
+"Japan","Kanagawa","JP-KN","JP-1313","Tsukuiko Shiroyama Prefectural Park","2019-10-20",1
+"Japan","Kyoto","JP-KY","JP-0133","Tango-Amanohashidate-Oeyama Quasi-National Park","2022-02-26",1
+"Japan","Kyoto","JP-KY","JP-1498","Fushimiko Prefectural Park","2024-01-20",1
+"Japan","Miyagi","JP-MG","JP-0110","Zao Quasi-National Park","2021-12-23",2
+"Japan","Miyagi","JP-MG","JP-1044","Zao Kogen Prefectural Nature Park","2021-10-09",2
+"Japan","Miyagi","JP-MG","JP-1051","Kesennuma Prefectural Nature Park","2022-07-31",1
+"Japan","Nagano","JP-NN","JP-0019","Minami Alps National Park","2023-05-28",2
+"Japan","Nagano","JP-NN","JP-0123","Yatsugatake-Chushin Kogen Quasi-National Park","2022-09-17",5
+"Japan","Nagano","JP-NN","JP-0124","Chuo Alps Quasi-National Park","2022-11-06",1
+"Japan","Nagano","JP-NN","JP-1338","Hijiriyama Kogen Prefectural Nature Park","2023-06-02",5
+"Japan","Nagano","JP-NN","JP-1341","Matsumotodaira Koiki Prefectural Park","2022-04-29",2
+"Japan","Niigata","JP-NI","JP-0113","Echigo sanzan-Tadami Quasi-National Park","2022-05-01",1
+"Japan","Niigata","JP-NI","JP-1895","Negoya Prefectural Park","2022-05-01",1
+"Japan","Saitama","JP-ST","JP-0014","Chichibu-Tama-Kai National Park","2021-01-30",21
+"Japan","Saitama","JP-ST","JP-0204","Musashi-Kyuryo National Government Park","2023-08-18",1
+"Japan","Saitama","JP-ST","JP-1145","Sayama Prefectural Nature Park","2022-01-30",1
+"Japan","Saitama","JP-ST","JP-1146","Okumusashi Prefectural Nature Park","2021-06-26",9
+"Japan","Saitama","JP-ST","JP-1147","Kuroyama Prefectural Nature Park","2016-08-07",1
+"Japan","Saitama","JP-ST","JP-1148","Nagatoro Tamayodo Prefectural Nature Park","2020-01-19",2
+"Japan","Saitama","JP-ST","JP-1149","Hikikyuryo Prefectural Nature Park","2023-02-05",1
+"Japan","Saitama","JP-ST","JP-1150","Jobu Prefectural Nature Park","2021-11-12",2
+"Japan","Saitama","JP-ST","JP-1151","Buko Prefectural Nature Park","2021-02-06",9
+"Japan","Saitama","JP-ST","JP-1154","Nishichichibu Prefectural Nature Park","2021-11-12",2
+"Japan","Saitama","JP-ST","JP-1164","Saitama Prefectural Forest Prefectural Park","2021-11-06",4
+"Japan","Saitama","JP-ST","JP-1166","Sainomori Iruma Prefectural Park","2023-01-08",1
+"Japan","Saitama","JP-ST","JP-1180","Tokorozawa Aviation Memorial Prefectural Park","2024-05-12",1
+"Japan","Saitama","JP-ST","JP-1834","Chichibu Muse Prefectural Park","2022-01-29",1
+"Japan","Saitama","JP-ST","JP-1836","Shinrinkoen Park Walking Road Prefectural Park","2023-08-18",1
+"Japan","Saitama","JP-ST","JP-1839","Akigase Greenway Prefectural Park","2022-01-25",1
+"Japan","Shiga","JP-SH","JP-0132","Biwako Quasi-National Park","2023-12-11",1
+"Japan","Tochigi","JP-TC","JP-0010","Nikko National Park","2022-07-24",5
+"Japan","Tochigi","JP-TC","JP-1128","Mae Nikko Prefectural Nature Park","2023-01-13",1
+"Japan","Tochigi","JP-TC","JP-1132","Ohirasan Prefectural Nature Park","2023-01-03",2
+"Japan","Tochigi","JP-TC","JP-1141","Mikamoyama Prefectural Park","2024-03-10",1
+"Japan","Tokyo","JP-TK","JP-0205","Showa Kinen National Government Park","2022-04-30",2
+"Japan","Tokyo","JP-TK","JP-1204","Takiyama Nature Prefectural Nature Park","2022-12-10",2
+"Japan","Tokyo","JP-TK","JP-1205","Takao Jinba Prefectural Nature Park","2022-12-11",2
+"Japan","Tokyo","JP-TK","JP-1206","Tama Kyuryo Prefectural Nature Park","2023-01-01",2
+"Japan","Tokyo","JP-TK","JP-1207","Sayama Nature Prefectural Nature Park","2023-12-31",3
+"Japan","Tokyo","JP-TK","JP-1208","Hamura Kusabana Kyuryo Prefectural Nature Park","2022-04-16",3
+"Japan","Tokyo","JP-TK","JP-1229","Kinuta Prefectural Park","2022-05-08",1
+"Japan","Tokyo","JP-TK","JP-1239","Zenpukujigawa Prefectural Park","2022-12-17",1
+"Japan","Tokyo","JP-TK","JP-1242","Daiba Prefectural Park","2022-01-09",1
+"Japan","Tokyo","JP-TK","JP-1247","Higashi Ayase Prefectural Park","2023-12-09",1
+"Japan","Tokyo","JP-TK","JP-1253","Yumenoshima Prefectural Park","2022-11-12",1
+"Japan","Tokyo","JP-TK","JP-1258","Wadabori Prefectural Park","2022-12-17",1
+"Japan","Tokyo","JP-TK","JP-1259","Akirudai Prefectural Park","2022-02-05",1
+"Japan","Tokyo","JP-TK","JP-1270","Takiyama Prefectural Park","2022-12-10",2
+"Japan","Tokyo","JP-TK","JP-1274","Noyamakita Rokudoyama Prefectural Park","2023-12-31",3
+"Japan","Tokyo","JP-TK","JP-1275","Hachikokuyama Ryokuchi Prefectural Park","2023-07-08",1
+"Japan","Tokyo","JP-TK","JP-1280","Hirayama Joshi Prefectural Park","2023-01-01",2
+"Japan","Tokyo","JP-TK","JP-1282","Musashi Kokubunji Prefectural Park","2023-01-03",4
+"Japan","Tokyo","JP-TK","JP-1287","Rokusen Prefectural Park","2022-03-27",1
+"Japan","Tokyo","JP-TK","JP-1795","Aomi-Minami Port Prefectural Park","2022-01-16",1
+"Japan","Tokyo","JP-TK","JP-1828","Lake Okutama Hotori Prefectural Park","2022-12-11",1
+"Japan","Tokyo","JP-TK","JP-1833","Hachijo Botanical Garden Prefectural Park","2024-03-09",1
+"Japan","Tokyo","JP-TK","JP-1947","Hinohara Tokyo Citizens' Forest Prefectural Park","2022-12-25",1
+"Japan","Yamagata","JP-YT","JP-1071","Goshozan Prefectural Nature Park","2022-04-09",1
+"Japan","Yamagata","JP-YT","JP-1072","Kennan Prefectural Nature Park","2022-12-17",1
+"Japan","Yamagata","JP-YT","JP-1074","Tendo Kogen Prefectural Nature Park","2022-10-23",2
+"Japan","Yamagata","JP-YT","JP-1076","Yamagata Prefectural General Sports Prefectural Park","2022-04-26",1
+"Japan","Yamagata","JP-YT","JP-1087","Kenseishi Ryokuchi Prefectural Park","2022-01-30",1
+"Japan","Yamanashi","JP-YN","JP-0016","Fuji-Hakone-Izu National Park","2022-04-09",6
+"Japan","Yamanashi","JP-YN","JP-1327","Minami Alps Koma Prefectural Nature Park","2023-06-23",2
+"New Zealand","Auckland","NZ-AUK","NZ-0007","Hunua Regional Park","2018-04-07",2
+"New Zealand","Canterbury","NZ-CAN","NZ-0173","Mt.Thomas Forest Conservation Area","2024-07-06",1
+"United States of America","California","US-CA","US-4546","Santa Rosa and San Jacinto Mountains National Monument","2022-11-12",1
+"United States of America","Idaho","US-ID","US-5593","Boise River Wildlife Management Area","2021-04-17",1

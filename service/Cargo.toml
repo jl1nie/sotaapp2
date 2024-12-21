@@ -1,0 +1,15 @@
+[package]
+name = "service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+csv.workspace = true
+shaku.workspace = true
+common.workspace = true
+domain.workspace = true
+adapter.workspace = true
