@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload</title>
+</head>
+
+<body>
+    <h4>Import SOTA Summits list </h4>
+    <form id="upload-summit" method="post" enctype="multipart/form-data">
+        <input id="upload-summit-file" type="file" name="file">
+        <button id="upload1" type="submit">Upload</button>
+    </form>
+
+    <h4>Import SOTA JA Summits list </h4>
+    <form id="upload-ja-summit" method="post" enctype="multipart/form-data">
+        <input id="upload-ja-summit-file" type="file" name="file">
+        <button id="upload2" type="submit">Upload</button>
+    </form>
+
+    <h4>Search by Ref_id</h4>
+    <form id="search-refid" method="get">
+        <label for="ref_id">SOTA Reference:</label>
+        <input type="text" id="ref_id" name="ref_id"><br><br>
+        <input type="submit" value="送信">
+    </form>
+
+    <h4>Search Name</h4>
+    <form id="search-name" method="get">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" value="JA"><br><br>
+
+        <label for="limit">Limit:</label>
+        <input type="text" id="limit" name="limit" value="10"><br><br>
+
+        <label for="offset">Offset:</label>
+        <input type="text" id="offset" name="offset" value="0"><br><br>
+
+        <input type="submit" value="送信">
+    </form>
+
+    <h4>Search Location</h4>
+    <form id="search-location" method="get">
+        <label for="min_lon">Min Lon:</label>
+        <input type="text" id="min_lon" name="min_lon" value="138.860"><br><br>
+
+        <label for="min_lat">Min Lat:</label>
+        <input type="text" id="min_lat" name="min_lat" value="35.3726"><br><br>
+
+        <label for="max_lon">Max Lon:</label>
+        <input type="text" id="max_lon" name="max_lon" value="139.7213"><br><br>
+
+        <label for="max_lat">Max Lat:</label>
+        <input type="text" id="max_lat" name="max_lat" value="35.7480"><br><br>
+
+        <label for="min_elev">Min Elev:</label>
+        <input type="text" id="min_elev" name="min_elev" value="1500"><br><br>
+
+        <input type="submit" value="送信">
+    </form>
+
+    <h4>JSON Result</h4>
+    <div id="result"></div>
+
+    <script>
+        const baseurl = 'http://localhost:8000';
+        const searchurl = baseurl + '/sota';
+        const uploadurl = baseurl + '/sota/import';
+        const uploadjaurl = baseurl + '/sota/import/ja';
+
+        function uploadFile(url, inputid, buttonid) {
+            event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
+            const fileInput = document.getElementById(inputid);
+            const button = document.getElementById(buttonid);
+            const resultDiv = document.getElementById('result');
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            button.disabled = true;
+
+            fetch(url, { method: 'POST', body: formData })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Success:', response.status);
+                        resultDiv.textContent = 'Upload done: ' + response.status;
+                    } else {
+                        console.error('Error:', response.status);
+                        resultDiv.textContent = 'Error: ' + response.status;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    resultDiv.textContent = 'Error: ' + response.status;
+                })
+                .finally(() => {
+                    button.disabled = false;
+                })
+        };
+
+        function search(baseurl, param) {
+            event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
+
+            let fullurl = baseurl;
+            if (param != '') {
+                fullurl += `?${param}`;
+            }
+
+            const resultDiv = document.getElementById('result');
+            fetch(fullurl)
+                .then(response => {
+                    if (response.ok) { return response.json(); }
+                    else if (response.status === 404) { throw new Error('404 Not Found'); }
+                    else { throw new Error('Network response was not ok'); }
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    resultDiv.textContent = 'Error: ' + error;
+                });
+        };
+
+        document.getElementById('upload-summit')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                uploadFile(uploadurl, 'upload-summit-file', 'upload1');
+            });
+
+        document.getElementById('upload-ja-summit')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                uploadFile(uploadjaurl, 'upload-ja-summit-file', 'upload2');
+            });
+
+        document.getElementById('search-refid')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let id = document.getElementById('ref_id').value;
+                let eid = encodeURIComponent(id);
+                let url = searchurl + `/${eid}`;
+                search(url, '');
+            });
+
+        document.getElementById('search-name')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let name = document.getElementById('name').value;
+                let limit = document.getElementById('limit').value;
+                let offset = document.getElementById('offset').value;
+                let param = `name=${name}&limit=${limit}&offset=${offset}`;
+                search(searchurl, param);
+            });
+
+        document.getElementById('search-location')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let min_lon = document.getElementById('min_lon').value;
+                let min_lat = document.getElementById('min_lat').value;
+                let max_lon = document.getElementById('max_lon').value;
+                let max_lat = document.getElementById('max_lat').value;
+                let min_elev = document.getElementById('min_elev').value;
+                let param = `min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&mat_lat=${max_lat}&min_elev=${min_elev}`;
+                search(searchurl, param);
+            });
+    </script>
+</body>
