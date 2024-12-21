@@ -4,12 +4,15 @@ use std::time::Duration;
 pub struct AppConfig {
     pub database: String,
 
-    pub sota_endpoint: String,
-    pub pota_endpoint: String,
-    pub alert_schedule: String,
+    pub sota_alert_endpoint: String,
+    pub sota_spot_endpoint: String,
+    pub pota_alert_endpoint: String,
+    pub pota_spot_endpoint: String,
+
+    pub alert_update_schedule: String,
     pub alert_expire: Duration,
     pub spot_expire: Duration,
-    pub spot_schedule: String,
+    pub spot_update_schedule: String,
 }
 
 pub struct AppConfigBuilder {
@@ -37,13 +40,23 @@ impl AppConfigBuilder {
         self
     }
 
-    pub fn sota_endpoint(mut self, endpoint: &str) -> Self {
-        self.config.sota_endpoint = endpoint.to_string();
+    pub fn sota_alert_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.sota_alert_endpoint = endpoint.to_string();
         self
     }
 
-    pub fn pota_endpoint(mut self, endpoint: &str) -> Self {
-        self.config.pota_endpoint = endpoint.to_string();
+    pub fn sota_spot_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.sota_spot_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn pota_alert_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.pota_alert_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn pota_spot_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.pota_spot_endpoint = endpoint.to_string();
         self
     }
 
@@ -52,8 +65,8 @@ impl AppConfigBuilder {
         self
     }
 
-    pub fn alert_schedule(mut self, schedule: &str) -> Self {
-        self.config.alert_schedule = schedule.to_string();
+    pub fn alert_update_schedule(mut self, schedule: &str) -> Self {
+        self.config.alert_update_schedule = schedule.to_string();
         self
     }
 
@@ -62,8 +75,8 @@ impl AppConfigBuilder {
         self
     }
 
-    pub fn spot_schedule(mut self, schedule: &str) -> Self {
-        self.config.spot_schedule = schedule.to_string();
+    pub fn spot_update_schedule(mut self, schedule: &str) -> Self {
+        self.config.spot_update_schedule = schedule.to_string();
         self
     }
 

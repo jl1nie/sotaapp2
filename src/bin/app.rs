@@ -21,12 +21,14 @@ async fn main() -> Result<()> {
 async fn bootstrap() -> Result<()> {
     let config = AppConfigBuilder::default()
         .database(None)
-        .sota_endpoint("https://api2.sota.org.uk/api")
-        .pota_endpoint("https://api.pota.app")
+        .sota_alert_endpoint("https://api2.sota.org.uk/api/alerts")
+        .sota_spot_endpoint("https://api2.sota.org.uk/api/spots/20?")
+        .pota_alert_endpoint("https://api.pota.app/activation/")
+        .pota_spot_endpoint("https://api.pota.app/spot/activator/")
         .alert_expire(Duration::from_secs(3600u64 * 48))
-        .alert_schedule("0 */5 * * * *")
+        .alert_update_schedule("30 */10 * * * *")
         .spot_expire(Duration::from_secs(3600u64 * 48))
-        .spot_schedule("0 */1 * * * *")
+        .spot_update_schedule("0 */1 * * * *")
         .build();
 
     let module = AppRegistry::new(&config);
