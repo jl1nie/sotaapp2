@@ -33,7 +33,7 @@ impl UpdateAlerts {
 
     async fn update_sota_alerts(&self) -> Result<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
-        let endpoint = self.config.sota_endpoint.clone() + "/alerts";
+        let endpoint = self.config.sota_alert_endpoint.clone();
 
         let response = reqwest::get(&endpoint)
             .await?
@@ -53,7 +53,7 @@ impl UpdateAlerts {
 
     async fn update_pota_alerts(&self) -> Result<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
-        let endpoint = self.config.pota_endpoint.clone() + "/activation/";
+        let endpoint = self.config.pota_alert_endpoint.clone();
 
         let response = reqwest::get(&endpoint)
             .await?
@@ -92,7 +92,7 @@ impl UpdateSpots {
 
     async fn update_sota_spots(&self) -> Result<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
-        let endpoint = self.config.sota_endpoint.clone() + "/spots/20?";
+        let endpoint = self.config.sota_spot_endpoint.clone();
 
         let response = reqwest::get(&endpoint)
             .await?
@@ -111,7 +111,7 @@ impl UpdateSpots {
 
     async fn update_pota_spots(&self) -> Result<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
-        let endpoint = self.config.pota_endpoint.clone() + "/spot/activator/";
+        let endpoint = self.config.pota_spot_endpoint.clone();
 
         let response = reqwest::get(&endpoint)
             .await?
