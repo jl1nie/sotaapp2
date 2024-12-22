@@ -82,7 +82,6 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
         match prog {
             AwardProgram::SOTA => query.push_str("progam = 'SOTA' AND"),
             AwardProgram::POTA => query.push_str("progam = 'POTA' AND"),
-
             AwardProgram::WWFF => query.push_str("progam = 'WWFF' AND"),
         }
     }
