@@ -85,12 +85,8 @@ pub async fn show_sota_reference(
 ) -> AppResult<Json<SOTARefResponse>> {
     let query = FindRefBuilder::default().sota().ref_id(summit_code).build();
     let result = admin_service.find_sota_reference(query).await?;
-    if let Some(mut sotarefs) = result.results {
-        if sotarefs.len() == 1 {
-            Ok(Json(sotarefs.pop().unwrap().into()))
-        } else {
-            Err(AppError::EntityNotFound("Summit not found.".to_string()))
-        }
+    if let Some(sotaref) = result.get_first() {
+        Ok(Json(sotaref.into()))
     } else {
         Err(AppError::EntityNotFound("Summit not found.".to_string()))
     }
@@ -137,12 +133,9 @@ pub async fn show_sota_reference_list(
 
     let result = admin_service.find_sota_reference(query.build()).await?;
 
-    let mut res = SOTARefSearchResponse {
-        counts: result.counts as i32,
-        ..Default::default()
-    };
+    let mut res = SOTARefSearchResponse::default();
 
-    if let Some(sotarefs) = result.results {
+    if let Some(sotarefs) = result.get_values() {
         res.result = sotarefs.into_iter().map(SOTASearchResult::from).collect();
     }
 

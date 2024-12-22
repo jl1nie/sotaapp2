@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use derive_new::new;
 use std::time::Duration;
 
-use crate::model::AwardProgram;
+use crate::model::{pota::POTAReference, sota::SOTAReference, AwardProgram};
 
 #[derive(new, Debug)]
 pub struct BoundingBox {
@@ -12,7 +12,6 @@ pub struct BoundingBox {
     pub max_lat: f64,
 }
 
-// 中心位置と中心位置からの距離を指定するための構造体
 #[derive(new, Debug)]
 pub struct CenterRadius {
     pub lon: f64,
@@ -148,20 +147,42 @@ pub struct UpdateRef<T> {
 }
 
 pub struct FindResult<T> {
-    pub counts: usize,
-    pub results: Option<Vec<T>>,
+    results: Vec<T>,
 }
 
 impl<T> FindResult<T> {
-    pub fn get_reference(self) -> Option<T> {
-        self.results.and_then(|mut r| r.pop())
+    pub fn new(value: Vec<T>) -> Self {
+        Self { results: value }
+    }
+
+    pub fn get_values(self) -> Option<Vec<T>> {
+        (!self.results.is_empty()).then_some(self.results)
+    }
+
+    pub fn get_first(self) -> Option<T> {
+        self.results.into_iter().next()
     }
 }
 
-pub struct FindAppResult<SOTA, POTA> {
-    pub sota: Option<FindResult<SOTA>>,
-    pub pota: Option<FindResult<POTA>>,
+pub enum ResultKind {
+    SOTA(FindResult<SOTAReference>),
+    POTA(FindResult<POTAReference>),
 }
+
+#[derive(Default)]
+pub struct FindAppResult {
+    pub results: Vec<ResultKind>,
+}
+impl FindAppResult {
+    pub fn sota(&mut self, v: FindResult<SOTAReference>) {
+        self.results.push(ResultKind::SOTA(v))
+    }
+
+    pub fn pota(&mut self, v: FindResult<POTAReference>) {
+        self.results.push(ResultKind::POTA(v))
+    }
+}
+
 #[derive(Debug)]
 pub enum DeleteRef<T> {
     Delete(T),
@@ -180,6 +201,7 @@ impl<T> From<Vec<T>> for UpdateAct<T> {
 
 #[derive(Default, Debug)]
 pub struct FindAct {
+    pub program: Option<AwardProgram>,
     pub after: Option<DateTime<Utc>>,
     pub before: Option<DateTime<Utc>>,
     pub duration: Option<Duration>,
@@ -191,6 +213,10 @@ pub struct FindActBuilder {
 }
 
 impl FindActBuilder {
+    pub fn program(mut self, prog: AwardProgram) -> Self {
+        self.param.program = Some(prog);
+        self
+    }
     pub fn after(mut self, aft: DateTime<Utc>) -> Self {
         self.param.after = Some(aft);
         self

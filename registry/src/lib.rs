@@ -6,10 +6,9 @@ use std::sync::Arc;
 use adapter::{
     database::connect_database_with,
     implement::{
+        activation::ActivationRepositryImplParameters,
         healthcheck::HealthCheckRepositryImplParameters,
-        pota_activation::POTActivationRepositryImplParameters,
         pota_reference::POTAReferenceRepositryImplParameters,
-        sota_activation::SOTAActivationRepositryImplParameters,
         sota_reference::SOTAReferenceReposityImplParameters,
     },
 };
@@ -21,15 +20,14 @@ use service::implement::{
 };
 
 use adapter::implement::{
-    healthcheck::HealthCheckRepositryImpl, pota_activation::POTActivationRepositryImpl,
-    pota_reference::POTAReferenceRepositryImpl, sota_activation::SOTAActivationRepositryImpl,
-    sota_reference::SOTAReferenceReposityImpl,
+    activation::ActivationRepositryImpl, healthcheck::HealthCheckRepositryImpl,
+    pota_reference::POTAReferenceRepositryImpl, sota_reference::SOTAReferenceReposityImpl,
 };
 
 module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,
-        SOTAReferenceReposityImpl,SOTAActivationRepositryImpl,POTAReferenceRepositryImpl,POTActivationRepositryImpl,
+        SOTAReferenceReposityImpl,ActivationRepositryImpl,POTAReferenceRepositryImpl,
         HealthCheckRepositryImpl],
         providers = [],
     }
@@ -45,20 +43,14 @@ impl AppRegistry {
                     pool: pool.clone(),
                 },
             )
-            .with_component_parameters::<SOTAActivationRepositryImpl>(
-                SOTAActivationRepositryImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
-            )
             .with_component_parameters::<POTAReferenceRepositryImpl>(
                 POTAReferenceRepositryImplParameters {
                     config: config.clone(),
                     pool: pool.clone(),
                 },
             )
-            .with_component_parameters::<POTActivationRepositryImpl>(
-                POTActivationRepositryImplParameters {
+            .with_component_parameters::<ActivationRepositryImpl>(
+                ActivationRepositryImplParameters {
                     config: config.clone(),
                     pool: pool.clone(),
                 },

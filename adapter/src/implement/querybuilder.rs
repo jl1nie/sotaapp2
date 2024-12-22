@@ -1,6 +1,11 @@
-use domain::model::common::event::FindRef;
+use std::env::consts::ARCH;
 
-pub fn query_builder(r: &FindRef) -> String {
+use domain::model::{
+    common::event::{FindAct, FindRef},
+    AwardProgram,
+};
+
+pub fn findref_query_builder(r: &FindRef) -> String {
     let mut query: String = String::new();
 
     if let Some(refid) = &r.ref_id {
@@ -65,6 +70,37 @@ pub fn query_builder(r: &FindRef) -> String {
 
     if let Some(offset) = &r.offset {
         query.push_str(&format!("OFFSET {} ", offset));
+    }
+
+    query
+}
+
+pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
+    let mut query: String = String::new();
+
+    if let Some(prog) = &r.program {
+        match prog {
+            AwardProgram::SOTA => query.push_str("progam = 'SOTA' AND"),
+            AwardProgram::POTA => query.push_str("progam = 'POTA' AND"),
+
+            AwardProgram::WWFF => query.push_str("progam = 'WWFF' AND"),
+        }
+    }
+
+    if is_alert {
+        if let Some(after) = r.after {
+            query.push_str(&format!("start_time >= {} AND", after));
+        }
+        if let Some(before) = r.before {
+            query.push_str(&format!("start_time <= {} AND", before));
+        }
+    } else {
+        if let Some(after) = r.after {
+            query.push_str(&format!("spot_time >= {} AND", after));
+        }
+        if let Some(before) = r.before {
+            query.push_str(&format!("spot_time <= {} AND", before));
+        }
     }
 
     query

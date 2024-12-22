@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use shaku::Interface;
 
+use domain::model::common::activation::{Alert, Spot};
 use domain::model::common::event::{
     DeleteRef, FindAct, FindAppResult, FindRef, FindResult, UpdateAct, UpdateRef,
 };
-use domain::model::pota::{POTAAlert, POTAReference, POTASpot, ParkCode};
-use domain::model::sota::{SOTAAlert, SOTAReference, SOTASpot, SummitCode};
+use domain::model::pota::{POTAReference, ParkCode};
+use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::model::pota::UploadPOTACSV;
 use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
@@ -13,12 +14,9 @@ use common::error::AppResult;
 
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
-    async fn find_reference(
-        &self,
-        event: FindRef,
-    ) -> AppResult<FindAppResult<SOTAReference, POTAReference>>;
-    async fn find_alert(&self, event: FindAct) -> AppResult<FindAppResult<SOTAAlert, POTAAlert>>;
-    async fn find_spot(&self, event: FindAct) -> AppResult<FindAppResult<SOTASpot, POTASpot>>;
+    async fn find_reference(&self, event: FindRef) -> AppResult<FindAppResult>;
+    async fn find_alert(&self, event: FindAct) -> AppResult<FindResult<Alert>>;
+    async fn find_spot(&self, event: FindAct) -> AppResult<FindResult<Spot>>;
 }
 
 #[async_trait]
@@ -40,8 +38,6 @@ pub trait AdminService: Send + Sync + Interface {
 
 #[async_trait]
 pub trait AdminPeriodicService: Send + Sync + Interface {
-    async fn update_sota_alert(&self, event: UpdateAct<SOTAAlert>) -> AppResult<()>;
-    async fn update_sota_spot(&self, event: UpdateAct<SOTASpot>) -> AppResult<()>;
-    async fn update_pota_alert(&self, event: UpdateAct<POTAAlert>) -> AppResult<()>;
-    async fn update_pota_spot(&self, event: UpdateAct<POTASpot>) -> AppResult<()>;
+    async fn update_alert(&self, event: UpdateAct<Alert>) -> AppResult<()>;
+    async fn update_spot(&self, event: UpdateAct<Spot>) -> AppResult<()>;
 }

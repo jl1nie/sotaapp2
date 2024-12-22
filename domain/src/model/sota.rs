@@ -1,7 +1,4 @@
-use crate::model::common::activation::{Alert, Spot};
 use sqlx::FromRow;
-pub type SOTAAlert = Alert;
-pub type SOTASpot = Spot;
 
 pub struct SummitCode(String);
 impl SummitCode {

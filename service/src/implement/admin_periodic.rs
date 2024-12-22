@@ -6,11 +6,9 @@ use std::sync::Arc;
 
 use common::error::AppResult;
 
+use domain::model::common::activation::{Alert, Spot};
 use domain::model::common::event::{DeleteAct, UpdateAct};
-use domain::model::pota::{POTAAlert, POTASpot};
-use domain::model::sota::{SOTAAlert, SOTASpot};
-use domain::repository::pota::POTAActivationRepositry;
-use domain::repository::sota::SOTAActivationRepositry;
+use domain::repository::activation::ActivationRepositry;
 
 use crate::services::AdminPeriodicService;
 
@@ -18,49 +16,27 @@ use crate::services::AdminPeriodicService;
 #[shaku(interface = AdminPeriodicService)]
 pub struct AdminPeriodicServiceImpl {
     #[shaku(inject)]
-    sota_act_repo: Arc<dyn SOTAActivationRepositry>,
-    #[shaku(inject)]
-    pota_act_repo: Arc<dyn POTAActivationRepositry>,
+    act_repo: Arc<dyn ActivationRepositry>,
     config: AppConfig,
 }
 
 #[async_trait]
 impl AdminPeriodicService for AdminPeriodicServiceImpl {
-    async fn update_sota_alert(&self, event: UpdateAct<SOTAAlert>) -> AppResult<()> {
-        self.sota_act_repo.update_alert(event).await?;
+    async fn update_alert(&self, event: UpdateAct<Alert>) -> AppResult<()> {
+        self.act_repo.update_alert(event).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
-        self.sota_act_repo
+        self.act_repo
             .delete_alert(DeleteAct { before: expire })
             .await?;
         Ok(())
     }
 
-    async fn update_sota_spot(&self, event: UpdateAct<SOTASpot>) -> AppResult<()> {
-        self.sota_act_repo.update_spot(event).await?;
+    async fn update_spot(&self, event: UpdateAct<Spot>) -> AppResult<()> {
+        self.act_repo.update_spot(event).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
-        self.sota_act_repo
-            .delete_spot(DeleteAct { before: expire })
-            .await?;
-        Ok(())
-    }
-
-    async fn update_pota_alert(&self, event: UpdateAct<POTAAlert>) -> AppResult<()> {
-        self.pota_act_repo.update_alert(event).await?;
-
-        let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
-        self.pota_act_repo
-            .delete_alert(DeleteAct { before: expire })
-            .await?;
-        Ok(())
-    }
-
-    async fn update_pota_spot(&self, event: UpdateAct<POTASpot>) -> AppResult<()> {
-        self.pota_act_repo.update_spot(event).await?;
-
-        let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
-        self.pota_act_repo
+        self.act_repo
             .delete_spot(DeleteAct { before: expire })
             .await?;
         Ok(())
