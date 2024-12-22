@@ -81,7 +81,7 @@ impl AdminService for AdminServiceImpl {
         for assoc in associations {
             let query = FindRefBuilder::new().sota().name(assoc).build();
             let result = self.sota_repo.find_reference(&query).await?;
-            if let Some(target) = result.results {
+            if let Some(target) = result.get_values() {
                 let newref = target
                     .into_iter()
                     .filter(|r| ja_hash.contains_key(&r.summit_code))

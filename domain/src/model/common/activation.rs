@@ -1,7 +1,10 @@
 use chrono::{DateTime, Utc};
 
+use crate::model::AwardProgram;
+
 #[derive(Debug)]
 pub struct Alert {
+    pub program: AwardProgram,
     pub alert_id: i32,
     pub user_id: i32,
     pub reference: String,
@@ -18,6 +21,7 @@ pub struct Alert {
 
 #[derive(Debug)]
 pub struct Spot {
+    pub program: AwardProgram,
     pub spot_id: i32,
     pub reference: String,
     pub reference_detail: String,

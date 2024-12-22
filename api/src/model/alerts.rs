@@ -1,7 +1,9 @@
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use domain::model::common::activation::Alert;
 use serde::Deserialize;
+
+use domain::model::common::activation::Alert;
+use domain::model::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +29,7 @@ impl From<SOTAAlert> for Result<Alert> {
         let date_activated = DateTime::parse_from_rfc3339(&a.date_activated)?;
         let date_activated = date_activated.with_timezone(&Utc);
         Ok(Alert {
+            program: AwardProgram::SOTA,
             alert_id: a.id,
             user_id: a.user_id,
             reference: a.summit_code,
@@ -75,6 +78,7 @@ impl From<POTAAlert> for Result<Alert> {
         let end_time = Utc.from_local_datetime(&end).unwrap();
 
         Ok(Alert {
+            program: AwardProgram::POTA,
             alert_id: a.scheduled_activities_id,
             user_id: a.scheduler_user_id,
             reference: a.reference,

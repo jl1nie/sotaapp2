@@ -25,16 +25,11 @@ impl UpdateAlerts {
             registry: state.into(),
         }
     }
+
     pub async fn update(&self) -> Result<()> {
-        self.update_sota_alerts().await?;
-        self.update_pota_alerts().await?;
-        Ok(())
-    }
-
-    async fn update_sota_alerts(&self) -> Result<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
-        let endpoint = self.config.sota_alert_endpoint.clone();
 
+        let endpoint = self.config.sota_alert_endpoint.clone();
         let response = reqwest::get(&endpoint)
             .await?
             .json::<Vec<SOTAAlert>>()
@@ -46,15 +41,9 @@ impl UpdateAlerts {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_sota_alert(event).await?;
+        service.update_alert(event).await?;
 
-        Ok(())
-    }
-
-    async fn update_pota_alerts(&self) -> Result<()> {
-        let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
         let endpoint = self.config.pota_alert_endpoint.clone();
-
         let response = reqwest::get(&endpoint)
             .await?
             .json::<Vec<POTAAlert>>()
@@ -66,7 +55,7 @@ impl UpdateAlerts {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_pota_alert(event).await?;
+        service.update_alert(event).await?;
         Ok(())
     }
 }
@@ -84,16 +73,11 @@ impl UpdateSpots {
             registry: state.into(),
         }
     }
+
     pub async fn update(&self) -> Result<()> {
-        self.update_sota_spots().await?;
-        self.update_pota_spots().await?;
-        Ok(())
-    }
-
-    async fn update_sota_spots(&self) -> Result<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
-        let endpoint = self.config.sota_spot_endpoint.clone();
 
+        let endpoint = self.config.sota_spot_endpoint.clone();
         let response = reqwest::get(&endpoint)
             .await?
             .json::<Vec<SOTASpot>>()
@@ -105,14 +89,9 @@ impl UpdateSpots {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_sota_spot(event).await?;
-        Ok(())
-    }
+        service.update_spot(event).await?;
 
-    async fn update_pota_spots(&self) -> Result<()> {
-        let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
         let endpoint = self.config.pota_spot_endpoint.clone();
-
         let response = reqwest::get(&endpoint)
             .await?
             .json::<Vec<POTASpot>>()
@@ -124,7 +103,7 @@ impl UpdateSpots {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_pota_spot(event).await?;
+        service.update_spot(event).await?;
         Ok(())
     }
 }

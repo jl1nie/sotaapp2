@@ -8,7 +8,7 @@ use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, Up
 use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::database::ConnectionPool;
-use crate::implement::querybuilder::query_builder;
+use crate::implement::querybuilder::findref_query_builder;
 use domain::repository::sota::SOTAReferenceReposity;
 
 #[derive(Component)]
@@ -245,14 +245,8 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
     }
 
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<SOTAReference>> {
-        let query = query_builder(event);
+        let query = findref_query_builder(event);
         let results = self.select_by_condition(&query).await?;
-        Ok(FindResult {
-            counts: results.len(),
-            results: Some(results),
-        })
+        Ok(FindResult::new(results))
     }
 }
-
-#[cfg(test)]
-mod tests {}

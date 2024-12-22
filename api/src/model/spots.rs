@@ -1,7 +1,9 @@
 use anyhow::Result;
 use chrono::{NaiveDateTime, TimeZone, Utc};
-use domain::model::common::activation::Spot;
 use serde::Deserialize;
+
+use domain::model::common::activation::Spot;
+use domain::model::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +29,7 @@ impl From<SOTASpot> for Result<Spot> {
         let naive = NaiveDateTime::parse_from_str(&s.time_stamp, "%Y-%m-%dT%H:%M:%S")?;
         let spot_time = Utc.from_local_datetime(&naive).unwrap();
         Ok(Spot {
+            program: AwardProgram::SOTA,
             spot_id: s.id,
             reference: s.summit_code,
             reference_detail: s.summit_details,
@@ -70,6 +73,7 @@ impl From<POTASpot> for Result<Spot> {
         let naive = NaiveDateTime::parse_from_str(&s.spot_time, "%Y-%m-%dT%H:%M:%S")?;
         let spot_time = Utc.from_local_datetime(&naive).unwrap();
         Ok(Spot {
+            program: AwardProgram::POTA,
             spot_id: s.spot_id,
             reference: s.reference,
             reference_detail: s.name,
