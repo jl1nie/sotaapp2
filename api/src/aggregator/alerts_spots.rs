@@ -9,6 +9,7 @@ use domain::model::common::event::UpdateAct;
 
 use registry::{AppRegistry, AppState};
 use service::services::AdminPeriodicService;
+
 use shaku::HasComponent;
 use std::sync::Arc;
 
@@ -76,7 +77,6 @@ impl UpdateSpots {
 
     pub async fn update(&self) -> Result<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
-
         let endpoint = self.config.sota_spot_endpoint.clone();
         let response = reqwest::get(&endpoint)
             .await?

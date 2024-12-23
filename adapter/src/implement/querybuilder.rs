@@ -78,21 +78,24 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
 
     if let Some(prog) = &r.program {
         match prog {
-            AwardProgram::SOTA => query.push_str("progam = 0 AND"),
-            AwardProgram::POTA => query.push_str("progam = 1 AND"),
-            AwardProgram::WWFF => query.push_str("progam = 2 AND"),
+            AwardProgram::SOTA => query.push_str("program = 0 AND "),
+            AwardProgram::POTA => query.push_str("program = 1 AND "),
+            AwardProgram::WWFF => query.push_str("program = 2 AND "),
         }
     }
 
     if is_alert {
         if let Some(after) = r.after {
             query.push_str(&format!(
-                "start_time >= {} ORDER BY start_time DESC ",
+                "start_time >= '{}' ORDER BY start_time DESC ",
                 after
             ));
         }
     } else if let Some(after) = r.after {
-        query.push_str(&format!("spot_time >= {} ORDER BY spot_time DESC ", after));
+        query.push_str(&format!(
+            "spot_time >= '{}' ORDER BY spot_time DESC ",
+            after
+        ));
     }
 
     if let Some(limit) = &r.limit {
@@ -102,6 +105,6 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     if let Some(offset) = &r.offset {
         query.push_str(&format!("OFFSET {} ", offset));
     }
-
+    eprintln!("Query is {}", query);
     query
 }

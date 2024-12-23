@@ -143,7 +143,7 @@ impl ActivationRepositryImpl {
                 end_time,
                 frequencies,
                 comment,
-                poster,
+                poster
             FROM alerts WHERE "#
             .to_string();
 

@@ -145,6 +145,7 @@ pub struct UpdateRef<T> {
     pub requests: Vec<T>,
 }
 
+#[derive(Debug)]
 pub struct FindResult<T> {
     results: Vec<T>,
 }
@@ -227,7 +228,7 @@ impl FindActBuilder {
     }
 
     pub fn offset(mut self, offset: i32) -> Self {
-        self.param.limit = Some(offset);
+        self.param.offset = Some(offset);
         self
     }
 

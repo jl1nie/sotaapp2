@@ -14,9 +14,9 @@ use common::error::AppResult;
 
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
-    async fn find_reference(&self, event: FindRef) -> AppResult<FindAppResult>;
-    async fn find_alert(&self, event: FindAct) -> AppResult<FindResult<Alert>>;
-    async fn find_spot(&self, event: FindAct) -> AppResult<FindResult<Spot>>;
+    async fn find_references(&self, event: FindRef) -> AppResult<FindAppResult>;
+    async fn find_alerts(&self, event: FindAct) -> AppResult<FindResult<Alert>>;
+    async fn find_spots(&self, event: FindAct) -> AppResult<FindResult<Spot>>;
 }
 
 #[async_trait]
