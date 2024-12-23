@@ -11,6 +11,7 @@ derive-new.workspace = true
 common.workspace = true
 sqlx.workspace = true
 shaku.workspace = true
+chrono.workspace = true
 
 [dev-dependencies]
 csv.workspace = true

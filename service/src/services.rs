@@ -38,6 +38,6 @@ pub trait AdminService: Send + Sync + Interface {
 
 #[async_trait]
 pub trait AdminPeriodicService: Send + Sync + Interface {
-    async fn update_alert(&self, event: UpdateAct<Alert>) -> AppResult<()>;
-    async fn update_spot(&self, event: UpdateAct<Spot>) -> AppResult<()>;
+    async fn update_alerts(&self, event: UpdateAct<Alert>) -> AppResult<()>;
+    async fn update_spots(&self, event: UpdateAct<Spot>) -> AppResult<()>;
 }

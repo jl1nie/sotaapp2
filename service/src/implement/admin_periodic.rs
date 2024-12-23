@@ -22,22 +22,22 @@ pub struct AdminPeriodicServiceImpl {
 
 #[async_trait]
 impl AdminPeriodicService for AdminPeriodicServiceImpl {
-    async fn update_alert(&self, event: UpdateAct<Alert>) -> AppResult<()> {
-        self.act_repo.update_alert(event).await?;
+    async fn update_alerts(&self, event: UpdateAct<Alert>) -> AppResult<()> {
+        self.act_repo.update_alerts(event).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
         self.act_repo
-            .delete_alert(DeleteAct { before: expire })
+            .delete_alerts(DeleteAct { before: expire })
             .await?;
         Ok(())
     }
 
-    async fn update_spot(&self, event: UpdateAct<Spot>) -> AppResult<()> {
-        self.act_repo.update_spot(event).await?;
+    async fn update_spots(&self, event: UpdateAct<Spot>) -> AppResult<()> {
+        self.act_repo.update_spots(event).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
         self.act_repo
-            .delete_spot(DeleteAct { before: expire })
+            .delete_spots(DeleteAct { before: expire })
             .await?;
         Ok(())
     }
