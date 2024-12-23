@@ -7,6 +7,7 @@ use common::error::{AppError, AppResult};
 use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, UpdateRef};
 use domain::model::sota::{SOTAReference, SummitCode};
 
+use crate::database::model::sota::SOTAReferenceImpl;
 use crate::database::ConnectionPool;
 use crate::implement::querybuilder::findref_query_builder;
 use domain::repository::sota::SOTAReferenceReposity;
@@ -19,7 +20,7 @@ pub struct SOTAReferenceReposityImpl {
 }
 
 impl SOTAReferenceReposityImpl {
-    async fn create(&self, r: SOTAReference, db: &mut PgConnection) -> AppResult<()> {
+    async fn create(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO sota_references(
@@ -72,7 +73,7 @@ impl SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn update(&self, r: SOTAReference, db: &mut PgConnection) -> AppResult<()> {
+    async fn update(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 UPDATE sota_references SET
@@ -153,7 +154,7 @@ impl SOTAReferenceReposityImpl {
         &self,
         query: &str,
         // params: &Vec<String>,
-    ) -> AppResult<Vec<SOTAReference>> {
+    ) -> AppResult<Vec<SOTAReferenceImpl>> {
         let mut select = r#"
             SELECT
                 summit_code,
@@ -181,9 +182,9 @@ impl SOTAReferenceReposityImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, SOTAReference>(&select);
+        let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
 
-        let rows: Vec<SOTAReference> = sql_query
+        let rows: Vec<SOTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
@@ -203,7 +204,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in event.requests.into_iter().enumerate() {
-            self.create(r.1, &mut tx).await?;
+            self.create(SOTAReferenceImpl::from(r.1), &mut tx).await?;
             if r.0 % 1000 == 0 {
                 eprintln!("insert db {} rescords", r.0);
             }
@@ -220,7 +221,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
             .await
             .map_err(AppError::TransactionError)?;
         for r in event.requests.into_iter().enumerate() {
-            self.update(r.1, &mut tx).await?;
+            self.update(SOTAReferenceImpl::from(r.1), &mut tx).await?;
             if r.0 % 50 == 0 {
                 eprintln!("update db {} rescords", r.0);
             }
@@ -247,6 +248,8 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<SOTAReference>> {
         let query = findref_query_builder(event);
         let results = self.select_by_condition(&query).await?;
-        Ok(FindResult::new(results))
+        Ok(FindResult::new(
+            results.into_iter().map(SOTAReference::from).collect(),
+        ))
     }
 }

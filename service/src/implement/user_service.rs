@@ -39,10 +39,10 @@ impl UserService for UserServiceImpl {
     }
 
     async fn find_alert(&self, event: FindAct) -> AppResult<FindResult<Alert>> {
-        Ok(self.act_repo.find_alert(&event).await?)
+        Ok(self.act_repo.find_alerts(&event).await?)
     }
 
     async fn find_spot(&self, event: FindAct) -> AppResult<FindResult<Spot>> {
-        Ok(self.act_repo.find_spot(&event).await?)
+        Ok(self.act_repo.find_spots(&event).await?)
     }
 }

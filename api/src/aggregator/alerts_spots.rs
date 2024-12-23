@@ -41,7 +41,7 @@ impl UpdateAlerts {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_alert(event).await?;
+        service.update_alerts(event).await?;
 
         let endpoint = self.config.pota_alert_endpoint.clone();
         let response = reqwest::get(&endpoint)
@@ -55,7 +55,7 @@ impl UpdateAlerts {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_alert(event).await?;
+        service.update_alerts(event).await?;
         Ok(())
     }
 }
@@ -89,7 +89,7 @@ impl UpdateSpots {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_spot(event).await?;
+        service.update_spots(event).await?;
 
         let endpoint = self.config.pota_spot_endpoint.clone();
         let response = reqwest::get(&endpoint)
@@ -103,7 +103,7 @@ impl UpdateSpots {
             .collect();
 
         let event = UpdateAct { requests };
-        service.update_spot(event).await?;
+        service.update_spots(event).await?;
         Ok(())
     }
 }

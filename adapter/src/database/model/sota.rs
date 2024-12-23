@@ -1,0 +1,123 @@
+use domain::model::sota::SOTAReference;
+use sqlx::FromRow;
+
+#[derive(Debug, FromRow)]
+pub struct SOTAReferenceImpl {
+    pub summit_code: String,
+    pub association_name: String,
+    pub region_name: String,
+    pub summit_name: String,
+    pub summit_name_j: Option<String>,
+    pub city: Option<String>,
+    pub city_j: Option<String>,
+    pub alt_m: i32,
+    pub alt_ft: i32,
+    pub grid_ref1: String,
+    pub grid_ref2: String,
+    pub longitude: Option<f64>,
+    pub latitude: Option<f64>,
+    pub points: i32,
+    pub bonus_points: i32,
+    pub valid_from: String,
+    pub valid_to: String,
+    pub activation_count: i32,
+    pub activation_date: Option<String>,
+    pub activation_call: Option<String>,
+}
+
+impl From<SOTAReference> for SOTAReferenceImpl {
+    fn from(s: SOTAReference) -> Self {
+        let SOTAReference {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j,
+            city,
+            city_j,
+            alt_m,
+            alt_ft: i32,
+            grid_ref1,
+            grid_ref2,
+            longitude,
+            latitude,
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
+        } = s;
+        Self {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j,
+            city,
+            city_j,
+            alt_m,
+            alt_ft: i32,
+            grid_ref1,
+            grid_ref2,
+            longitude,
+            latitude,
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
+        }
+    }
+}
+impl From<SOTAReferenceImpl> for SOTAReference {
+    fn from(s: SOTAReferenceImpl) -> Self {
+        let SOTAReferenceImpl {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j,
+            city,
+            city_j,
+            alt_m,
+            alt_ft: i32,
+            grid_ref1,
+            grid_ref2,
+            longitude,
+            latitude,
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
+        } = s;
+        Self {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j,
+            city,
+            city_j,
+            alt_m,
+            alt_ft: i32,
+            grid_ref1,
+            grid_ref2,
+            longitude,
+            latitude,
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
+        }
+    }
+}

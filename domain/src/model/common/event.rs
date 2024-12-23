@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
-use std::time::Duration;
 
 use crate::model::{pota::POTAReference, sota::SOTAReference, AwardProgram};
 
@@ -203,8 +202,8 @@ impl<T> From<Vec<T>> for UpdateAct<T> {
 pub struct FindAct {
     pub program: Option<AwardProgram>,
     pub after: Option<DateTime<Utc>>,
-    pub before: Option<DateTime<Utc>>,
-    pub duration: Option<Duration>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
 }
 
 #[derive(Default)]
@@ -222,13 +221,13 @@ impl FindActBuilder {
         self
     }
 
-    pub fn before(mut self, bfr: DateTime<Utc>) -> Self {
-        self.param.before = Some(bfr);
+    pub fn limit(mut self, limit: i32) -> Self {
+        self.param.limit = Some(limit);
         self
     }
 
-    pub fn duration(mut self, drt: Duration) -> Self {
-        self.param.duration = Some(drt);
+    pub fn offset(mut self, offset: i32) -> Self {
+        self.param.limit = Some(offset);
         self
     }
 

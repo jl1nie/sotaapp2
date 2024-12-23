@@ -1,5 +1,3 @@
-use std::env::consts::ARCH;
-
 use domain::model::{
     common::event::{FindAct, FindRef},
     AwardProgram,
@@ -80,26 +78,29 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
 
     if let Some(prog) = &r.program {
         match prog {
-            AwardProgram::SOTA => query.push_str("progam = 'SOTA' AND"),
-            AwardProgram::POTA => query.push_str("progam = 'POTA' AND"),
-            AwardProgram::WWFF => query.push_str("progam = 'WWFF' AND"),
+            AwardProgram::SOTA => query.push_str("progam = 0 AND"),
+            AwardProgram::POTA => query.push_str("progam = 1 AND"),
+            AwardProgram::WWFF => query.push_str("progam = 2 AND"),
         }
     }
 
     if is_alert {
         if let Some(after) = r.after {
-            query.push_str(&format!("start_time >= {} AND", after));
+            query.push_str(&format!(
+                "start_time >= {} ORDER BY start_time DESC ",
+                after
+            ));
         }
-        if let Some(before) = r.before {
-            query.push_str(&format!("start_time <= {} AND", before));
-        }
-    } else {
-        if let Some(after) = r.after {
-            query.push_str(&format!("spot_time >= {} AND", after));
-        }
-        if let Some(before) = r.before {
-            query.push_str(&format!("spot_time <= {} AND", before));
-        }
+    } else if let Some(after) = r.after {
+        query.push_str(&format!("spot_time >= {} ORDER BY spot_time DESC ", after));
+    }
+
+    if let Some(limit) = &r.limit {
+        query.push_str(&format!("LIMIT {} ", limit));
+    }
+
+    if let Some(offset) = &r.offset {
+        query.push_str(&format!("OFFSET {} ", offset));
     }
 
     query
