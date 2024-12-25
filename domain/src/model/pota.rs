@@ -1,5 +1,5 @@
 use super::common::id::UserId;
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 
 #[derive(Debug)]
 pub struct ParkCode(String);
@@ -21,13 +21,14 @@ pub struct POTAReference {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
-    pub update: NaiveDate,
+    pub update: DateTime<Utc>,
 }
 
 #[derive(Debug)]
 pub struct WWFFReference {
     pub wwff_code: String,
     pub pota_code: String,
+    pub update: DateTime<Utc>,
 }
 
 #[derive(Debug)]
@@ -42,7 +43,7 @@ pub struct POTAActivatorLog {
     pub attempts: i32,
     pub activations: i32,
     pub qsos: i32,
-    pub upload: NaiveDate,
+    pub upload: DateTime<Utc>,
 }
 
 #[derive(Debug)]
@@ -55,5 +56,5 @@ pub struct POTAHunterLog {
     pub park_name: String,
     pub first_qso_date: NaiveDate,
     pub qsos: i32,
-    pub upload: NaiveDate,
+    pub upload: DateTime<Utc>,
 }

@@ -17,7 +17,7 @@ use domain::repository::{
     healthcheck::HealthCheckRepositry, pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
 };
 
-use crate::model::pota::UploadPOTACSV;
+use crate::model::pota::{POTACSVFile, UploadPOTACSV};
 use crate::model::sota::{SOTACSVFile, SOTACSVOptFile};
 use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 
@@ -105,7 +105,7 @@ impl AdminService for AdminServiceImpl {
     }
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
-        let requests: Vec<POTAReference> = csv_reader(data, 1)?;
+        let requests: Vec<POTACSVFile> = csv_reader(data, 1)?;
         let req = CreateRef { requests };
         self.pota_repo.create_reference(req).await?;
         Ok(())
