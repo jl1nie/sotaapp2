@@ -17,14 +17,12 @@ pub enum AppError {
     NoRowsAffectedError(String),
     #[error("CSVの読み込みに失敗しました。")]
     CSVReadError(#[source] csv::Error),
-    /*
-    #[error("{0}")]
-    KeyValueStoreError(#[from] redis::RedisError),
-    #[error("{0}")]
-    BcryptError(#[from] bcrypt::BcryptError),
+    // #[error("{0}")]
+    // KeyValueStoreError(#[from] redis::RedisError),
+    // #[error("{0}")]
+    // BcryptError(#[from] bcrypt::BcryptError),
     #[error("{0}")]
     ConvertToUuidError(#[from] uuid::Error),
-    */
     #[error("ログインに失敗しました")]
     UnauthenticatedError,
     #[error("認可情報が誤っています")]
@@ -41,11 +39,10 @@ impl IntoResponse for AppError {
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::CSVReadError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::EntityNotFound(_) => StatusCode::NOT_FOUND,
-            /*
-                AppError::ValidationError(_) | AppError::ConvertToUuidError(_) => {
+            /* AppError::ValidationError(_) |*/
+                 AppError::ConvertToUuidError(_) => {
                     StatusCode::BAD_REQUEST
-                }
-            }*/
+                },
             AppError::UnauthenticatedError | AppError::ForbiddenOperation => StatusCode::FORBIDDEN,
             AppError::UnauthorizedError => StatusCode::UNAUTHORIZED,
             e @ (AppError::TransactionError(_)
