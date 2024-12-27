@@ -12,6 +12,7 @@ common.workspace = true
 sqlx.workspace = true
 shaku.workspace = true
 chrono.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 csv.workspace = true

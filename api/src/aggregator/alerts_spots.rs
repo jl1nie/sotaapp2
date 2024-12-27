@@ -5,7 +5,6 @@ use reqwest;
 use crate::model::alerts::{POTAAlert, SOTAAlert};
 use crate::model::spots::{POTASpot, SOTASpot};
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::UpdateAct;
 
 use registry::{AppRegistry, AppState};
 use service::services::AdminPeriodicService;
@@ -41,8 +40,7 @@ impl UpdateAlerts {
             .filter_map(|sa| Result::<Alert>::from(sa).ok())
             .collect();
 
-        let event = UpdateAct { requests };
-        service.update_alerts(event).await?;
+        service.update_alerts(requests).await?;
 
         let endpoint = self.config.pota_alert_endpoint.clone();
         let response = reqwest::get(&endpoint)
@@ -55,8 +53,7 @@ impl UpdateAlerts {
             .filter_map(|pa| Result::<Alert>::from(pa).ok())
             .collect();
 
-        let event = UpdateAct { requests };
-        service.update_alerts(event).await?;
+        service.update_alerts(requests).await?;
         Ok(())
     }
 }
@@ -88,8 +85,7 @@ impl UpdateSpots {
             .filter_map(|ss| Result::<Spot>::from(ss).ok())
             .collect();
 
-        let event = UpdateAct { requests };
-        service.update_spots(event).await?;
+        service.update_spots(requests).await?;
 
         let endpoint = self.config.pota_spot_endpoint.clone();
         let response = reqwest::get(&endpoint)
@@ -102,8 +98,7 @@ impl UpdateSpots {
             .filter_map(|ss| Result::<Spot>::from(ss).ok())
             .collect();
 
-        let event = UpdateAct { requests };
-        service.update_spots(event).await?;
+        service.update_spots(requests).await?;
         Ok(())
     }
 }

@@ -1,12 +1,12 @@
 use anyhow::{Error, Result};
 use axum::extract::DefaultBodyLimit;
 use axum::Router;
+use common::config::AppConfigBuilder;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
-
-use common::config::AppConfigBuilder;
+use tracing_subscriber::EnvFilter;
 
 use api::handler::health::build_health_chek_routers;
 use api::handler::sota::build_sota_routers;
@@ -31,6 +31,9 @@ async fn bootstrap() -> Result<()> {
         .spot_update_schedule("0 */1 * * * *")
         .build();
 
+    let filter = EnvFilter::new("info");
+    tracing_subscriber::fmt().with_env_filter(filter).init();
+
     let module = AppRegistry::new(&config);
     let app_state = AppState::new(module);
     let job_state = app_state.clone();
@@ -44,7 +47,7 @@ async fn bootstrap() -> Result<()> {
 
     let addr: SocketAddr = "0.0.0.0:8000".parse().unwrap();
     let listener = TcpListener::bind(&addr).await?;
-    println!("Listening on {}", addr);
+    tracing::info!("Listening on {}", addr);
 
     let http = async { axum::serve(listener, app).await.map_err(Error::from) };
     let job_monitor = async { api::aggregator::builder::build(&config, &job_state).await };

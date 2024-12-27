@@ -6,7 +6,7 @@ use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteAct, FindAct, FindResult, UpdateAct};
+use domain::model::common::event::{DeleteAct, FindAct, FindResult};
 use domain::repository::activation::ActivationRepositry;
 
 use crate::database::model::activation::{AlertImpl, SpotImpl};
@@ -42,7 +42,7 @@ impl ActivationRepositryImpl {
                     comment = EXCLUDED.comment,
                     poster = EXCLUDED.poster
             "#,
-            a.program,
+            a.program as i32,
             a.alert_id,
             a.user_id,
             a.reference,
@@ -80,7 +80,7 @@ impl ActivationRepositryImpl {
                     spotter = EXCLUDED.spotter,
                     comment = EXCLUDED.comment
             "#,
-            s.program,
+            s.program as i32,
             s.spot_id,
             s.reference,
             s.reference_detail,
@@ -191,7 +191,7 @@ impl ActivationRepositryImpl {
 
 #[async_trait]
 impl ActivationRepositry for ActivationRepositryImpl {
-    async fn update_alerts(&self, event: UpdateAct<Alert>) -> AppResult<()> {
+    async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -199,7 +199,7 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
-        for r in event.requests.into_iter().enumerate() {
+        for r in alerts.into_iter().enumerate() {
             self.update_alert_impl(AlertImpl::from(r.1), &mut tx)
                 .await?;
         }
@@ -207,7 +207,7 @@ impl ActivationRepositry for ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn update_spots(&self, event: UpdateAct<Spot>) -> AppResult<()> {
+    async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -215,13 +215,13 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
-        for r in event.requests.into_iter().enumerate() {
+        for r in spots.into_iter().enumerate() {
             self.update_spot_impl(SpotImpl::from(r.1), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
-    async fn delete_alerts(&self, event: DeleteAct) -> AppResult<()> {
+    async fn delete_alerts(&self, query: DeleteAct) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -229,12 +229,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
-        self.delete_alerts_impl(event, &mut tx).await?;
+        self.delete_alerts_impl(query, &mut tx).await?;
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 
-    async fn delete_spots(&self, event: DeleteAct) -> AppResult<()> {
+    async fn delete_spots(&self, query: DeleteAct) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -242,7 +242,7 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
-        self.delete_spots_impl(event, &mut tx).await?;
+        self.delete_spots_impl(query, &mut tx).await?;
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }

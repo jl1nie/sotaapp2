@@ -7,7 +7,7 @@ use std::sync::Arc;
 use common::error::AppResult;
 
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteAct, UpdateAct};
+use domain::model::common::event::DeleteAct;
 use domain::repository::activation::ActivationRepositry;
 
 use crate::services::AdminPeriodicService;
@@ -22,8 +22,8 @@ pub struct AdminPeriodicServiceImpl {
 
 #[async_trait]
 impl AdminPeriodicService for AdminPeriodicServiceImpl {
-    async fn update_alerts(&self, event: UpdateAct<Alert>) -> AppResult<()> {
-        self.act_repo.update_alerts(event).await?;
+    async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()> {
+        self.act_repo.update_alerts(alerts).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
         self.act_repo
@@ -32,8 +32,8 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
         Ok(())
     }
 
-    async fn update_spots(&self, event: UpdateAct<Spot>) -> AppResult<()> {
-        self.act_repo.update_spots(event).await?;
+    async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()> {
+        self.act_repo.update_spots(spots).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
         self.act_repo

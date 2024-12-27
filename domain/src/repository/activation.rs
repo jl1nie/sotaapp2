@@ -3,14 +3,14 @@ use common::error::AppResult;
 use shaku::Interface;
 
 use crate::model::common::activation::{Alert, Spot};
-use crate::model::common::event::{DeleteAct, FindAct, FindResult, UpdateAct};
+use crate::model::common::event::{DeleteAct, FindAct, FindResult};
 
 #[async_trait]
 pub trait ActivationRepositry: Send + Sync + Interface {
-    async fn update_alerts(&self, event: UpdateAct<Alert>) -> AppResult<()>;
-    async fn find_alerts(&self, event: &FindAct) -> AppResult<FindResult<Alert>>;
-    async fn delete_alerts(&self, event: DeleteAct) -> AppResult<()>;
-    async fn update_spots(&self, event: UpdateAct<Spot>) -> AppResult<()>;
-    async fn find_spots(&self, event: &FindAct) -> AppResult<FindResult<Spot>>;
-    async fn delete_spots(&self, event: DeleteAct) -> AppResult<()>;
+    async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()>;
+    async fn find_alerts(&self, query: &FindAct) -> AppResult<FindResult<Alert>>;
+    async fn delete_alerts(&self, query: DeleteAct) -> AppResult<()>;
+    async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()>;
+    async fn find_spots(&self, query: &FindAct) -> AppResult<FindResult<Spot>>;
+    async fn delete_spots(&self, query: DeleteAct) -> AppResult<()>;
 }

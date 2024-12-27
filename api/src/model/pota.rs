@@ -1,13 +1,13 @@
-use chrono::{DateTime, Utc};
-use common::id::UserId;
-use domain::model::common::event::{CreateRef, UpdateRef};
+use chrono::{DateTime, NaiveDate, Utc};
+use domain::model::common::id::UserId;
 use domain::model::pota::POTAReference;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Debug, Debug, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CreateRefRequest {
     pub pota_code: String,
+    pub wwff_code: String,
     pub park_name: String,
     pub park_name_j: String,
     pub park_location: String,
@@ -19,10 +19,11 @@ pub struct CreateRefRequest {
     pub lattitude: Option<f64>,
 }
 
-impl From<CreateRefRequest> for CreateRefRef<POTAReference> {
+impl From<CreateRefRequest> for Vec<POTAReference> {
     fn from(value: CreateRefRequest) -> Self {
-        let CreateARefRequest {
+        let CreateRefRequest {
             pota_code,
+            wwff_code,
             park_name,
             park_name_j,
             park_location,
@@ -34,28 +35,28 @@ impl From<CreateRefRequest> for CreateRefRef<POTAReference> {
             lattitude,
         } = value;
         let update: DateTime<Utc> = Utc::now();
-        Self {
-            requests: vec![POTAReference {
-                pota_code,
-                park_name,
-                park_name_j,
-                park_location,
-                park_locid,
-                park_type,
-                park_status,
-                park_area,
-                longitude,
-                lattitude,
-                update,
-            }],
-        }
+        vec![POTAReference {
+            pota_code,
+            wwff_code,
+            park_name,
+            park_name_j,
+            park_location,
+            park_locid,
+            park_type,
+            park_status,
+            park_area,
+            longitude,
+            lattitude,
+            update,
+        }]
     }
 }
 
-#[derive(Debug, Debug, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct UpdateRefRequest {
     pub pota_code: String,
+    pub wwff_code: String,
     pub park_name: String,
     pub park_name_j: String,
     pub park_location: String,
@@ -67,10 +68,11 @@ pub struct UpdateRefRequest {
     pub lattitude: Option<f64>,
 }
 
-impl From<UpdateRefRequest> for UpdateRef<POTAReference> {
-    fn from(value: CreateRefRequest) -> Self {
-        let CreateARefRequest {
+impl From<UpdateRefRequest> for Vec<POTAReference> {
+    fn from(value: UpdateRefRequest) -> Self {
+        let UpdateRefRequest {
             pota_code,
+            wwff_code,
             park_name,
             park_name_j,
             park_location,
@@ -82,30 +84,21 @@ impl From<UpdateRefRequest> for UpdateRef<POTAReference> {
             lattitude,
         } = value;
         let update: DateTime<Utc> = Utc::now();
-        Self {
-            requests: vec![POTAReference {
-                pota_code,
-                park_name,
-                park_name_j,
-                park_location,
-                park_locid,
-                park_type,
-                park_status,
-                park_area,
-                longitude,
-                lattitude,
-                update,
-            }],
-        }
+        vec![POTAReference {
+            pota_code,
+            wwff_code,
+            park_name,
+            park_name_j,
+            park_location,
+            park_locid,
+            park_type,
+            park_status,
+            park_area,
+            longitude,
+            lattitude,
+            update,
+        }]
     }
-}
-
-#[derive(Debug, Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-#[derive(Debug)]
-pub struct WWFFReference {
-    pub wwff_code: String,
-    pub pota_code: String,
 }
 
 #[derive(Debug)]

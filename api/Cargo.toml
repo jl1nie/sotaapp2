@@ -19,3 +19,4 @@ domain.workspace = true
 serde_json.workspace = true
 shaku_axum.workspace = true
 shaku.workspace = true
+tracing.workspace = true

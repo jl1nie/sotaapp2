@@ -1,5 +1,6 @@
-use super::common::id::UserId;
 use chrono::NaiveDate;
+use domain::model::common::id::UserId;
+use sqlx::FromRow;
 
 #[derive(Debug)]
 pub struct ParkCode(String);
@@ -9,9 +10,10 @@ impl ParkCode {
     }
 }
 
-#[derive(Debug)]
-pub struct POTAReference {
+#[derive(Debug, FromRow)]
+pub struct POTAReferenceImpl {
     pub pota_code: String,
+    pub wwff_code: String,
     pub park_name: String,
     pub park_name_j: String,
     pub park_location: String,
@@ -24,14 +26,8 @@ pub struct POTAReference {
     pub update: NaiveDate,
 }
 
-#[derive(Debug)]
-pub struct WWFFReference {
-    pub wwff_code: String,
-    pub pota_code: String,
-}
-
-#[derive(Debug)]
-pub struct POTAActivatorLog {
+#[derive(Debug, FromRow)]
+pub struct POTAActivatorLogImpl {
     pub user_id: UserId,
     pub dx_entity: String,
     pub location: String,
@@ -45,8 +41,8 @@ pub struct POTAActivatorLog {
     pub upload: NaiveDate,
 }
 
-#[derive(Debug)]
-pub struct POTAHunterLog {
+#[derive(Debug, FromRow)]
+pub struct POTAHunterLogImpl {
     pub user_id: UserId,
     pub dx_entity: String,
     pub location: String,

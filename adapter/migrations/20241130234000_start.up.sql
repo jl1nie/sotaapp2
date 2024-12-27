@@ -29,6 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_sota_references_coordinate ON sota_references USI
 
 CREATE TABLE IF NOT EXISTS pota_references (
     pota_code VARCHAR(255) NOT NULL PRIMARY KEY,
+    wwff_code VARCHAR(255),
     park_name VARCHAR(255) NOT NULL,
     park_name_j VARCHAR(255) NOT NULL,
     park_location VARCHAR(255) NOT NULL,
@@ -39,15 +40,8 @@ CREATE TABLE IF NOT EXISTS pota_references (
     coordinates GEOMETRY(Point, 4326)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pota_references_code ON pota_references (pota_code,park_name,park_name_j);
+CREATE INDEX IF NOT EXISTS idx_pota_references_code ON pota_references (pota_code,wwff_code, park_name,park_name_j);
 CREATE INDEX IF NOT EXISTS idx_pota_references_coordinate ON pota_references USING GIST (coordinates);
-
-CREATE TABLE IF NOT EXISTS wwff_references (
-    wwff_code VARCHAR(255) NOT NULL PRIMARY KEY,
-    pota_code VARCHAR(255)
-);
-
-CREATE INDEX IF NOT EXISTS idx_wwff_references_code ON wwff_references (pota_code,wwff_code);
 
 CREATE TABLE IF NOT EXISTS pota_activator_log (
     user_id UUID,
