@@ -4,9 +4,9 @@ use shaku::Component;
 use common::config::AppConfig;
 use common::error::AppResult;
 
-use domain::model::pota::{POTAReference, ParkCode};
+use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference, ParkCode};
 
-use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, UpdateRef};
+use domain::model::common::event::{DeleteLog, DeleteRef, FindRef, FindResult};
 
 use crate::database::ConnectionPool;
 use domain::repository::pota::POTAReferenceRepositry;
@@ -20,21 +20,41 @@ pub struct POTAReferenceRepositryImpl {
 
 #[async_trait]
 impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
-    async fn create_reference(&self, event: CreateRef<POTAReference>) -> AppResult<()> {
-        eprintln!("Create POTA {} refrences.", event.requests.len());
+    async fn create_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {
+        tracing::info!("Create POTA {} refrences.", references.len());
         Ok(())
     }
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>> {
-        eprintln!("Find POTA references with {:?}.", event);
+        tracing::info!("Find POTA references with {:?}.", event);
         todo!()
     }
 
-    async fn update_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()> {
-        eprintln!("Update POTA {} refrences.", event.requests.len());
+    async fn update_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {
+        tracing::info!("Update POTA {} refrences.", references.len());
         Ok(())
     }
     async fn delete_reference(&self, event: DeleteRef<ParkCode>) -> AppResult<()> {
-        eprintln!("Delete POTA {:?}", event);
+        tracing::info!("Delete POTA {:?}", event);
+        Ok(())
+    }
+
+    async fn upload_activator_log(&self, logs: Vec<POTAActivatorLog>) -> AppResult<()> {
+        tracing::info!("Upload POTA activator log.");
+        Ok(())
+    }
+
+    async fn upload_hunter_log(&self, logs: Vec<POTAHunterLog>) -> AppResult<()> {
+        tracing::info!("Upload POTA hunter log.");
+        Ok(())
+    }
+
+    async fn delete_activator_log(&self, query: DeleteLog) -> AppResult<()> {
+        tracing::info!("Delete Activator log.");
+        Ok(())
+    }
+
+    async fn delete_hunter_log(&self, query: DeleteLog) -> AppResult<()> {
+        tracing::info!("Delete Hunter log.");
         Ok(())
     }
 }

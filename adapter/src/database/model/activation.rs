@@ -5,7 +5,7 @@ use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
 pub struct AlertImpl {
-    pub program: i32,
+    pub program: AwardProgram,
     pub alert_id: i32,
     pub user_id: i32,
     pub reference: String,
@@ -37,11 +37,6 @@ impl From<Alert> for AlertImpl {
             comment,
             poster,
         } = value;
-        let program: i32 = match program {
-            AwardProgram::SOTA => 0,
-            AwardProgram::POTA => 1,
-            AwardProgram::WWFF => 2,
-        };
         Self {
             program,
             alert_id,
@@ -77,11 +72,6 @@ impl From<AlertImpl> for Alert {
             comment,
             poster,
         } = value;
-        let program = match program {
-            0 => AwardProgram::SOTA,
-            1 => AwardProgram::POTA,
-            _ => AwardProgram::WWFF,
-        };
         Self {
             program,
             alert_id,
@@ -102,7 +92,7 @@ impl From<AlertImpl> for Alert {
 
 #[derive(Debug, FromRow)]
 pub struct SpotImpl {
-    pub program: i32,
+    pub program: AwardProgram,
     pub spot_id: i32,
     pub reference: String,
     pub reference_detail: String,
@@ -130,12 +120,6 @@ impl From<Spot> for SpotImpl {
             spotter,
             comment,
         } = value;
-        let program: i32 = match program {
-            AwardProgram::SOTA => 0,
-            AwardProgram::POTA => 1,
-            AwardProgram::WWFF => 2,
-        };
-
         Self {
             program,
             spot_id,
@@ -167,11 +151,6 @@ impl From<SpotImpl> for Spot {
             spotter,
             comment,
         } = value;
-        let program = match program {
-            0 => AwardProgram::SOTA,
-            1 => AwardProgram::POTA,
-            _ => AwardProgram::WWFF,
-        };
         Self {
             program,
             spot_id,

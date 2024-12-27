@@ -13,3 +13,4 @@ shaku.workspace = true
 common.workspace = true
 domain.workspace = true
 adapter.workspace = true
+tracing.workspace = true

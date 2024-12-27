@@ -12,6 +12,7 @@ impl ParkCode {
 #[derive(Debug)]
 pub struct POTAReference {
     pub pota_code: String,
+    pub wwff_code: String,
     pub park_name: String,
     pub park_name_j: String,
     pub park_location: String,
@@ -21,13 +22,6 @@ pub struct POTAReference {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
-    pub update: DateTime<Utc>,
-}
-
-#[derive(Debug)]
-pub struct WWFFReference {
-    pub wwff_code: String,
-    pub pota_code: String,
     pub update: DateTime<Utc>,
 }
 

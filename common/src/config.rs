@@ -13,6 +13,8 @@ pub struct AppConfig {
     pub alert_expire: Duration,
     pub spot_expire: Duration,
     pub spot_update_schedule: String,
+
+    pub log_expire: Duration,
 }
 
 pub struct AppConfigBuilder {
@@ -77,6 +79,11 @@ impl AppConfigBuilder {
 
     pub fn spot_update_schedule(mut self, schedule: &str) -> Self {
         self.config.spot_update_schedule = schedule.to_string();
+        self
+    }
+
+    pub fn log_expire(mut self, expire: Duration) -> Self {
+        self.config.log_expire = expire;
         self
     }
 

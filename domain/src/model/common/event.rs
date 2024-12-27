@@ -18,12 +18,6 @@ pub struct CenterRadius {
     pub rad: f64,
 }
 
-impl<T> From<Vec<T>> for CreateRef<T> {
-    fn from(requests: Vec<T>) -> Self {
-        Self { requests }
-    }
-}
-
 #[derive(Default, Debug)]
 pub struct FindRef {
     pub program: Vec<AwardProgram>,
@@ -137,14 +131,6 @@ impl FindRefBuilder {
     }
 }
 
-pub struct CreateRef<T> {
-    pub requests: Vec<T>,
-}
-
-pub struct UpdateRef<T> {
-    pub requests: Vec<T>,
-}
-
 #[derive(Debug)]
 pub struct FindResult<T> {
     results: Vec<T>,
@@ -189,14 +175,8 @@ pub enum DeleteRef<T> {
     DeleteAll,
 }
 
-pub struct UpdateAct<T> {
-    pub requests: Vec<T>,
-}
-
-impl<T> From<Vec<T>> for UpdateAct<T> {
-    fn from(requests: Vec<T>) -> Self {
-        Self { requests }
-    }
+pub struct DeleteLog {
+    pub before: DateTime<Utc>,
 }
 
 #[derive(Default, Debug)]

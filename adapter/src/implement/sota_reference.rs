@@ -4,7 +4,7 @@ use sqlx::PgConnection;
 
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{CreateRef, DeleteRef, FindRef, FindResult, UpdateRef};
+use domain::model::common::event::{DeleteRef, FindRef, FindResult};
 use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::database::model::sota::SOTAReferenceImpl;
@@ -195,7 +195,7 @@ impl SOTAReferenceReposityImpl {
 
 #[async_trait]
 impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
-    async fn create_reference(&self, event: CreateRef<SOTAReference>) -> AppResult<()> {
+    async fn create_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -203,41 +203,41 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
-        for r in event.requests.into_iter().enumerate() {
+        for r in references.into_iter().enumerate() {
             self.create(SOTAReferenceImpl::from(r.1), &mut tx).await?;
             if r.0 % 1000 == 0 {
-                eprintln!("insert db {} rescords", r.0);
+                tracing::info!("insert db {} rescords", r.0);
             }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 
-    async fn update_reference(&self, event: UpdateRef<SOTAReference>) -> AppResult<()> {
+    async fn update_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        for r in event.requests.into_iter().enumerate() {
+        for r in references.into_iter().enumerate() {
             self.update(SOTAReferenceImpl::from(r.1), &mut tx).await?;
             if r.0 % 50 == 0 {
-                eprintln!("update db {} rescords", r.0);
+                tracing::info!("update db {} rescords", r.0);
             }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 
-    async fn delete_reference(&self, event: DeleteRef<SummitCode>) -> AppResult<()> {
+    async fn delete_reference(&self, query: DeleteRef<SummitCode>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        match event {
+        match query {
             DeleteRef::Delete(code) => self.delete(code, &mut tx).await?,
             DeleteRef::DeleteAll => self.delete_all(&mut tx).await?,
         }

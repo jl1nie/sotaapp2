@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use common::error::AppError;
 
-#[derive(Debug, Clone, PartialEq, Hash, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Hash, Serialize, Deserialize, sqlx::Type)]
 pub struct UserId(uuid::Uuid);
 
 impl UserId {

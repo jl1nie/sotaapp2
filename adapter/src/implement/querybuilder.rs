@@ -105,6 +105,6 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     if let Some(offset) = &r.offset {
         query.push_str(&format!("OFFSET {} ", offset));
     }
-    eprintln!("Query is {}", query);
+    tracing::info!("Query is {}", query);
     query
 }

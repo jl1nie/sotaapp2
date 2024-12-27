@@ -8,9 +8,7 @@ use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
-use domain::model::common::event::{
-    CreateRef, DeleteRef, FindRef, FindRefBuilder, FindResult, UpdateRef,
-};
+use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder, FindResult};
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
 use domain::repository::{
@@ -46,14 +44,12 @@ impl AdminService for AdminServiceImpl {
             let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
             r.summit_code.starts_with("JA") && today <= validto && today >= validfrom
         };
-        let req = CreateRef {
-            requests: csv
-                .into_iter()
-                .map(SOTAReference::from)
-                .filter(is_valid_summit)
-                .collect(),
-        };
-        eprintln!("import {} references.", req.requests.len());
+        let req: Vec<_> = csv
+            .into_iter()
+            .map(SOTAReference::from)
+            .filter(is_valid_summit)
+            .collect();
+        tracing::info!("import {} references.", req.len());
         self.sota_repo
             .delete_reference(DeleteRef::DeleteAll)
             .await?;
@@ -97,8 +93,7 @@ impl AdminService for AdminServiceImpl {
                         r
                     })
                     .collect();
-                let req = UpdateRef { requests: newref };
-                self.sota_repo.update_reference(req).await?;
+                self.sota_repo.update_reference(newref).await?;
             }
         }
         Ok(())
@@ -106,8 +101,8 @@ impl AdminService for AdminServiceImpl {
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
         let requests: Vec<POTACSVFile> = csv_reader(data, 1)?;
-        let req = CreateRef { requests };
-        self.pota_repo.create_reference(req).await?;
+        let newref = requests.into_iter().map(POTAReference::from).collect();
+        self.pota_repo.create_reference(newref).await?;
         Ok(())
     }
 
@@ -115,8 +110,8 @@ impl AdminService for AdminServiceImpl {
         Ok(self.sota_repo.find_reference(&event).await?)
     }
 
-    async fn update_sota_reference(&self, event: UpdateRef<SOTAReference>) -> AppResult<()> {
-        self.sota_repo.update_reference(event).await?;
+    async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
+        self.sota_repo.update_reference(references).await?;
         Ok(())
     }
 
@@ -129,8 +124,8 @@ impl AdminService for AdminServiceImpl {
         Ok(self.pota_repo.find_reference(&event).await?)
     }
 
-    async fn update_pota_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()> {
-        self.pota_repo.update_reference(event).await?;
+    async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {
+        self.pota_repo.update_reference(references).await?;
         Ok(())
     }
 

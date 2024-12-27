@@ -1,4 +1,3 @@
-use domain::model::common::event::UpdateRef;
 use domain::model::sota::SOTAReference;
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +26,7 @@ pub struct CreateRefRequest {
     pub activation_call: Option<String>,
 }
 
-impl From<CreateRefRequest> for UpdateRef<SOTAReference> {
+impl From<CreateRefRequest> for Vec<SOTAReference> {
     fn from(value: CreateRefRequest) -> Self {
         let CreateRefRequest {
             summit_code,
@@ -51,30 +50,28 @@ impl From<CreateRefRequest> for UpdateRef<SOTAReference> {
             activation_date,
             activation_call,
         } = value;
-        Self {
-            requests: vec![SOTAReference {
-                summit_code,
-                association_name,
-                region_name,
-                summit_name,
-                summit_name_j: Some(summit_name_j),
-                city: Some(city),
-                city_j: Some(city_j),
-                alt_m,
-                alt_ft,
-                grid_ref1,
-                grid_ref2,
-                longitude: Some(longitude),
-                latitude: Some(latitude),
-                points,
-                bonus_points,
-                valid_from,
-                valid_to,
-                activation_count,
-                activation_date,
-                activation_call,
-            }],
-        }
+        vec![SOTAReference {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j: Some(summit_name_j),
+            city: Some(city),
+            city_j: Some(city_j),
+            alt_m,
+            alt_ft,
+            grid_ref1,
+            grid_ref2,
+            longitude: Some(longitude),
+            latitude: Some(latitude),
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
+        }]
     }
 }
 
@@ -103,7 +100,7 @@ pub struct UpdateRefRequest {
     pub activation_call: Option<String>,
 }
 
-impl From<UpdateRefRequest> for UpdateRef<SOTAReference> {
+impl From<UpdateRefRequest> for Vec<SOTAReference> {
     fn from(value: UpdateRefRequest) -> Self {
         let UpdateRefRequest {
             summit_code,
@@ -149,9 +146,7 @@ impl From<UpdateRefRequest> for UpdateRef<SOTAReference> {
             activation_date,
             activation_call,
         };
-        Self {
-            requests: vec![request],
-        }
+        vec![request]
     }
 }
 
