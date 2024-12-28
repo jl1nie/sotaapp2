@@ -1,3 +1,5 @@
+use std::result;
+
 use async_trait::async_trait;
 use shaku::Component;
 use sqlx::PgConnection;
@@ -183,12 +185,10 @@ impl SOTAReferenceReposityImpl {
         select.push_str(query);
 
         let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
-
         let rows: Vec<SOTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
-
         Ok(rows)
     }
 }
@@ -222,7 +222,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
             .map_err(AppError::TransactionError)?;
         for r in references.into_iter().enumerate() {
             self.update(SOTAReferenceImpl::from(r.1), &mut tx).await?;
-            if r.0 % 50 == 0 {
+            if r.0 % 500 == 0 {
                 tracing::info!("update db {} rescords", r.0);
             }
         }
@@ -248,8 +248,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<SOTAReference>> {
         let query = findref_query_builder(event);
         let results = self.select_by_condition(&query).await?;
-        Ok(FindResult::new(
-            results.into_iter().map(SOTAReference::from).collect(),
-        ))
+        let results = results.into_iter().map(SOTAReference::from).collect();
+        Ok(FindResult::new(results))
     }
 }

@@ -10,12 +10,12 @@ use crate::aggregator::alerts_spots::{UpdateAlerts, UpdateSpots};
 use common::config::AppConfig;
 
 async fn alert_executer(job: DateTime<Utc>, svc: Data<UpdateAlerts>) {
-    tracing::info!("{}", job);
+    tracing::info!("Update Alerts {}", job);
     let _ = svc.update().await;
 }
 
 async fn spot_executer(job: DateTime<Utc>, svc: Data<UpdateSpots>) {
-    tracing::info!("{}", job);
+    tracing::info!("Update Spots {}", job);
     let _ = svc.update().await;
 }
 

@@ -1,3 +1,5 @@
+use std::vec;
+
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
@@ -132,14 +134,14 @@ pub async fn show_sota_reference_list(
     }
 
     let result = admin_service.find_sota_reference(query.build()).await?;
-
     let mut res = SOTARefSearchResponse::default();
 
     if let Some(sotarefs) = result.get_values() {
-        res.result = sotarefs.into_iter().map(SOTASearchResult::from).collect();
-    }
-
-    if res.counts > 0 {
+        res.results = sotarefs.into_iter().map(SOTASearchResult::from).collect();
+        res.count = res.results.len() as i32;
+        if param.max_results.is_some() && res.count > param.max_results.unwrap() {
+            res.results = vec![];
+        }
         return Ok(Json(res));
     }
     Err(AppError::EntityNotFound("Summit not found.".to_string()))

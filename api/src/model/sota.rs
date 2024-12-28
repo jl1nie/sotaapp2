@@ -158,6 +158,7 @@ pub struct GetParam {
     pub max_lat: Option<f64>,
     pub min_elev: Option<i32>,
     pub min_area: Option<i32>,
+    pub max_results: Option<i32>,
     pub ref_id: Option<String>,
     pub name: Option<String>,
     pub limit: Option<i32>,
@@ -233,8 +234,8 @@ impl From<SOTAReference> for SOTARefResponse {
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SOTARefSearchResponse {
-    pub counts: i32,
-    pub result: Vec<SOTASearchResult>,
+    pub count: i32,
+    pub results: Vec<SOTASearchResult>,
 }
 
 #[derive(Debug, Serialize)]

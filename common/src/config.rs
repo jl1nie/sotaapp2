@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::time::Duration;
 
 #[derive(Default, Clone)]
@@ -13,7 +14,7 @@ pub struct AppConfig {
     pub alert_expire: Duration,
     pub spot_expire: Duration,
     pub spot_update_schedule: String,
-
+    pub sota_import_association: Option<Regex>,
     pub log_expire: Duration,
 }
 
@@ -49,6 +50,12 @@ impl AppConfigBuilder {
 
     pub fn sota_spot_endpoint(mut self, endpoint: &str) -> Self {
         self.config.sota_spot_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn sota_import_association(mut self, regex: &str) -> Self {
+        let re = Regex::new(regex).unwrap();
+        self.config.sota_import_association = Some(re);
         self
     }
 
