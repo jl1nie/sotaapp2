@@ -42,7 +42,12 @@ impl AdminService for AdminServiceImpl {
         let is_valid_summit = |r: &SOTAReference| -> bool {
             let validfrom = NaiveDate::parse_from_str(&r.valid_from, "%d/%m/%Y").unwrap_or(today);
             let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
-            r.summit_code.starts_with("JA") && today <= validto && today >= validfrom
+            self.config
+                .sota_import_association
+                .as_ref()
+                .map_or(true, |re| re.is_match(&r.summit_code))
+                && today <= validto
+                && today >= validfrom
         };
         let req: Vec<_> = csv
             .into_iter()

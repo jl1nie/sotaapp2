@@ -26,9 +26,10 @@ async fn bootstrap() -> Result<()> {
         .pota_alert_endpoint("https://api.pota.app/activation/")
         .pota_spot_endpoint("https://api.pota.app/spot/activator/")
         .alert_expire(Duration::from_secs(3600u64 * 48))
-        .alert_update_schedule("10 */1 * * * *")
+        .alert_update_schedule("30 */10* * * *")
         .spot_expire(Duration::from_secs(3600u64 * 48))
         .spot_update_schedule("0 */1 * * * *")
+        .sota_import_association(r#"^JA\d*"#)
         .build();
 
     let filter = EnvFilter::new("info");

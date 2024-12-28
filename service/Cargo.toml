@@ -14,3 +14,4 @@ common.workspace = true
 domain.workspace = true
 adapter.workspace = true
 tracing.workspace = true
+regex.workspace = true

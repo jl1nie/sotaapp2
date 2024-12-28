@@ -13,3 +13,4 @@ tracing.workspace = true
 csv.workspace = true
 serde.workspace = true
 uuid.workspace = true
+regex.workspace = true
