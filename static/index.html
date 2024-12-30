@@ -58,6 +58,9 @@
         <label for="min_elev">Min Elev:</label>
         <input type="text" id="min_elev" name="min_elev" value="1500"><br><br>
 
+        <label for="max_results">Max Results:</label>
+        <input type="text" id="max_results" name="max_results" value="500"><br><br>
+
         <input type="submit" value="送信">
     </form>
 
@@ -163,7 +166,8 @@
                 let max_lon = document.getElementById('max_lon').value;
                 let max_lat = document.getElementById('max_lat').value;
                 let min_elev = document.getElementById('min_elev').value;
-                let param = `min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&mat_lat=${max_lat}&min_elev=${min_elev}`;
+                let max_results = document.getElementById('max_results').value;
+                let param = `min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&mat_lat=${max_lat}&min_elev=${min_elev}&max_results=${max_results}`;
                 search(searchurl, param);
             });
     </script>

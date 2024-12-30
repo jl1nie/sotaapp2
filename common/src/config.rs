@@ -9,11 +9,13 @@ pub struct AppConfig {
     pub sota_spot_endpoint: String,
     pub pota_alert_endpoint: String,
     pub pota_spot_endpoint: String,
-
+    pub ak_index_endpoint: String,
+    pub ak_index_update_schedule: String,
+    pub ak_index_expire: Duration,
     pub alert_update_schedule: String,
     pub alert_expire: Duration,
-    pub spot_expire: Duration,
     pub spot_update_schedule: String,
+    pub spot_expire: Duration,
     pub sota_import_association: Option<Regex>,
     pub log_expire: Duration,
 }
@@ -66,6 +68,21 @@ impl AppConfigBuilder {
 
     pub fn pota_spot_endpoint(mut self, endpoint: &str) -> Self {
         self.config.pota_spot_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn ak_index_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.ak_index_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn ak_index_update_schedule(mut self, schedule: &str) -> Self {
+        self.config.ak_index_update_schedule = schedule.to_string();
+        self
+    }
+
+    pub fn ak_index_expire(mut self, expire: Duration) -> Self {
+        self.config.ak_index_expire = expire;
         self
     }
 

@@ -1,5 +1,3 @@
-use std::result;
-
 use async_trait::async_trait;
 use shaku::Component;
 use sqlx::PgConnection;

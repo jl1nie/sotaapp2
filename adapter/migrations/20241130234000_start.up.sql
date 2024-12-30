@@ -35,9 +35,10 @@ CREATE TABLE IF NOT EXISTS pota_references (
     park_location VARCHAR(255) NOT NULL,
     park_locid VARCHAR(255) NOT NULL,
     park_type VARCHAR(255) NOT NULL,
-    park_status BOOLEAN NOT NULL,
+    park_inactive BOOLEAN NOT NULL,
     park_area INTEGER,
-    coordinates GEOMETRY(Point, 4326)
+    coordinates GEOMETRY(Point, 4326),
+    update TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_pota_references_code ON pota_references (pota_code,wwff_code, park_name,park_name_j);

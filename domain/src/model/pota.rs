@@ -18,7 +18,7 @@ pub struct POTAReference {
     pub park_location: String,
     pub park_locid: String,
     pub park_type: String,
-    pub park_status: bool,
+    pub park_inactive: bool,
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
