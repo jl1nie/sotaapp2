@@ -1,5 +1,6 @@
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use domain::model::common::id::UserId;
+use domain::model::pota::POTAReference;
 use sqlx::FromRow;
 
 #[derive(Debug)]
@@ -19,11 +20,29 @@ pub struct POTAReferenceImpl {
     pub park_location: String,
     pub park_locid: String,
     pub park_type: String,
-    pub park_status: bool,
+    pub park_inactive: bool,
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
-    pub update: NaiveDate,
+    pub update: DateTime<Utc>,
+}
+impl From<POTAReference> for POTAReferenceImpl {
+    fn from(r: POTAReference) -> Self {
+        POTAReferenceImpl {
+            pota_code: r.pota_code,
+            wwff_code: r.wwff_code,
+            park_name: r.park_name,
+            park_name_j: r.park_name_j,
+            park_location: r.park_location,
+            park_locid: r.park_locid,
+            park_type: r.park_type,
+            park_inactive: r.park_inactive,
+            park_area: r.park_area,
+            longitude: r.longitude,
+            lattitude: r.lattitude,
+            update: r.update,
+        }
+    }
 }
 
 #[derive(Debug, FromRow)]
@@ -38,7 +57,7 @@ pub struct POTAActivatorLogImpl {
     pub attempts: i32,
     pub activations: i32,
     pub qsos: i32,
-    pub upload: NaiveDate,
+    pub upload: DateTime<Utc>,
 }
 
 #[derive(Debug, FromRow)]
@@ -51,5 +70,5 @@ pub struct POTAHunterLogImpl {
     pub park_name: String,
     pub first_qso_date: NaiveDate,
     pub qsos: i32,
-    pub upload: NaiveDate,
+    pub upload: DateTime<Utc>,
 }

@@ -10,6 +10,16 @@ pub enum AwardProgram {
     WWFF = 2,
 }
 
+impl AwardProgram {
+    pub fn as_i32(&self) -> i32 {
+        match self {
+            AwardProgram::SOTA => 0,
+            AwardProgram::POTA => 1,
+            AwardProgram::WWFF => 2,
+        }
+    }
+}
+
 impl From<i32> for AwardProgram {
     fn from(value: i32) -> Self {
         match value {

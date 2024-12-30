@@ -42,7 +42,7 @@ impl ActivationRepositryImpl {
                     comment = EXCLUDED.comment,
                     poster = EXCLUDED.poster
             "#,
-            a.program as i32,
+            a.program.as_i32(),
             a.alert_id,
             a.user_id,
             a.reference,
@@ -80,7 +80,7 @@ impl ActivationRepositryImpl {
                     spotter = EXCLUDED.spotter,
                     comment = EXCLUDED.comment
             "#,
-            s.program as i32,
+            s.program.as_i32(),
             s.spot_id,
             s.reference,
             s.reference_detail,
@@ -198,12 +198,13 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-
+        let len = alerts.len();
         for r in alerts.into_iter().enumerate() {
             self.update_alert_impl(AlertImpl::from(r.1), &mut tx)
                 .await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
+        tracing::info!("{} alerts updated.", len);
         Ok(())
     }
 
@@ -214,11 +215,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-
+        let len = spots.len();
         for r in spots.into_iter().enumerate() {
             self.update_spot_impl(SpotImpl::from(r.1), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
+        tracing::info!("{} spots updated.", len);
         Ok(())
     }
     async fn delete_alerts(&self, query: DeleteAct) -> AppResult<()> {

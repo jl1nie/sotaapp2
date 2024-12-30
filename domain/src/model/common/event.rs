@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
 
+use crate::model::common::id::UserId;
 use crate::model::{pota::POTAReference, sota::SOTAReference, AwardProgram};
 
 #[derive(new, Debug)]
@@ -27,6 +28,7 @@ pub struct FindRef {
     pub center: Option<CenterRadius>,
     pub min_elev: Option<i32>,
     pub min_area: Option<i32>,
+    pub user_id: Option<UserId>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -113,6 +115,11 @@ impl FindRefBuilder {
 
     pub fn min_area(mut self, area: i32) -> Self {
         self.param.min_area = Some(area);
+        self
+    }
+
+    pub fn user_id(mut self, id: UserId) -> Self {
+        self.param.user_id = Some(id);
         self
     }
 

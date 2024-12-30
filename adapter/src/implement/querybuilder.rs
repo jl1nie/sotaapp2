@@ -77,11 +77,7 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     let mut query: String = String::new();
 
     if let Some(prog) = &r.program {
-        match prog {
-            AwardProgram::SOTA => query.push_str("program = 0 AND "),
-            AwardProgram::POTA => query.push_str("program = 1 AND "),
-            AwardProgram::WWFF => query.push_str("program = 2 AND "),
-        }
+        query.push_str(format!("program = {} AND ", prog.as_i32()).as_str());
     }
 
     if is_alert {
@@ -105,6 +101,6 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     if let Some(offset) = &r.offset {
         query.push_str(&format!("OFFSET {} ", offset));
     }
-    tracing::info!("Query is {}", query);
+    tracing::info!("build query result = {}", query);
     query
 }
