@@ -7,7 +7,7 @@ use adapter::{
     database::connect_database_with,
     implement::{
         activation::ActivationRepositryImplParameters,
-        healthcheck::HealthCheckRepositryImplParameters,
+        healthcheck::HealthCheckRepositryImplParameters, locator::LocatorRepositryImplParameters,
         pota_reference::POTAReferenceRepositryImplParameters,
         sota_reference::SOTAReferenceReposityImplParameters,
     },
@@ -21,13 +21,15 @@ use service::implement::{
 
 use adapter::implement::{
     activation::ActivationRepositryImpl, healthcheck::HealthCheckRepositryImpl,
-    pota_reference::POTAReferenceRepositryImpl, sota_reference::SOTAReferenceReposityImpl,
+    locator::LocatorRepositryImpl, pota_reference::POTAReferenceRepositryImpl,
+    sota_reference::SOTAReferenceReposityImpl,
 };
 
 module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,
         SOTAReferenceReposityImpl,ActivationRepositryImpl,POTAReferenceRepositryImpl,
+        LocatorRepositryImpl,
         HealthCheckRepositryImpl],
         providers = [],
     }
@@ -38,23 +40,18 @@ impl AppRegistry {
         let pool = connect_database_with(config).unwrap();
         AppRegistry::builder()
             .with_component_parameters::<SOTAReferenceReposityImpl>(
-                SOTAReferenceReposityImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
+                SOTAReferenceReposityImplParameters { pool: pool.clone() },
             )
             .with_component_parameters::<POTAReferenceRepositryImpl>(
-                POTAReferenceRepositryImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
+                POTAReferenceRepositryImplParameters { pool: pool.clone() },
             )
             .with_component_parameters::<ActivationRepositryImpl>(
-                ActivationRepositryImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
+                ActivationRepositryImplParameters { pool: pool.clone() },
             )
+            .with_component_parameters::<LocatorRepositryImpl>(LocatorRepositryImplParameters {
+                config: config.clone(),
+                pool: pool.clone(),
+            })
             .with_component_parameters::<UserServiceImpl>(UserServiceImplParameters {
                 config: config.clone(),
             })

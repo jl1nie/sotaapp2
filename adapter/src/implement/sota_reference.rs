@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use shaku::Component;
 use sqlx::PgConnection;
 
-use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 use domain::model::common::event::{DeleteRef, FindRef, FindResult};
 use domain::model::sota::{SOTAReference, SummitCode};
@@ -15,7 +14,6 @@ use domain::repository::sota::SOTAReferenceReposity;
 #[derive(Component)]
 #[shaku(interface = SOTAReferenceReposity)]
 pub struct SOTAReferenceReposityImpl {
-    config: AppConfig,
     pool: ConnectionPool,
 }
 

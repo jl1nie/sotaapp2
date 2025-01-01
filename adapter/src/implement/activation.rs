@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use shaku::Component;
 use sqlx::PgConnection;
 
-use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 
 use domain::model::common::activation::{Alert, Spot};
@@ -16,7 +15,6 @@ use crate::implement::querybuilder::findact_query_builder;
 #[derive(Component)]
 #[shaku(interface = ActivationRepositry)]
 pub struct ActivationRepositryImpl {
-    config: AppConfig,
     pool: ConnectionPool,
 }
 

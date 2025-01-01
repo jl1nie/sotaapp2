@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::{Local, NaiveDate};
+
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -9,12 +10,15 @@ use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
 use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder, FindResult};
+use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
 use domain::repository::{
-    healthcheck::HealthCheckRepositry, pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
+    healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::POTAReferenceRepositry,
+    sota::SOTAReferenceReposity,
 };
 
+use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
 use crate::model::pota::{POTACSVFile, UploadPOTACSV};
 use crate::model::sota::{SOTACSVFile, SOTACSVOptFile};
 use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
@@ -30,6 +34,8 @@ pub struct AdminServiceImpl {
     pota_repo: Arc<dyn POTAReferenceRepositry>,
     #[shaku(inject)]
     check_repo: Arc<dyn HealthCheckRepositry>,
+    #[shaku(inject)]
+    loc_repo: Arc<dyn LocatorRepositry>,
     config: AppConfig,
 }
 
@@ -108,6 +114,19 @@ impl AdminService for AdminServiceImpl {
         let requests: Vec<POTACSVFile> = csv_reader(data, 1)?;
         let newref = requests.into_iter().map(POTAReference::from).collect();
         self.pota_repo.create_reference(newref).await?;
+        Ok(())
+    }
+
+    async fn import_muni_century_list(
+        &self,
+        UploadMuniCSV { data }: UploadMuniCSV,
+    ) -> AppResult<()> {
+        let requests: Vec<MuniCSVFile> = csv_reader(data, 1)?;
+        let newtable = requests
+            .into_iter()
+            .map(MunicipalityCenturyCode::from)
+            .collect();
+        self.loc_repo.upload_muni_century_list(newtable).await?;
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use domain::model::common::activation::Alert;
 use domain::model::AwardProgram;
@@ -92,5 +92,41 @@ impl From<POTAAlert> for Result<Alert> {
             comment: Some(a.comments),
             poster: None,
         })
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct AlertResponse {
+    pub program: String,
+    pub alert_id: i32,
+    pub user_id: i32,
+    pub reference: String,
+    pub reference_detail: String,
+    pub location: String,
+    pub activator: String,
+    pub activator_name: Option<String>,
+    pub start_time: DateTime<Utc>,
+    pub end_time: Option<DateTime<Utc>>,
+    pub frequencies: String,
+    pub comment: Option<String>,
+    pub poster: Option<String>,
+}
+impl From<Alert> for AlertResponse {
+    fn from(a: Alert) -> Self {
+        Self {
+            program: a.program.into(),
+            alert_id: a.alert_id,
+            user_id: a.user_id,
+            reference: a.reference,
+            reference_detail: a.reference_detail,
+            location: a.location,
+            activator: a.activator,
+            activator_name: a.activator_name,
+            start_time: a.start_time,
+            end_time: a.end_time,
+            frequencies: a.frequencies,
+            comment: a.comment,
+            poster: a.poster,
+        }
     }
 }

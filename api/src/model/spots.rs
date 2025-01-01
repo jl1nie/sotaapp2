@@ -1,6 +1,6 @@
 use anyhow::Result;
-use chrono::{NaiveDateTime, TimeZone, Utc};
-use serde::Deserialize;
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use serde::{Deserialize, Serialize};
 
 use domain::model::common::activation::Spot;
 use domain::model::AwardProgram;
@@ -85,5 +85,39 @@ impl From<POTASpot> for Result<Spot> {
             spotter: s.spotter,
             comment: s.comments,
         })
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpotResponse {
+    pub program: String,
+    pub spot_id: i32,
+    pub reference: String,
+    pub reference_detail: String,
+    pub activator: String,
+    pub activator_name: Option<String>,
+    pub spot_time: DateTime<Utc>,
+    pub frequency: String,
+    pub mode: String,
+    pub spotter: String,
+    pub comment: Option<String>,
+}
+
+impl From<Spot> for SpotResponse {
+    fn from(s: Spot) -> Self {
+        Self {
+            program: s.program.into(),
+            spot_id: s.spot_id,
+            reference: s.reference,
+            reference_detail: s.reference_detail,
+            activator: s.activator,
+            activator_name: s.activator_name,
+            spot_time: s.spot_time,
+            frequency: s.frequency,
+            mode: s.mode,
+            spotter: s.spotter,
+            comment: s.comment,
+        }
     }
 }

@@ -14,7 +14,10 @@ use crate::services::UserService;
 
 use domain::model::common::activation::{Alert, Spot};
 use domain::model::common::event::{DeleteLog, FindAct, FindAppResult, FindRef, FindResult};
+use domain::model::locator::MunicipalityCenturyCode;
+
 use domain::repository::activation::ActivationRepositry;
+use domain::repository::locator::LocatorRepositry;
 use domain::repository::pota::POTAReferenceRepositry;
 use domain::repository::sota::SOTAReferenceReposity;
 
@@ -27,6 +30,8 @@ pub struct UserServiceImpl {
     pota_repo: Arc<dyn POTAReferenceRepositry>,
     #[shaku(inject)]
     act_repo: Arc<dyn ActivationRepositry>,
+    #[shaku(inject)]
+    locator_repo: Arc<dyn LocatorRepositry>,
     config: AppConfig,
 }
 
@@ -64,7 +69,7 @@ impl UserService for UserServiceImpl {
             .collect();
         self.pota_repo.upload_activator_log(newlog).await?;
         self.pota_repo
-            .delete_activator_log(DeleteLog {
+            .delete_log(DeleteLog {
                 before: Utc::now() - self.config.log_expire,
             })
             .await?;
@@ -83,10 +88,25 @@ impl UserService for UserServiceImpl {
             .collect();
         self.pota_repo.upload_hunter_log(newlog).await?;
         self.pota_repo
-            .delete_hunter_log(DeleteLog {
+            .delete_log(DeleteLog {
                 before: Utc::now() - self.config.log_expire,
             })
             .await?;
         Ok(())
+    }
+
+    async fn find_century_code(
+        &self,
+        muni_code: i32,
+    ) -> AppResult<FindResult<MunicipalityCenturyCode>> {
+        let result = self
+            .locator_repo
+            .find_location_by_muni_code(muni_code)
+            .await?;
+        Ok(result)
+    }
+
+    async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String> {
+        Ok(self.locator_repo.find_mapcode(lon, lat).await?)
     }
 }
