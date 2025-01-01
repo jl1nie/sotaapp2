@@ -200,10 +200,21 @@ pub struct FindActBuilder {
 }
 
 impl FindActBuilder {
-    pub fn program(mut self, prog: AwardProgram) -> Self {
-        self.param.program = Some(prog);
+    pub fn sota(mut self) -> Self {
+        self.param.program = Some(AwardProgram::SOTA);
         self
     }
+
+    pub fn pota(mut self) -> Self {
+        self.param.program = Some(AwardProgram::POTA);
+        self
+    }
+
+    pub fn wwff(mut self) -> Self {
+        self.param.program = Some(AwardProgram::WWFF);
+        self
+    }
+
     pub fn after(mut self, aft: DateTime<Utc>) -> Self {
         self.param.after = Some(aft);
         self

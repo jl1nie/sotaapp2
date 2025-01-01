@@ -1,28 +1,27 @@
 use std::vec;
 
 use axum::{
+    debug_handler,
     extract::{Multipart, Path, Query},
     http::StatusCode,
     routing::{delete, get, post, put},
     Json, Router,
 };
 
+use chrono::{Duration, Utc};
 use shaku_axum::Inject;
 
 use crate::model::sota::{
-    GetParam, SOTARefResponse, SOTARefSearchResponse, SOTASearchResult, UpdateRefRequest,
+    SOTARefResponse, SOTARefSearchResponse, SOTASearchResult, UpdateRefRequest,
 };
+use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{DeleteRef, FindRefBuilder};
+use domain::model::common::event::{DeleteRef, FindActBuilder, FindRefBuilder};
 use domain::model::sota::SummitCode;
 use registry::{AppRegistry, AppState};
 
 use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
-use service::services::AdminService;
-
-pub async fn health_check() -> StatusCode {
-    StatusCode::OK
-}
+use service::services::{AdminService, UserService};
 
 pub async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -147,12 +146,50 @@ pub async fn show_sota_reference_list(
     Err(AppError::EntityNotFound("Summit not found.".to_string()))
 }
 
+pub async fn show_sota_spots(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<Vec<SpotResponse>>> {
+    let hours = param.after.unwrap_or(3);
+    let query = FindActBuilder::default()
+        .sota()
+        .after(Utc::now() - Duration::hours(hours))
+        .build();
+    let result = user_service.find_spots(query).await?;
+    if let Some(spots) = result.get_values() {
+        let spots: Vec<_> = spots.into_iter().map(SpotResponse::from).collect();
+        Ok(Json(spots))
+    } else {
+        Err(AppError::EntityNotFound("Spot not found.".to_string()))
+    }
+}
+
+pub async fn show_sota_alerts(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<Vec<AlertResponse>>> {
+    let hours = param.after.unwrap_or(3);
+    let query = FindActBuilder::default()
+        .sota()
+        .after(Utc::now() - Duration::hours(hours))
+        .build();
+    tracing::info!("query: {:?}", query);
+    let result = user_service.find_alerts(query).await?;
+    if let Some(alerts) = result.get_values() {
+        let alerts: Vec<_> = alerts.into_iter().map(AlertResponse::from).collect();
+        Ok(Json(alerts))
+    } else {
+        Err(AppError::EntityNotFound("Alert not found.".to_string()))
+    }
+}
+
 pub fn build_sota_routers() -> Router<AppState> {
     let routers = Router::new()
-        .route("/", post(update_sota_reference))
         .route("/", get(show_sota_reference_list))
         .route("/import", post(import_sota_reference))
         .route("/import/ja", post(import_sota_opt_reference))
+        .route("/spots", get(show_sota_spots))
+        .route("/alerts", get(show_sota_alerts))
         .route("/:summit_code", get(show_sota_reference))
         .route("/:summit_code", put(update_sota_reference))
         .route("/:summit_code", delete(delete_sota_reference));

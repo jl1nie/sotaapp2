@@ -64,12 +64,31 @@
         <input type="submit" value="送信">
     </form>
 
+    <h4>Alerts</h4>
+    <form id="alerts" method="get">
+        <label for="after">Show alerts in :</label>
+        <input type="text" id="alerts-after" name="after" value="1"><br><br>
+
+        <input type="submit" value="送信">
+    </form>
+
+    <h4>Spots</h4>
+    <form id="spots" method="get">
+        <label for="after">Show alerts in :</label>
+        <input type="text" id="spots-after" name="after" value="1"><br><br>
+
+        <input type="submit" value="送信">
+    </form>
+
+
     <h4>JSON Result</h4>
     <div id="result"></div>
 
     <script>
         const baseurl = 'http://localhost:8000';
         const searchurl = baseurl + '/sota';
+        const alertsurl = baseurl + '/sota/alerts';
+        const spotsutl = baseurl + '/sota/spots';
         const uploadurl = baseurl + '/sota/import';
         const uploadjaurl = baseurl + '/sota/import/ja';
 
@@ -170,5 +189,22 @@
                 let param = `min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&mat_lat=${max_lat}&min_elev=${min_elev}&max_results=${max_results}`;
                 search(searchurl, param);
             });
+
+        document.getElementById('alerts')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let after = document.getElementById('alerts-after').value;
+                let param = `after=${after}`;
+                search(alertsurl, param);
+            });
+
+        document.getElementById('spots')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let after = document.getElementById('spots-after').value;
+                let param = `after=${after}`;
+                search(spotsutl, param);
+            });
+
     </script>
 </body>

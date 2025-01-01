@@ -1,7 +1,4 @@
-use domain::model::{
-    common::event::{FindAct, FindRef},
-    AwardProgram,
-};
+use domain::model::common::event::{FindAct, FindRef};
 
 pub fn findref_query_builder(r: &FindRef) -> String {
     let mut query: String = String::new();
@@ -10,7 +7,7 @@ pub fn findref_query_builder(r: &FindRef) -> String {
         if r.is_sota() {
             query.push_str(&format!("(summit_code = '{}') AND ", refid))
         } else {
-            query.push_str(&format!("(park_reference = '{}') AND ", refid))
+            query.push_str(&format!("(park_code = '{}') AND ", refid))
         }
     }
 
@@ -23,7 +20,7 @@ pub fn findref_query_builder(r: &FindRef) -> String {
             ));
         } else {
             query.push_str(&format!(
-                "(park_reference ILIKE {} OR park_name LIKE {} OR park_name_j LIKE {}) AND",
+                "(park_code ILIKE {} OR park_name LIKE {} OR park_name_j LIKE {}) AND",
                 name, name, name
             ));
         }
@@ -37,7 +34,7 @@ pub fn findref_query_builder(r: &FindRef) -> String {
 
     if let Some(min_area) = &r.min_area {
         if !r.is_sota() {
-            query.push_str(&format!("(area >= {}) AND", min_area));
+            query.push_str(&format!("(park_area >= {}) AND", min_area));
         }
     }
 
@@ -53,13 +50,13 @@ pub fn findref_query_builder(r: &FindRef) -> String {
     if r.is_sota() {
         query.push_str("GROUP BY summit_code ");
     } else {
-        query.push_str("GROUP BY park_reference ");
+        query.push_str("GROUP BY park_code ");
     }
 
     if r.min_elev.is_some() && r.is_sota() {
         query.push_str("ORDER BY alt_m DESC ");
     } else if r.min_area.is_some() {
-        query.push_str("ORDER BY area DESC ");
+        query.push_str("ORDER BY park_area DESC ");
     }
 
     if let Some(limit) = &r.limit {

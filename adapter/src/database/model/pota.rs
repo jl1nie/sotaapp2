@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use domain::model::common::id::UserId;
-use domain::model::pota::POTAReference;
+use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference};
 use sqlx::FromRow;
 
 #[derive(Debug)]
@@ -45,6 +45,25 @@ impl From<POTAReference> for POTAReferenceImpl {
     }
 }
 
+impl From<POTAReferenceImpl> for POTAReference {
+    fn from(r: POTAReferenceImpl) -> Self {
+        POTAReference {
+            pota_code: r.pota_code,
+            wwff_code: r.wwff_code,
+            park_name: r.park_name,
+            park_name_j: r.park_name_j,
+            park_location: r.park_location,
+            park_locid: r.park_locid,
+            park_type: r.park_type,
+            park_inactive: r.park_inactive,
+            park_area: r.park_area,
+            longitude: r.longitude,
+            lattitude: r.lattitude,
+            update: r.update,
+        }
+    }
+}
+
 #[derive(Debug, FromRow)]
 pub struct POTAActivatorLogImpl {
     pub user_id: UserId,
@@ -60,6 +79,24 @@ pub struct POTAActivatorLogImpl {
     pub upload: DateTime<Utc>,
 }
 
+impl From<POTAActivatorLog> for POTAActivatorLogImpl {
+    fn from(l: POTAActivatorLog) -> Self {
+        POTAActivatorLogImpl {
+            user_id: l.user_id,
+            dx_entity: l.dx_entity,
+            location: l.location,
+            hasc: l.hasc,
+            pota_code: l.pota_code,
+            park_name: l.park_name,
+            first_qso_date: l.first_qso_date,
+            attempts: l.attempts,
+            activations: l.activations,
+            qsos: l.qsos,
+            upload: l.upload,
+        }
+    }
+}
+
 #[derive(Debug, FromRow)]
 pub struct POTAHunterLogImpl {
     pub user_id: UserId,
@@ -71,4 +108,20 @@ pub struct POTAHunterLogImpl {
     pub first_qso_date: NaiveDate,
     pub qsos: i32,
     pub upload: DateTime<Utc>,
+}
+
+impl From<POTAHunterLog> for POTAHunterLogImpl {
+    fn from(l: POTAHunterLog) -> Self {
+        POTAHunterLogImpl {
+            user_id: l.user_id,
+            dx_entity: l.dx_entity,
+            location: l.location,
+            hasc: l.hasc,
+            pota_code: l.pota_code,
+            park_name: l.park_name,
+            first_qso_date: l.first_qso_date,
+            qsos: l.qsos,
+            upload: l.upload,
+        }
+    }
 }

@@ -25,6 +25,7 @@ async fn bootstrap() -> Result<()> {
         .sota_spot_endpoint("https://api2.sota.org.uk/api/spots/20?")
         .pota_alert_endpoint("https://api.pota.app/activation/")
         .pota_spot_endpoint("https://api.pota.app/spot/activator/")
+        .mapcode_endpoint("https://japanmapcode.com/mapcode")
         .alert_expire(Duration::from_secs(3600u64 * 48))
         .alert_update_schedule("30 */10* * * *")
         .spot_expire(Duration::from_secs(3600u64 * 48))

@@ -1,4 +1,5 @@
 pub mod common;
+pub mod locator;
 pub mod pota;
 pub mod sota;
 
@@ -27,6 +28,16 @@ impl From<i32> for AwardProgram {
             1 => AwardProgram::POTA,
             2 => AwardProgram::WWFF,
             _ => panic!("Invalid value for AwardProgram"),
+        }
+    }
+}
+
+impl From<AwardProgram> for String {
+    fn from(value: AwardProgram) -> Self {
+        match value {
+            AwardProgram::SOTA => "SOTA".to_string(),
+            AwardProgram::POTA => "POTA".to_string(),
+            AwardProgram::WWFF => "WWFF".to_string(),
         }
     }
 }

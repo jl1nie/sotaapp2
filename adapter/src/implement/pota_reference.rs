@@ -2,22 +2,20 @@ use async_trait::async_trait;
 use shaku::Component;
 use sqlx::PgConnection;
 
-use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 
-use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference, ParkCode};
-
 use domain::model::common::event::{DeleteLog, DeleteRef, FindRef, FindResult};
+use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference, ParkCode};
 
 use crate::database::model::pota::{POTAActivatorLogImpl, POTAHunterLogImpl, POTAReferenceImpl};
 use crate::database::ConnectionPool;
+use crate::implement::querybuilder::findref_query_builder;
 
 use domain::repository::pota::POTAReferenceRepositry;
 
 #[derive(Component)]
 #[shaku(interface = POTAReferenceRepositry)]
 pub struct POTAReferenceRepositryImpl {
-    config: AppConfig,
     pool: ConnectionPool,
 }
 
@@ -121,6 +119,107 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
+    async fn update_activator_log(
+        &self,
+        r: POTAActivatorLogImpl,
+        db: &mut PgConnection,
+    ) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+                INSERT INTO pota_activator_log (user_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, attempts, activations, qsos, upload)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                ON CONFLICT (user_id, pota_code) DO UPDATE
+                SET dx_entity = EXCLUDED.dx_entity,
+                    location = EXCLUDED.location,
+                    hasc = EXCLUDED.hasc,
+                    pota_code = EXCLUDED.pota_code,
+                    park_name = EXCLUDED.park_name,
+                    first_qso_date = EXCLUDED.first_qso_date,
+                    attempts = EXCLUDED.attempts,
+                    activations = EXCLUDED.activations,
+                    qsos = EXCLUDED.qsos,
+                    upload = EXCLUDED.upload
+            "#,
+            r.user_id.raw(),
+            r.dx_entity,
+            r.location,
+            r.hasc,
+            r.pota_code,
+            r.park_name,
+            r.first_qso_date,
+            r.attempts,
+            r.activations,
+            r.qsos,
+            r.upload
+        )
+        .execute(db)
+        .await
+        .map_err(AppError::SpecificOperationError)?;
+        Ok(())
+    }
+
+    async fn update_hunter_log(
+        &self,
+        r: POTAHunterLogImpl,
+        db: &mut PgConnection,
+    ) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+                INSERT INTO pota_hunter_log (user_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, qsos, upload)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (user_id, pota_code) DO UPDATE
+                SET dx_entity = EXCLUDED.dx_entity,
+                    location = EXCLUDED.location,
+                    hasc = EXCLUDED.hasc,
+                    pota_code = EXCLUDED.pota_code,
+                    park_name = EXCLUDED.park_name,
+                    first_qso_date = EXCLUDED.first_qso_date,
+                    qsos = EXCLUDED.qsos,
+                    upload = EXCLUDED.upload
+            "#,
+            r.user_id.raw(),
+            r.dx_entity,
+            r.location,
+            r.hasc,
+            r.pota_code,
+            r.park_name,
+            r.first_qso_date,
+            r.qsos,
+            r.upload
+        )
+        .execute(db)
+        .await
+        .map_err(AppError::SpecificOperationError)?;
+        Ok(())
+    }
+
+    async fn delete_log(&self, d: DeleteLog, db: &mut PgConnection) -> AppResult<()> {
+        let before = d.before;
+        sqlx::query!(
+            r#"
+                DELETE FROM pota_activator_log
+                WHERE upload < $1
+            "#,
+            before,
+        )
+        .execute(&mut *db)
+        .await
+        .map_err(AppError::SpecificOperationError)?;
+
+        sqlx::query!(
+            r#"
+                DELETE FROM pota_hunter_log
+                WHERE upload < $1
+            "#,
+            before,
+        )
+        .execute(db)
+        .await
+        .map_err(AppError::SpecificOperationError)?;
+
+        Ok(())
+    }
+
     async fn select_by_condition(
         &self,
         query: &str,
@@ -173,9 +272,12 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
+
     async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>> {
-        tracing::info!("Find POTA references with {:?}.", event);
-        todo!()
+        let query = findref_query_builder(event);
+        let results = self.select_by_condition(&query).await?;
+        let results = results.into_iter().map(POTAReference::from).collect();
+        Ok(FindResult::new(results))
     }
 
     async fn update_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {
@@ -211,22 +313,50 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
     }
 
     async fn upload_activator_log(&self, logs: Vec<POTAActivatorLog>) -> AppResult<()> {
-        tracing::info!("Upload POTA activator log.");
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+        for r in logs.into_iter().enumerate() {
+            self.update_activator_log(POTAActivatorLogImpl::from(r.1), &mut tx)
+                .await?;
+            if r.0 % 50 == 0 {
+                tracing::info!("update activator log {} rescords", r.0);
+            }
+        }
+        tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 
     async fn upload_hunter_log(&self, logs: Vec<POTAHunterLog>) -> AppResult<()> {
-        tracing::info!("Upload POTA hunter log.");
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+        for r in logs.into_iter().enumerate() {
+            self.update_hunter_log(POTAHunterLogImpl::from(r.1), &mut tx)
+                .await?;
+            if r.0 % 50 == 0 {
+                tracing::info!("update hunter log {} rescords", r.0);
+            }
+        }
+        tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 
-    async fn delete_activator_log(&self, query: DeleteLog) -> AppResult<()> {
-        tracing::info!("Delete Activator log.");
-        Ok(())
-    }
-
-    async fn delete_hunter_log(&self, query: DeleteLog) -> AppResult<()> {
-        tracing::info!("Delete Hunter log.");
+    async fn delete_log(&self, query: DeleteLog) -> AppResult<()> {
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+        self.delete_log(query, &mut tx).await?;
+        tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 }

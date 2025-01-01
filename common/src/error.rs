@@ -17,6 +17,10 @@ pub enum AppError {
     NoRowsAffectedError(String),
     #[error("CSVの読み込みに失敗しました。")]
     CSVReadError(#[source] csv::Error),
+    #[error("POSTに失敗しました。")]
+    PostError(#[source] reqwest::Error),
+    #[error("JSON変換に失敗しました。")]
+    JsonError(#[source] serde_json::Error),
     // #[error("{0}")]
     // KeyValueStoreError(#[from] redis::RedisError),
     // #[error("{0}")]
@@ -48,6 +52,8 @@ impl IntoResponse for AppError {
             e @ (AppError::TransactionError(_)
             | AppError::SpecificOperationError(_)
             | AppError::NoRowsAffectedError(_)
+            | AppError::PostError(_)
+            | AppError::JsonError(_)
             /* 
             | AppError::KeyValueStoreError(_)
             | AppError::BcryptError(_)

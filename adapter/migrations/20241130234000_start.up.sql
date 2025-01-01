@@ -49,13 +49,14 @@ CREATE TABLE IF NOT EXISTS pota_activator_log (
     dx_entity VARCHAR(255),
     "location" VARCHAR(255),
     hasc VARCHAR(255),
-    pota_code VARCHAR(255) NOT NULL PRIMARY KEY,
+    pota_code VARCHAR(255) NOT NULL,
     park_name VARCHAR(255),
-    first_qso_date TIMESTAMPTZ,
+    first_qso_date DATE,
     attempts INTEGER,
     activations INTEGER,
     qsos INTEGER,
-    upload TIMESTAMPTZ
+    upload TIMESTAMPTZ,
+    PRIMARY KEY(user_id, pota_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pota_activator_log ON pota_activator_log (user_id,pota_code);
@@ -66,11 +67,12 @@ CREATE TABLE IF NOT EXISTS pota_hunter_log (
     dx_entity VARCHAR(255),
     "location" VARCHAR(255),
     hasc VARCHAR(255),
-    pota_code VARCHAR(255) NOT NULL PRIMARY KEY,
+    pota_code VARCHAR(255) NOT NULL,
     park_name VARCHAR(255),
-    first_qso_date TIMESTAMPTZ,
+    first_qso_date DATE,
     qsos INTEGER,
-    upload TIMESTAMPTZ
+    upload TIMESTAMPTZ,
+    PRIMARY KEY(user_id, pota_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pota_hunter_log ON pota_hunter_log (user_id,pota_code);
@@ -113,3 +115,17 @@ CREATE TABLE IF NOT EXISTS spots (
 
 CREATE INDEX IF NOT EXISTS idx_spots_id ON spots (program, spot_id);
 CREATE INDEX IF NOT EXISTS idx_spots_time ON spots (spot_time DESC);
+
+CREATE TABLE IF NOT EXISTS municipality_century_codes(
+    muni_code INTEGER NOT NULL PRIMARY KEY,
+    prefecture VARCHAR(255) NOT NULL,
+    municipality VARCHAR(255) NOT NULL,
+    jcc_code VARCHAR(255),
+    ward_code VARCHAR(255),
+    jcc_text VARCHAR(255),
+    jcg_code VARCHAR(255),
+    jcg_text VARCHAR(255),
+    hamlog_code VARCHAR(255)
+);
+
+CREATE INDEX IF NOT EXISTS idx_municipality_century_codes_muni_code ON municipality_century_codes (muni_code);

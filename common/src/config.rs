@@ -12,6 +12,7 @@ pub struct AppConfig {
     pub ak_index_endpoint: String,
     pub ak_index_update_schedule: String,
     pub ak_index_expire: Duration,
+    pub mapcode_endpoint: String,
     pub alert_update_schedule: String,
     pub alert_expire: Duration,
     pub spot_update_schedule: String,
@@ -71,6 +72,10 @@ impl AppConfigBuilder {
         self
     }
 
+    pub fn mapcode_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.mapcode_endpoint = endpoint.to_string();
+        self
+    }
     pub fn ak_index_endpoint(mut self, endpoint: &str) -> Self {
         self.config.ak_index_endpoint = endpoint.to_string();
         self

@@ -1,5 +1,6 @@
-use domain::model::sota::SOTAReference;
 use serde::{Deserialize, Serialize};
+
+use domain::model::sota::SOTAReference;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -148,21 +149,6 @@ impl From<UpdateRefRequest> for Vec<SOTAReference> {
         };
         vec![request]
     }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GetParam {
-    pub min_lon: Option<f64>,
-    pub min_lat: Option<f64>,
-    pub max_lon: Option<f64>,
-    pub max_lat: Option<f64>,
-    pub min_elev: Option<i32>,
-    pub min_area: Option<i32>,
-    pub max_results: Option<i32>,
-    pub ref_id: Option<String>,
-    pub name: Option<String>,
-    pub limit: Option<i32>,
-    pub offset: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]

@@ -13,6 +13,5 @@ pub trait POTAReferenceRepositry: Send + Sync + Interface {
     async fn delete_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
     async fn upload_activator_log(&self, logs: Vec<POTAActivatorLog>) -> AppResult<()>;
     async fn upload_hunter_log(&self, logs: Vec<POTAHunterLog>) -> AppResult<()>;
-    async fn delete_activator_log(&self, query: DeleteLog) -> AppResult<()>;
-    async fn delete_hunter_log(&self, query: DeleteLog) -> AppResult<()>;
+    async fn delete_log(&self, query: DeleteLog) -> AppResult<()>;
 }
