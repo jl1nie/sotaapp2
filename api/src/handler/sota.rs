@@ -22,7 +22,7 @@ use registry::{AppRegistry, AppState};
 use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 use service::services::{AdminService, UserService};
 
-pub async fn update_sota_reference(
+async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Json(req): Json<UpdateRefRequest>,
 ) -> AppResult<StatusCode> {
@@ -32,7 +32,7 @@ pub async fn update_sota_reference(
         .map(|_| StatusCode::CREATED)
 }
 
-pub async fn import_sota_reference(
+async fn import_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
@@ -50,7 +50,7 @@ pub async fn import_sota_reference(
     Err(AppError::ForbiddenOperation)
 }
 
-pub async fn import_sota_opt_reference(
+async fn import_sota_opt_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
@@ -68,7 +68,7 @@ pub async fn import_sota_opt_reference(
     Err(AppError::ForbiddenOperation)
 }
 
-pub async fn delete_sota_reference(
+async fn delete_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
 ) -> AppResult<StatusCode> {
@@ -79,7 +79,7 @@ pub async fn delete_sota_reference(
         .map(|_| StatusCode::OK)
 }
 
-pub async fn show_sota_reference(
+async fn show_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
 ) -> AppResult<Json<SOTARefResponse>> {
@@ -92,7 +92,7 @@ pub async fn show_sota_reference(
     }
 }
 
-pub async fn show_sota_reference_list(
+async fn show_sota_reference_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<SOTARefSearchResponse>> {
@@ -145,7 +145,7 @@ pub async fn show_sota_reference_list(
     Err(AppError::EntityNotFound("Summit not found.".to_string()))
 }
 
-pub async fn show_sota_spots(
+async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<SpotResponse>>> {
@@ -163,7 +163,7 @@ pub async fn show_sota_spots(
     }
 }
 
-pub async fn show_sota_alerts(
+async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<AlertResponse>>> {

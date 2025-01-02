@@ -1,4 +1,4 @@
-use std::vec;
+use std::{str::FromStr, vec};
 
 use axum::{
     extract::{Multipart, Path, Query},
@@ -16,7 +16,10 @@ use crate::model::pota::{
 use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
 use common::error::{AppError, AppResult};
 
-use domain::model::common::event::{DeleteRef, FindActBuilder, FindRefBuilder};
+use domain::model::common::{
+    event::{DeleteRef, FindActBuilder, FindRefBuilder},
+    id::UserId,
+};
 use domain::model::pota::ParkCode;
 
 use registry::{AppRegistry, AppState};
@@ -24,7 +27,7 @@ use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
 use service::services::{AdminService, UserService};
 
-pub async fn update_pota_reference(
+async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Json(req): Json<UpdateRefRequest>,
 ) -> AppResult<StatusCode> {
@@ -34,7 +37,7 @@ pub async fn update_pota_reference(
         .map(|_| StatusCode::CREATED)
 }
 
-pub async fn import_pota_reference(
+async fn import_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
@@ -52,7 +55,45 @@ pub async fn import_pota_reference(
     Err(AppError::ForbiddenOperation)
 }
 
-pub async fn delete_pota_reference(
+async fn upload_pota_activator_log(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Path(user_id): Path<String>,
+    mut multipart: Multipart,
+) -> AppResult<StatusCode> {
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let data = field.bytes().await.unwrap();
+        let data = String::from_utf8(data.to_vec()).unwrap();
+        let user_id = UserId::from_str(&user_id)?;
+        let reqs = UploadActivatorCSV { data };
+
+        return user_service
+            .upload_activator_csv(user_id, reqs)
+            .await
+            .map(|_| StatusCode::CREATED);
+    }
+    Err(AppError::ForbiddenOperation)
+}
+
+async fn upload_pota_hunter_log(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Path(user_id): Path<String>,
+    mut multipart: Multipart,
+) -> AppResult<StatusCode> {
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let data = field.bytes().await.unwrap();
+        let data = String::from_utf8(data.to_vec()).unwrap();
+        let user_id = UserId::from_str(&user_id)?;
+        let reqs = UploadHunterCSV { data };
+
+        return user_service
+            .upload_hunter_csv(user_id, reqs)
+            .await
+            .map(|_| StatusCode::CREATED);
+    }
+    Err(AppError::ForbiddenOperation)
+}
+
+async fn delete_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(park_code): Path<String>,
 ) -> AppResult<StatusCode> {
@@ -63,7 +104,7 @@ pub async fn delete_pota_reference(
         .map(|_| StatusCode::OK)
 }
 
-pub async fn show_pota_reference(
+async fn show_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(park_code): Path<String>,
 ) -> AppResult<Json<POTARefResponse>> {
@@ -76,7 +117,7 @@ pub async fn show_pota_reference(
     }
 }
 
-pub async fn show_pota_reference_list(
+async fn show_pota_reference_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<POTARefSearchResponse>> {
@@ -129,7 +170,7 @@ pub async fn show_pota_reference_list(
     Err(AppError::EntityNotFound("Park not found.".to_string()))
 }
 
-pub async fn show_pota_spots(
+async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<SpotResponse>>> {
@@ -147,7 +188,7 @@ pub async fn show_pota_spots(
     }
 }
 
-pub async fn show_pota_alerts(
+async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<AlertResponse>>> {
@@ -170,8 +211,11 @@ pub fn build_pota_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/", get(show_pota_reference_list))
         .route("/import/parks", post(import_pota_reference))
-        .route("/import/activator", post(import_pota_reference))
-        .route("/import/hunter", post(import_pota_reference))
+        .route(
+            "/upload/activator/:user_id",
+            post(upload_pota_activator_log),
+        )
+        .route("/upload/hunter/:user_id", post(upload_pota_hunter_log))
         .route("/spots", get(show_pota_spots))
         .route("/alerts", get(show_pota_alerts))
         .route("/:park_code", get(show_pota_reference))
