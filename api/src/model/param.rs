@@ -2,6 +2,8 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct GetParam {
+    pub lon: Option<f64>,
+    pub lat: Option<f64>,
     pub min_lon: Option<f64>,
     pub min_lat: Option<f64>,
     pub max_lon: Option<f64>,
