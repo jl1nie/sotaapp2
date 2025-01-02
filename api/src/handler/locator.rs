@@ -18,8 +18,7 @@ async fn find_century_code(
 ) -> AppResult<Json<CenturyCodeResponse>> {
     let muni_code: i32 = muni_code.parse().unwrap_or_default();
     let result = user_service.find_century_code(muni_code).await?;
-    let result = result.get_first().unwrap().into();
-    Ok(Json(result))
+    Ok(Json(result.into()))
 }
 
 async fn find_mapcode(

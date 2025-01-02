@@ -4,7 +4,7 @@ use sqlx::PgConnection;
 
 use common::error::{AppError, AppResult};
 
-use domain::model::common::event::{DeleteLog, DeleteRef, FindRef, FindResult};
+use domain::model::common::event::{DeleteLog, DeleteRef, FindRef};
 use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference, ParkCode};
 
 use crate::database::model::pota::{POTAActivatorLogImpl, POTAHunterLogImpl, POTAReferenceImpl};
@@ -273,11 +273,11 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<POTAReference>> {
+    async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<POTAReference>> {
         let query = findref_query_builder(event);
         let results = self.select_by_condition(&query).await?;
         let results = results.into_iter().map(POTAReference::from).collect();
-        Ok(FindResult::new(results))
+        Ok(results)
     }
 
     async fn update_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {

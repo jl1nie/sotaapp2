@@ -5,7 +5,7 @@ use sqlx::PgConnection;
 use common::error::{AppError, AppResult};
 
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteAct, FindAct, FindResult};
+use domain::model::common::event::{DeleteAct, FindAct};
 use domain::repository::activation::ActivationRepositry;
 
 use crate::database::model::activation::{AlertImpl, SpotImpl};
@@ -247,15 +247,15 @@ impl ActivationRepositry for ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn find_alerts(&self, event: &FindAct) -> AppResult<FindResult<Alert>> {
+    async fn find_alerts(&self, event: &FindAct) -> AppResult<Vec<Alert>> {
         let query = findact_query_builder(true, event);
         let results = self.select_alerts_by_condition(&query).await?;
-        Ok(FindResult::new(results))
+        Ok(results)
     }
 
-    async fn find_spots(&self, event: &FindAct) -> AppResult<FindResult<Spot>> {
+    async fn find_spots(&self, event: &FindAct) -> AppResult<Vec<Spot>> {
         let query = findact_query_builder(false, event);
         let results = self.select_spots_by_condition(&query).await?;
-        Ok(FindResult::new(results))
+        Ok(results)
     }
 }
