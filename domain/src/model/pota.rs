@@ -4,6 +4,9 @@ use chrono::{DateTime, NaiveDate, Utc};
 #[derive(Debug)]
 pub struct ParkCode(String);
 impl ParkCode {
+    pub fn new(code: String) -> Self {
+        Self(code)
+    }
     pub fn inner_ref(&self) -> &String {
         &self.0
     }
