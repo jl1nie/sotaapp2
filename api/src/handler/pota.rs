@@ -109,8 +109,8 @@ async fn show_pota_reference(
     Path(park_code): Path<String>,
 ) -> AppResult<Json<POTARefResponse>> {
     let query = FindRefBuilder::default().pota().ref_id(park_code).build();
-    let result = admin_service.find_pota_reference(query).await?;
-    if let Some(potaref) = result.get_first() {
+    let mut result = admin_service.find_pota_reference(query).await?;
+    if let Some(potaref) = result.pop() {
         Ok(Json(potaref.into()))
     } else {
         Err(AppError::EntityNotFound("Park not found.".to_string()))
@@ -159,15 +159,12 @@ async fn show_pota_reference_list(
     let result = admin_service.find_pota_reference(query.build()).await?;
     let mut res = POTARefSearchResponse::default();
 
-    if let Some(potarefs) = result.get_values() {
-        res.results = potarefs.into_iter().map(POTASearchResult::from).collect();
-        res.count = res.results.len() as i32;
-        if param.max_results.is_some() && res.count > param.max_results.unwrap() {
-            res.results = vec![];
-        }
-        return Ok(Json(res));
+    res.results = result.into_iter().map(POTASearchResult::from).collect();
+    res.count = res.results.len() as i32;
+    if param.max_results.is_some() && res.count > param.max_results.unwrap() {
+        res.results = vec![];
     }
-    Err(AppError::EntityNotFound("Park not found.".to_string()))
+    return Ok(Json(res));
 }
 
 async fn show_pota_spots(
@@ -180,12 +177,8 @@ async fn show_pota_spots(
         .after(Utc::now() - Duration::hours(hours))
         .build();
     let result = user_service.find_spots(query).await?;
-    if let Some(spots) = result.get_values() {
-        let spots: Vec<_> = spots.into_iter().map(SpotResponse::from).collect();
-        Ok(Json(spots))
-    } else {
-        Err(AppError::EntityNotFound("Spot not found.".to_string()))
-    }
+    let spots: Vec<_> = result.into_iter().map(SpotResponse::from).collect();
+    Ok(Json(spots))
 }
 
 async fn show_pota_alerts(
@@ -198,13 +191,9 @@ async fn show_pota_alerts(
         .after(Utc::now() - Duration::hours(hours))
         .build();
     tracing::info!("query: {:?}", query);
-    let result = user_service.find_alerts(query).await?;
-    if let Some(alerts) = result.get_values() {
-        let alerts: Vec<_> = alerts.into_iter().map(AlertResponse::from).collect();
-        Ok(Json(alerts))
-    } else {
-        Err(AppError::EntityNotFound("Alert not found.".to_string()))
-    }
+    let alerts = user_service.find_alerts(query).await?;
+    let alerts: Vec<_> = alerts.into_iter().map(AlertResponse::from).collect();
+    Ok(Json(alerts))
 }
 
 pub fn build_pota_routers() -> Router<AppState> {

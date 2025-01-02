@@ -138,28 +138,9 @@ impl FindRefBuilder {
     }
 }
 
-#[derive(Debug)]
-pub struct FindResult<T> {
-    results: Vec<T>,
-}
-
-impl<T> FindResult<T> {
-    pub fn new(value: Vec<T>) -> Self {
-        Self { results: value }
-    }
-
-    pub fn get_values(self) -> Option<Vec<T>> {
-        (!self.results.is_empty()).then_some(self.results)
-    }
-
-    pub fn get_first(self) -> Option<T> {
-        self.results.into_iter().next()
-    }
-}
-
 pub enum ResultKind {
-    SOTA(FindResult<SOTAReference>),
-    POTA(FindResult<POTAReference>),
+    SOTA(Vec<SOTAReference>),
+    POTA(Vec<POTAReference>),
 }
 
 #[derive(Default)]
@@ -167,11 +148,11 @@ pub struct FindAppResult {
     pub results: Vec<ResultKind>,
 }
 impl FindAppResult {
-    pub fn sota(&mut self, v: FindResult<SOTAReference>) {
+    pub fn sota(&mut self, v: Vec<SOTAReference>) {
         self.results.push(ResultKind::SOTA(v))
     }
 
-    pub fn pota(&mut self, v: FindResult<POTAReference>) {
+    pub fn pota(&mut self, v: Vec<POTAReference>) {
         self.results.push(ResultKind::POTA(v))
     }
 }

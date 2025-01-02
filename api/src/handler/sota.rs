@@ -84,8 +84,8 @@ async fn show_sota_reference(
     Path(summit_code): Path<String>,
 ) -> AppResult<Json<SOTARefResponse>> {
     let query = FindRefBuilder::default().sota().ref_id(summit_code).build();
-    let result = admin_service.find_sota_reference(query).await?;
-    if let Some(sotaref) = result.get_first() {
+    let mut result = admin_service.find_sota_reference(query).await?;
+    if let Some(sotaref) = result.pop() {
         Ok(Json(sotaref.into()))
     } else {
         Err(AppError::EntityNotFound("Summit not found.".to_string()))
@@ -133,16 +133,12 @@ async fn show_sota_reference_list(
 
     let result = admin_service.find_sota_reference(query.build()).await?;
     let mut res = SOTARefSearchResponse::default();
-
-    if let Some(sotarefs) = result.get_values() {
-        res.results = sotarefs.into_iter().map(SOTASearchResult::from).collect();
-        res.count = res.results.len() as i32;
-        if param.max_results.is_some() && res.count > param.max_results.unwrap() {
-            res.results = vec![];
-        }
-        return Ok(Json(res));
+    res.results = result.into_iter().map(SOTASearchResult::from).collect();
+    res.count = res.results.len() as i32;
+    if param.max_results.is_some() && res.count > param.max_results.unwrap() {
+        res.results = vec![];
     }
-    Err(AppError::EntityNotFound("Summit not found.".to_string()))
+    return Ok(Json(res));
 }
 
 async fn show_sota_spots(
@@ -155,12 +151,8 @@ async fn show_sota_spots(
         .after(Utc::now() - Duration::hours(hours))
         .build();
     let result = user_service.find_spots(query).await?;
-    if let Some(spots) = result.get_values() {
-        let spots: Vec<_> = spots.into_iter().map(SpotResponse::from).collect();
-        Ok(Json(spots))
-    } else {
-        Err(AppError::EntityNotFound("Spot not found.".to_string()))
-    }
+    let spots: Vec<_> = result.into_iter().map(SpotResponse::from).collect();
+    Ok(Json(spots))
 }
 
 async fn show_sota_alerts(
@@ -174,12 +166,8 @@ async fn show_sota_alerts(
         .build();
     tracing::info!("query: {:?}", query);
     let result = user_service.find_alerts(query).await?;
-    if let Some(alerts) = result.get_values() {
-        let alerts: Vec<_> = alerts.into_iter().map(AlertResponse::from).collect();
-        Ok(Json(alerts))
-    } else {
-        Err(AppError::EntityNotFound("Alert not found.".to_string()))
-    }
+    let alerts: Vec<_> = result.into_iter().map(AlertResponse::from).collect();
+    Ok(Json(alerts))
 }
 
 pub fn build_sota_routers() -> Router<AppState> {

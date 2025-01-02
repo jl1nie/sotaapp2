@@ -3,7 +3,7 @@ use shaku::Component;
 use sqlx::PgConnection;
 
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{DeleteRef, FindRef, FindResult};
+use domain::model::common::event::{DeleteRef, FindRef};
 use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::database::model::sota::SOTAReferenceImpl;
@@ -241,10 +241,10 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn find_reference(&self, event: &FindRef) -> AppResult<FindResult<SOTAReference>> {
+    async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SOTAReference>> {
         let query = findref_query_builder(event);
         let results = self.select_by_condition(&query).await?;
         let results = results.into_iter().map(SOTAReference::from).collect();
-        Ok(FindResult::new(results))
+        Ok(results)
     }
 }

@@ -7,7 +7,6 @@ use sqlx::PgConnection;
 
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
-use domain::model::common::event::FindResult;
 use domain::model::locator::MunicipalityCenturyCode;
 
 use crate::database::model::locator::MunicipalityCenturyCodeImpl;
@@ -98,9 +97,9 @@ impl LocatorRepositry for LocatorRepositryImpl {
     async fn find_location_by_muni_code(
         &self,
         muni_code: i32,
-    ) -> AppResult<FindResult<MunicipalityCenturyCode>> {
+    ) -> AppResult<MunicipalityCenturyCode> {
         let result = self.find_location_by_muni_code(muni_code).await?;
-        Ok(FindResult::new(vec![result]))
+        Ok(result)
     }
 
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String> {

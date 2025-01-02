@@ -13,7 +13,7 @@ use crate::model::pota::{
 use crate::services::UserService;
 
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteLog, FindAct, FindAppResult, FindRef, FindResult};
+use domain::model::common::event::{DeleteLog, FindAct, FindAppResult, FindRef};
 use domain::model::locator::MunicipalityCenturyCode;
 
 use domain::repository::activation::ActivationRepositry;
@@ -49,11 +49,11 @@ impl UserService for UserServiceImpl {
         Ok(result)
     }
 
-    async fn find_alerts(&self, event: FindAct) -> AppResult<FindResult<Alert>> {
+    async fn find_alerts(&self, event: FindAct) -> AppResult<Vec<Alert>> {
         Ok(self.act_repo.find_alerts(&event).await?)
     }
 
-    async fn find_spots(&self, event: FindAct) -> AppResult<FindResult<Spot>> {
+    async fn find_spots(&self, event: FindAct) -> AppResult<Vec<Spot>> {
         Ok(self.act_repo.find_spots(&event).await?)
     }
 
@@ -95,10 +95,7 @@ impl UserService for UserServiceImpl {
         Ok(())
     }
 
-    async fn find_century_code(
-        &self,
-        muni_code: i32,
-    ) -> AppResult<FindResult<MunicipalityCenturyCode>> {
+    async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode> {
         let result = self
             .locator_repo
             .find_location_by_muni_code(muni_code)

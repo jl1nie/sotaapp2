@@ -9,7 +9,7 @@ use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
-use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder, FindResult};
+use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
@@ -88,24 +88,22 @@ impl AdminService for AdminServiceImpl {
         for assoc in associations {
             let query = FindRefBuilder::new().sota().name(assoc).build();
             let result = self.sota_repo.find_reference(&query).await?;
-            if let Some(target) = result.get_values() {
-                let newref = target
-                    .into_iter()
-                    .filter(|r| ja_hash.contains_key(&r.summit_code))
-                    .map(|mut r| {
-                        let ja = ja_hash.get(&r.summit_code).unwrap();
-                        r.summit_name = ja.summit_name.clone();
-                        r.summit_name_j = Some(ja.summit_name_j.clone());
-                        r.city = Some(ja.city.clone());
-                        r.city_j = Some(ja.city_j.clone());
-                        r.longitude = ja.longitude;
-                        r.latitude = ja.latitude;
-                        r.alt_m = ja.alt_m;
-                        r
-                    })
-                    .collect();
-                self.sota_repo.update_reference(newref).await?;
-            }
+            let newref = result
+                .into_iter()
+                .filter(|r| ja_hash.contains_key(&r.summit_code))
+                .map(|mut r| {
+                    let ja = ja_hash.get(&r.summit_code).unwrap();
+                    r.summit_name = ja.summit_name.clone();
+                    r.summit_name_j = Some(ja.summit_name_j.clone());
+                    r.city = Some(ja.city.clone());
+                    r.city_j = Some(ja.city_j.clone());
+                    r.longitude = ja.longitude;
+                    r.latitude = ja.latitude;
+                    r.alt_m = ja.alt_m;
+                    r
+                })
+                .collect();
+            self.sota_repo.update_reference(newref).await?;
         }
         Ok(())
     }
@@ -130,7 +128,7 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn find_sota_reference(&self, event: FindRef) -> AppResult<FindResult<SOTAReference>> {
+    async fn find_sota_reference(&self, event: FindRef) -> AppResult<Vec<SOTAReference>> {
         Ok(self.sota_repo.find_reference(&event).await?)
     }
 
@@ -144,7 +142,7 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn find_pota_reference(&self, event: FindRef) -> AppResult<FindResult<POTAReference>> {
+    async fn find_pota_reference(&self, event: FindRef) -> AppResult<Vec<POTAReference>> {
         Ok(self.pota_repo.find_reference(&event).await?)
     }
 
