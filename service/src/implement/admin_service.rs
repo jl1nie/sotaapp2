@@ -10,12 +10,13 @@ use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
 use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder};
+use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
 use domain::repository::{
-    healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::POTAReferenceRepositry,
-    sota::SOTAReferenceReposity,
+    geomag::GeoMagRepositry, healthcheck::HealthCheckRepositry, locator::LocatorRepositry,
+    pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
 };
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
@@ -36,6 +37,8 @@ pub struct AdminServiceImpl {
     check_repo: Arc<dyn HealthCheckRepositry>,
     #[shaku(inject)]
     loc_repo: Arc<dyn LocatorRepositry>,
+    #[shaku(inject)]
+    geomag_repo: Arc<dyn GeoMagRepositry>,
     config: AppConfig,
 }
 
@@ -153,6 +156,11 @@ impl AdminService for AdminServiceImpl {
 
     async fn delete_pota_reference(&self, event: DeleteRef<ParkCode>) -> AppResult<()> {
         self.pota_repo.delete_reference(event).await?;
+        Ok(())
+    }
+
+    async fn update_geomagnetic(&mut self, index: GeomagIndex) -> AppResult<()> {
+        self.geomag_repo.update_geomag(index).await?;
         Ok(())
     }
 

@@ -22,20 +22,25 @@ async fn spot_executer(job: DateTime<Utc>, svc: Data<UpdateSpots>) {
 pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
     let alert_schedule =
         Schedule::from_str(&config.alert_update_schedule.clone()).expect("bad cron format");
+
+    let alert = UpdateAlerts::new(config, state);
+    alert.update().await?;
     let alert_job = WorkerBuilder::new("update-alerts")
-        .data(UpdateAlerts::new(config, state))
+        .data(alert)
         .backend(CronStream::new(alert_schedule))
         .build_fn(alert_executer);
 
+    let spot = UpdateSpots::new(config, state);
+    spot.update().await?;
     let spot_schedule = Schedule::from_str(&config.spot_update_schedule).expect("bad cron format");
     let spot_job = WorkerBuilder::new("update-spots")
-        .data(UpdateSpots::new(config, state))
+        .data(spot)
         .backend(CronStream::new(spot_schedule))
         .build_fn(spot_executer);
 
-    let a = Monitor::new().register(alert_job).run();
-    let b = Monitor::new().register(spot_job).run();
+    let alert_future = Monitor::new().register(alert_job).run();
+    let spot_future = Monitor::new().register(spot_job).run();
 
-    let _res = tokio::join!(a, b);
+    let _res = tokio::join!(alert_future, spot_future);
     Ok(())
 }

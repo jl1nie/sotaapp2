@@ -27,11 +27,13 @@ async fn bootstrap() -> Result<()> {
         .sota_spot_endpoint("https://api2.sota.org.uk/api/spots/20?")
         .pota_alert_endpoint("https://api.pota.app/activation/")
         .pota_spot_endpoint("https://api.pota.app/spot/activator/")
+        .geomag_endpoint("https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt")
         .mapcode_endpoint("https://japanmapcode.com/mapcode")
         .alert_expire(Duration::from_secs(3600u64 * 48))
-        .alert_update_schedule("30 */10* * * *")
+        .alert_update_schedule("30 */30 * * * *")
         .spot_expire(Duration::from_secs(3600u64 * 48))
-        .spot_update_schedule("0 */1 * * * *")
+        .spot_update_schedule("0 */20 * * * *")
+        .geomag_update_schedule("0 35 */3 * * * *")
         .sota_import_association(r#"^JA\d*"#)
         .build();
 

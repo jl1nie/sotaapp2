@@ -5,6 +5,7 @@ use common::error::AppResult;
 use domain::model::common::activation::{Alert, Spot};
 use domain::model::common::event::{DeleteRef, FindAct, FindAppResult, FindRef};
 use domain::model::common::id::UserId;
+use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
@@ -26,6 +27,8 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;
     async fn upload_hunter_csv(&self, user_id: UserId, event: UploadHunterCSV) -> AppResult<()>;
+
+    async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>>;
 }
 
 #[async_trait]
@@ -42,6 +45,8 @@ pub trait AdminService: Send + Sync + Interface {
     async fn find_pota_reference(&self, query: FindRef) -> AppResult<Vec<POTAReference>>;
     async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()>;
     async fn delete_pota_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
+
+    async fn update_geomagnetic(&mut self, index: GeomagIndex) -> AppResult<()>;
 
     async fn health_check(&self) -> AppResult<bool>;
 }

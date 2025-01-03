@@ -6,7 +6,7 @@ use std::sync::Arc;
 use adapter::{
     database::connect_database_with,
     implement::{
-        activation::ActivationRepositryImplParameters,
+        activation::ActivationRepositryImplParameters, geomag::GeomagRepositryImplParameters,
         healthcheck::HealthCheckRepositryImplParameters, locator::LocatorRepositryImplParameters,
         pota_reference::POTAReferenceRepositryImplParameters,
         sota_reference::SOTAReferenceReposityImplParameters,
@@ -20,16 +20,16 @@ use service::implement::{
 };
 
 use adapter::implement::{
-    activation::ActivationRepositryImpl, healthcheck::HealthCheckRepositryImpl,
-    locator::LocatorRepositryImpl, pota_reference::POTAReferenceRepositryImpl,
-    sota_reference::SOTAReferenceReposityImpl,
+    activation::ActivationRepositryImpl, geomag::GeoMagRepositryImpl,
+    healthcheck::HealthCheckRepositryImpl, locator::LocatorRepositryImpl,
+    pota_reference::POTAReferenceRepositryImpl, sota_reference::SOTAReferenceReposityImpl,
 };
 
 module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,
         SOTAReferenceReposityImpl,ActivationRepositryImpl,POTAReferenceRepositryImpl,
-        LocatorRepositryImpl,
+        LocatorRepositryImpl,GeoMagRepositryImpl,
         HealthCheckRepositryImpl],
         providers = [],
     }

@@ -234,7 +234,7 @@ impl POTAReferenceRepositryImpl {
                 park_location,
                 park_locid,
                 park_type,
-                park_status,
+                park_inactive,
                 park_area,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,

@@ -8,9 +8,7 @@ pub async fn health_check() -> StatusCode {
     StatusCode::OK
 }
 
-pub async fn health_check_db(
-    admin_service: Inject<AppRegistry, dyn AdminService>,
-) -> AppResult<()> {
+async fn health_check_db(admin_service: Inject<AppRegistry, dyn AdminService>) -> AppResult<()> {
     if admin_service.health_check().await? {
         Ok(())
     } else {

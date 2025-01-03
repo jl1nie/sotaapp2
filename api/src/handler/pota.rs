@@ -199,7 +199,7 @@ async fn show_pota_alerts(
 pub fn build_pota_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/", get(show_pota_reference_list))
-        .route("/import/parks", post(import_pota_reference))
+        .route("/import", post(import_pota_reference))
         .route(
             "/upload/activator/:user_id",
             post(upload_pota_activator_log),

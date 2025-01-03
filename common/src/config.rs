@@ -9,9 +9,8 @@ pub struct AppConfig {
     pub sota_spot_endpoint: String,
     pub pota_alert_endpoint: String,
     pub pota_spot_endpoint: String,
-    pub ak_index_endpoint: String,
-    pub ak_index_update_schedule: String,
-    pub ak_index_expire: Duration,
+    pub geomag_endpoint: String,
+    pub geomag_update_schedule: String,
     pub mapcode_endpoint: String,
     pub alert_update_schedule: String,
     pub alert_expire: Duration,
@@ -76,18 +75,13 @@ impl AppConfigBuilder {
         self.config.mapcode_endpoint = endpoint.to_string();
         self
     }
-    pub fn ak_index_endpoint(mut self, endpoint: &str) -> Self {
-        self.config.ak_index_endpoint = endpoint.to_string();
+    pub fn geomag_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.geomag_endpoint = endpoint.to_string();
         self
     }
 
-    pub fn ak_index_update_schedule(mut self, schedule: &str) -> Self {
-        self.config.ak_index_update_schedule = schedule.to_string();
-        self
-    }
-
-    pub fn ak_index_expire(mut self, expire: Duration) -> Self {
-        self.config.ak_index_expire = expire;
+    pub fn geomag_update_schedule(mut self, schedule: &str) -> Self {
+        self.config.geomag_update_schedule = schedule.to_string();
         self
     }
 
