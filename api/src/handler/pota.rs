@@ -164,7 +164,7 @@ async fn show_pota_reference_list(
     if param.max_results.is_some() && res.count > param.max_results.unwrap() {
         res.results = vec![];
     }
-    return Ok(Json(res));
+    Ok(Json(res))
 }
 
 async fn show_pota_spots(

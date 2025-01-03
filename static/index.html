@@ -133,6 +133,11 @@
         <input type="submit" value="送信">
     </form>
 
+    <h4>Latest Ap/Kp Index</h4>
+    <form id="geomag" method="get">
+        <input type="submit" value="送信">
+    </form>
+
     <h4>JSON Result</h4>
     <div id="result"></div>
 
@@ -153,6 +158,7 @@
         const locatejcc = baseurl + '/locators/jcc-jcg';
         const importjcc = baseurl + '/locators/jcc-jcg/import';
         const mapcode = baseurl + '/locators/mapcode';
+        const geomag = baseurl + '/geomag';
 
         function uploadFile(url, inputid, buttonid) {
             event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
@@ -263,6 +269,12 @@
                 let lat = document.getElementById('lat').value;
                 let param = `lon=${lon}&lat=${lat}`;
                 search(mapcode, param);
+            });
+
+        document.getElementById('geomag')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                search(geomag, '');
             });
 
         document.getElementById('search-name')
