@@ -7,6 +7,8 @@ use registry::AppState;
 use std::str::FromStr;
 
 use crate::aggregator::alerts_spots::{UpdateAlerts, UpdateSpots};
+use crate::aggregator::geomag::UpdateGeoMag;
+
 use common::config::AppConfig;
 
 async fn alert_executer(job: DateTime<Utc>, svc: Data<UpdateAlerts>) {
@@ -16,6 +18,11 @@ async fn alert_executer(job: DateTime<Utc>, svc: Data<UpdateAlerts>) {
 
 async fn spot_executer(job: DateTime<Utc>, svc: Data<UpdateSpots>) {
     tracing::info!("Update Spots {}", job);
+    let _ = svc.update().await;
+}
+
+async fn geomag_executer(job: DateTime<Utc>, svc: Data<UpdateGeoMag>) {
+    tracing::info!("Update geomag {}", job);
     let _ = svc.update().await;
 }
 
@@ -38,9 +45,19 @@ pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
         .backend(CronStream::new(spot_schedule))
         .build_fn(spot_executer);
 
+    let geomag = UpdateGeoMag::new(config, state);
+    geomag.update().await?;
+    let geomag_schedule =
+        Schedule::from_str(&config.geomag_update_schedule).expect("bad cron format");
+    let geomag_job = WorkerBuilder::new("update-spots")
+        .data(geomag)
+        .backend(CronStream::new(geomag_schedule))
+        .build_fn(geomag_executer);
+
     let alert_future = Monitor::new().register(alert_job).run();
     let spot_future = Monitor::new().register(spot_job).run();
+    let geomag_future = Monitor::new().register(geomag_job).run();
 
-    let _res = tokio::join!(alert_future, spot_future);
+    let _res = tokio::join!(alert_future, spot_future, geomag_future);
     Ok(())
 }

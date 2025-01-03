@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GeomagIndex {
     pub date: NaiveDate,
     pub a_index: i32,

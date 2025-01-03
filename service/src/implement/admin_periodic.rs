@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use common::error::AppResult;
 
-use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::DeleteAct;
-use domain::repository::activation::ActivationRepositry;
+use domain::model::common::{activation::Alert, activation::Spot, event::DeleteAct};
+use domain::model::geomag::GeomagIndex;
+use domain::repository::{activation::ActivationRepositry, geomag::GeoMagRepositry};
 
 use crate::services::AdminPeriodicService;
 
@@ -17,6 +17,8 @@ use crate::services::AdminPeriodicService;
 pub struct AdminPeriodicServiceImpl {
     #[shaku(inject)]
     act_repo: Arc<dyn ActivationRepositry>,
+    #[shaku(inject)]
+    geomag_repo: Arc<dyn GeoMagRepositry>,
     config: AppConfig,
 }
 
@@ -39,6 +41,11 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
         self.act_repo
             .delete_spots(DeleteAct { before: expire })
             .await?;
+        Ok(())
+    }
+
+    async fn update_geomag(&self, index: GeomagIndex) -> AppResult<()> {
+        self.geomag_repo.update_geomag(index).await?;
         Ok(())
     }
 }

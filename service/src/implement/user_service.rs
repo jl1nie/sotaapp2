@@ -14,12 +14,13 @@ use crate::services::UserService;
 
 use domain::model::common::activation::{Alert, Spot};
 use domain::model::common::event::{DeleteLog, FindAct, FindAppResult, FindRef};
+use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
 
-use domain::repository::activation::ActivationRepositry;
-use domain::repository::locator::LocatorRepositry;
-use domain::repository::pota::POTAReferenceRepositry;
-use domain::repository::sota::SOTAReferenceReposity;
+use domain::repository::{
+    activation::ActivationRepositry, geomag::GeoMagRepositry, locator::LocatorRepositry,
+    pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
+};
 
 #[derive(Component)]
 #[shaku(interface = UserService)]
@@ -32,6 +33,8 @@ pub struct UserServiceImpl {
     act_repo: Arc<dyn ActivationRepositry>,
     #[shaku(inject)]
     locator_repo: Arc<dyn LocatorRepositry>,
+    #[shaku(inject)]
+    geomag_repo: Arc<dyn GeoMagRepositry>,
     config: AppConfig,
 }
 
@@ -108,6 +111,6 @@ impl UserService for UserServiceImpl {
     }
 
     async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>> {
-        Ok(self.locator_repo.get_geomag().await?)
+        Ok(self.geomag_repo.get_geomag().await?)
     }
 }

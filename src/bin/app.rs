@@ -9,8 +9,8 @@ use tower_http::services::ServeDir;
 use tracing_subscriber::EnvFilter;
 
 use api::handler::{
-    health::build_health_chek_routers, locator::build_locator_routers, pota::build_pota_routers,
-    sota::build_sota_routers,
+    geomag::build_geomag_routers, health::build_health_chek_routers,
+    locator::build_locator_routers, pota::build_pota_routers, sota::build_sota_routers,
 };
 
 use registry::{AppRegistry, AppState};
@@ -49,6 +49,7 @@ async fn bootstrap() -> Result<()> {
         .merge(build_sota_routers())
         .merge(build_pota_routers())
         .merge(build_locator_routers())
+        .merge(build_geomag_routers())
         .with_state(app_state)
         .nest_service("/", ServeDir::new("static"))
         .layer(DefaultBodyLimit::max(1024 * 1024 * 32));

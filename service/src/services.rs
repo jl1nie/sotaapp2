@@ -45,9 +45,6 @@ pub trait AdminService: Send + Sync + Interface {
     async fn find_pota_reference(&self, query: FindRef) -> AppResult<Vec<POTAReference>>;
     async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()>;
     async fn delete_pota_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
-
-    async fn update_geomagnetic(&mut self, index: GeomagIndex) -> AppResult<()>;
-
     async fn health_check(&self) -> AppResult<bool>;
 }
 
@@ -55,4 +52,5 @@ pub trait AdminService: Send + Sync + Interface {
 pub trait AdminPeriodicService: Send + Sync + Interface {
     async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()>;
     async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()>;
+    async fn update_geomag(&self, index: GeomagIndex) -> AppResult<()>;
 }

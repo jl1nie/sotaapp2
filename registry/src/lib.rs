@@ -1,12 +1,12 @@
 use axum::extract::FromRef;
 use common::config::AppConfig;
 use shaku::module;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use adapter::{
     database::connect_database_with,
     implement::{
-        activation::ActivationRepositryImplParameters, geomag::GeomagRepositryImplParameters,
+        activation::ActivationRepositryImplParameters, geomag::GeoMagRepositryImplParameters,
         healthcheck::HealthCheckRepositryImplParameters, locator::LocatorRepositryImplParameters,
         pota_reference::POTAReferenceRepositryImplParameters,
         sota_reference::SOTAReferenceReposityImplParameters,
@@ -63,6 +63,9 @@ impl AppRegistry {
                     config: config.clone(),
                 },
             )
+            .with_component_parameters::<GeoMagRepositryImpl>(GeoMagRepositryImplParameters {
+                latest_data: Arc::new(Mutex::new(None)),
+            })
             .with_component_parameters::<HealthCheckRepositryImpl>(
                 HealthCheckRepositryImplParameters { pool: pool.clone() },
             )
