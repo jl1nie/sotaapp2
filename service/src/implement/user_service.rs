@@ -106,4 +106,8 @@ impl UserService for UserServiceImpl {
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String> {
         Ok(self.locator_repo.find_mapcode(lon, lat).await?)
     }
+
+    async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>> {
+        Ok(self.locator_repo.get_geomag().await?)
+    }
 }

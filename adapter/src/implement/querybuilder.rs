@@ -73,6 +73,8 @@ pub fn findref_query_builder(r: &FindRef) -> String {
 pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     let mut query: String = String::new();
 
+    tracing::info!("query: {:?}", r);
+
     if let Some(prog) = &r.program {
         query.push_str(format!("program = {} AND ", prog.as_i32()).as_str());
     }
@@ -98,6 +100,5 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     if let Some(offset) = &r.offset {
         query.push_str(&format!("OFFSET {} ", offset));
     }
-    tracing::info!("build query result = {}", query);
     query
 }

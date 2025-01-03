@@ -11,24 +11,46 @@
     <h4>Import SOTA Summits list </h4>
     <form id="upload-summit" method="post" enctype="multipart/form-data">
         <input id="upload-summit-file" type="file" name="file">
-        <button id="upload1" type="submit">Upload</button>
+        <button id="upload-summit-button" type="submit">Upload</button>
     </form>
 
     <h4>Import SOTA JA Summits list </h4>
     <form id="upload-ja-summit" method="post" enctype="multipart/form-data">
         <input id="upload-ja-summit-file" type="file" name="file">
-        <button id="upload2" type="submit">Upload</button>
+        <button id="upload-ja-summit-button" type="submit">Upload</button>
+    </form>
+
+    <h4>Import POTA Park list </h4>
+    <form id="upload-pota" method="post" enctype="multipart/form-data">
+        <input id="upload-pota-file" type="file" name="file">
+        <button id="upload-pota-button" type="submit">Upload</button>
+    </form>
+
+    <h4>Import JCC-JCG list </h4>
+    <form id="upload-jcc" method="post" enctype="multipart/form-data">
+        <input id="upload-jcc-file" type="file" name="file">
+        <button id="upload-jcc-button" type="submit">Upload</button>
     </form>
 
     <h4>Search by Ref_id</h4>
     <form id="search-refid" method="get">
-        <label for="ref_id">SOTA Reference:</label>
+        <label for="prog-refid">Program:</label>
+        <select id="prog-refid" name="prog-refid">
+            <option value="SOTA">SOTA</option>
+            <option value="POTA">POTA</option>
+        </select><br><br>
+        <label for="ref_id">Reference:</label>
         <input type="text" id="ref_id" name="ref_id"><br><br>
         <input type="submit" value="送信">
     </form>
 
     <h4>Search Name</h4>
     <form id="search-name" method="get">
+        <label for="prog-name">Program:</label>
+        <select id="prog-name" name="prog-name">
+            <option value="SOTA">SOTA</option>
+            <option value="POTA">POTA</option>
+        </select><br><br>
         <label for="name">Name:</label>
         <input type="text" id="name" name="name" value="JA"><br><br>
 
@@ -43,6 +65,12 @@
 
     <h4>Search Location</h4>
     <form id="search-location" method="get">
+        <label for="prog-location">Program:</label>
+        <select id="prog-location" name="prog-location">
+            <option value="SOTA">SOTA</option>
+            <option value="POTA">POTA</option>
+        </select><br><br>
+
         <label for="min_lon">Min Lon:</label>
         <input type="text" id="min_lon" name="min_lon" value="138.860"><br><br>
 
@@ -66,31 +94,65 @@
 
     <h4>Alerts</h4>
     <form id="alerts" method="get">
+        <label for="prog-alerts">Program:</label>
+        <select id="prog-alerts" name="prog-alerts">
+            <option value="SOTA">SOTA</option>
+            <option value="POTA">POTA</option>
+        </select><br><br>
         <label for="after">Show alerts in :</label>
         <input type="text" id="alerts-after" name="after" value="1"><br><br>
-
         <input type="submit" value="送信">
     </form>
 
     <h4>Spots</h4>
     <form id="spots" method="get">
-        <label for="after">Show alerts in :</label>
+        <label for="prog-spots">Program:</label>
+        <select id="prog-spots" name="prog-spots">
+            <option value="SOTA">SOTA</option>
+            <option value="POTA">POTA</option>
+        </select><br><br>
+        <label for="after">Show spots in :</label>
         <input type="text" id="spots-after" name="after" value="1"><br><br>
 
         <input type="submit" value="送信">
     </form>
 
+    <h4>Search JCC/JCG by MuniCd</h4>
+    <form id="search-jcc" method="get">
+        <label for="ref_id">MuniCd:</label>
+        <input type="text" id="municd" name="municd"><br><br>
+        <input type="submit" value="送信">
+    </form>
+
+    <h4>Search Mapcode by Lon/Lat</h4>
+    <form id="search-mapcode" method="get">
+        <label for="lon">Min Lon:</label>
+        <input type="text" id="lon" name="lon" value="138.860"><br><br>
+        <label for="lat">Min Lat:</label>
+        <input type="text" id="lat" name="lat" value="35.3726"><br><br>
+        <input type="submit" value="送信">
+    </form>
 
     <h4>JSON Result</h4>
     <div id="result"></div>
 
     <script>
         const baseurl = 'http://localhost:8000';
-        const searchurl = baseurl + '/sota';
-        const alertsurl = baseurl + '/sota/alerts';
-        const spotsutl = baseurl + '/sota/spots';
-        const uploadurl = baseurl + '/sota/import';
-        const uploadjaurl = baseurl + '/sota/import/ja';
+
+        const sotasearch = baseurl + '/sota';
+        const sotaalert = baseurl + '/sota/alerts';
+        const sotaspot = baseurl + '/sota/spots';
+        const importsota = baseurl + '/sota/import';
+        const importsotaja = baseurl + '/sota/import/ja';
+
+        const potasearch = baseurl + '/pota';
+        const potaalert = baseurl + '/pota/alerts';
+        const potaspot = baseurl + '/pota/spots';
+        const importpota = baseurl + '/pota/import';
+
+        const locatejcc = baseurl + '/locators/jcc-jcg';
+        const importjcc = baseurl + '/locators/jcc-jcg/import';
+        const mapcode = baseurl + '/locators/mapcode';
 
         function uploadFile(url, inputid, buttonid) {
             event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
@@ -149,13 +211,25 @@
         document.getElementById('upload-summit')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                uploadFile(uploadurl, 'upload-summit-file', 'upload1');
+                uploadFile(importsota, 'upload-summit-file', 'upload-summit-button');
             });
 
         document.getElementById('upload-ja-summit')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                uploadFile(uploadjaurl, 'upload-ja-summit-file', 'upload2');
+                uploadFile(importsotaja, 'upload-ja-summit-file', 'upload-ja-summit-button');
+            });
+
+        document.getElementById('upload-pota')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                uploadFile(importpota, 'upload-pota-file', 'upload-pota-button');
+            });
+
+        document.getElementById('upload-jcc')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                uploadFile(importjcc, 'upload-jcc-file', 'upload-jcc-button');
             });
 
         document.getElementById('search-refid')
@@ -163,8 +237,32 @@
                 event.preventDefault();
                 let id = document.getElementById('ref_id').value;
                 let eid = encodeURIComponent(id);
-                let url = searchurl + `/${eid}`;
+                let prog = document.getElementById('prog-refid').value;
+                if (prog === 'SOTA') {
+                    let url = sotasearch + `/${eid}`;
+                    search(url, '');
+                } else if (prog === 'POTA') {
+                    let url = potasearch + `/${eid}`;
+                    search(url, '');
+                }
+            });
+
+        document.getElementById('search-jcc')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let id = document.getElementById('municd').value;
+                let eid = encodeURIComponent(id);
+                let url = locatejcc + `/${eid}`;
                 search(url, '');
+            });
+
+        document.getElementById('search-mapcode')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let lon = document.getElementById('lon').value;
+                let lat = document.getElementById('lat').value;
+                let param = `lon=${lon}&lat=${lat}`;
+                search(mapcode, param);
             });
 
         document.getElementById('search-name')
@@ -173,8 +271,15 @@
                 let name = document.getElementById('name').value;
                 let limit = document.getElementById('limit').value;
                 let offset = document.getElementById('offset').value;
+                let prog = document.getElementById('prog-name').value;
                 let param = `name=${name}&limit=${limit}&offset=${offset}`;
-                search(searchurl, param);
+                if (prog === 'SOTA') {
+                    let url = sotasearch;
+                    search(url, param);
+                } else if (prog === 'POTA') {
+                    let url = potasearch;
+                    search(url, param);
+                }
             });
 
         document.getElementById('search-location')
@@ -187,7 +292,14 @@
                 let min_elev = document.getElementById('min_elev').value;
                 let max_results = document.getElementById('max_results').value;
                 let param = `min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&mat_lat=${max_lat}&min_elev=${min_elev}&max_results=${max_results}`;
-                search(searchurl, param);
+                let prog = document.getElementById('prog-location').value;
+                if (prog === 'SOTA') {
+                    let url = sotasearch;
+                    search(url, param);
+                } else if (prog === 'POTA') {
+                    let url = potasearch;
+                    search(url, param);
+                }
             });
 
         document.getElementById('alerts')
@@ -195,7 +307,15 @@
                 event.preventDefault();
                 let after = document.getElementById('alerts-after').value;
                 let param = `after=${after}`;
-                search(alertsurl, param);
+                let prog = document.getElementById('prog-alerts').value;
+                if (prog === 'SOTA') {
+                    let alertsurl = sotaalert;
+                    search(alertsurl, param);
+                } else if (prog === 'POTA') {
+                    let alertsurl = potaalert;
+                    search(alertsurl, param);
+                }
+
             });
 
         document.getElementById('spots')
@@ -203,7 +323,15 @@
                 event.preventDefault();
                 let after = document.getElementById('spots-after').value;
                 let param = `after=${after}`;
-                search(spotsutl, param);
+                let prog = document.getElementById('prog-spots').value;
+                if (prog === 'SOTA') {
+                    let spotsurl = sotaspot;
+                    search(spotsurl, param);
+                } else if (prog === 'POTA') {
+                    let spotsurl = potaspot;
+                    search(spotsurl, param);
+                }
+
             });
 
     </script>

@@ -1,6 +1,7 @@
 use axum::{
-    extract::{Path, Query},
-    routing::get,
+    extract::{Multipart, Path, Query},
+    http::StatusCode,
+    routing::{get, post},
     Json, Router,
 };
 
@@ -8,9 +9,11 @@ use shaku_axum::Inject;
 
 use crate::model::locator::{CenturyCodeResponse, MapcodeResponse};
 use crate::model::param::GetParam;
-use common::error::AppResult;
+use common::error::{AppError, AppResult};
 use registry::{AppRegistry, AppState};
-use service::services::UserService;
+
+use service::model::locator::UploadMuniCSV;
+use service::services::{AdminService, UserService};
 
 async fn find_century_code(
     user_service: Inject<AppRegistry, dyn UserService>,
@@ -30,9 +33,28 @@ async fn find_mapcode(
     Ok(Json(result.into()))
 }
 
+async fn import_muni_csv(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    mut multipart: Multipart,
+) -> AppResult<StatusCode> {
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let data = field.bytes().await.unwrap();
+        let data = String::from_utf8(data.to_vec()).unwrap();
+
+        let reqs = UploadMuniCSV { data };
+
+        return admin_service
+            .import_muni_century_list(reqs)
+            .await
+            .map(|_| StatusCode::CREATED);
+    }
+    Err(AppError::ForbiddenOperation)
+}
+
 pub fn build_locator_routers() -> Router<AppState> {
     let routers = Router::new()
+        .route("/jcc-jcg/import", post(import_muni_csv))
         .route("/jcc-jcg/:muni_code", get(find_century_code))
         .route("/mapcode", get(find_mapcode));
-    Router::new().nest("/locator", routers)
+    Router::new().nest("/locators", routers)
 }
