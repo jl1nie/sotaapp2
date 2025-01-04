@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use domain::model::common::event::PagenatedResult;
 use domain::model::sota::SOTAReference;
 
 #[derive(Debug, Deserialize)]
@@ -213,6 +214,30 @@ impl From<SOTAReference> for SOTARefResponse {
             activation_count,
             activation_date,
             activation_call,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagenatedResponse<SOTAReference> {
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+    pub results: Vec<SOTAReference>,
+}
+
+impl From<PagenatedResult<SOTAReference>> for PagenatedResponse<SOTARefResponse> {
+    fn from(pagenated: PagenatedResult<SOTAReference>) -> Self {
+        PagenatedResponse {
+            total: pagenated.total,
+            limit: pagenated.limit,
+            offset: pagenated.offset,
+            results: pagenated
+                .results
+                .into_iter()
+                .map(SOTARefResponse::from)
+                .collect(),
         }
     }
 }

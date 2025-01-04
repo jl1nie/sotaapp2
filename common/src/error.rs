@@ -41,8 +41,8 @@ impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         let status_code = match self {
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::CSVReadError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::EntityNotFound(_) => StatusCode::NOT_FOUND,
+            AppError::CSVReadError(e) =>{tracing::error!("CSV Error {:?}",e); StatusCode::UNPROCESSABLE_ENTITY},
+            AppError::EntityNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
             /* AppError::ValidationError(_) |*/
                  AppError::ConvertToUuidError(_) => {
                     StatusCode::BAD_REQUEST

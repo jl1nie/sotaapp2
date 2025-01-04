@@ -1,5 +1,3 @@
-use std::{str::FromStr, vec};
-
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
@@ -9,15 +7,16 @@ use axum::{
 
 use chrono::{Duration, Utc};
 use shaku_axum::Inject;
+use std::str::FromStr;
 
 use crate::model::pota::{
-    POTARefResponse, POTARefSearchResponse, POTASearchResult, UpdateRefRequest,
+    POTARefResponse, POTARefSearchResponse, POTASearchResult, PagenatedResponse, UpdateRefRequest,
 };
 use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
 use common::error::{AppError, AppResult};
 
 use domain::model::common::{
-    event::{DeleteRef, FindActBuilder, FindRefBuilder},
+    event::{DeleteRef, FindActBuilder, FindRefBuilder, FindResult, ResultKind},
     id::UserId,
 };
 use domain::model::pota::ParkCode;
@@ -107,18 +106,30 @@ async fn delete_pota_reference(
 async fn show_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(park_code): Path<String>,
-) -> AppResult<Json<POTARefResponse>> {
+) -> AppResult<Json<PagenatedResponse<POTARefResponse>>> {
     let query = FindRefBuilder::default().pota().ref_id(park_code).build();
-    let mut result = admin_service.find_pota_reference(query).await?;
-    if let Some(potaref) = result.pop() {
-        Ok(Json(potaref.into()))
-    } else {
-        Err(AppError::EntityNotFound("Park not found.".to_string()))
+    let result = admin_service.show_pota_reference(query).await?;
+    Ok(Json(result.into()))
+}
+
+async fn show_all_reference(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<PagenatedResponse<POTARefResponse>>> {
+    let mut query = FindRefBuilder::default().pota();
+    if param.limit.is_some() {
+        query = query.limit(param.limit.unwrap());
     }
+
+    if param.offset.is_some() {
+        query = query.offset(param.offset.unwrap());
+    }
+    let result = admin_service.show_pota_reference(query.build()).await?;
+    Ok(Json(result.into()))
 }
 
 async fn show_pota_reference_list(
-    admin_service: Inject<AppRegistry, dyn AdminService>,
+    user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<POTARefSearchResponse>> {
     let mut query = FindRefBuilder::default().pota();
@@ -139,6 +150,10 @@ async fn show_pota_reference_list(
         query = query.ref_id(param.ref_id.unwrap());
     }
 
+    if param.user_id.is_some() {
+        query = query.user_id(UserId::from_str(&param.user_id.unwrap())?);
+    }
+
     if param.min_elev.is_some() {
         query = query.min_elev(param.min_elev.unwrap());
     }
@@ -155,11 +170,19 @@ async fn show_pota_reference_list(
             param.max_lat.unwrap(),
         );
     }
+    let query = query.build();
+    tracing::info!("query: {:?}", query);
 
-    let result = admin_service.find_pota_reference(query.build()).await?;
+    let FindResult { results } = user_service.find_references(query).await?;
     let mut res = POTARefSearchResponse::default();
-
-    res.results = result.into_iter().map(POTASearchResult::from).collect();
+    let results: Vec<_> = results
+        .into_iter()
+        .flat_map(|r| match r {
+            ResultKind::POTA(s) => s.into_iter(),
+            _ => vec![].into_iter(),
+        })
+        .collect();
+    res.results = results.into_iter().map(POTASearchResult::from).collect();
     res.count = res.results.len() as i32;
     if param.max_results.is_some() && res.count > param.max_results.unwrap() {
         res.results = vec![];
@@ -198,7 +221,6 @@ async fn show_pota_alerts(
 
 pub fn build_pota_routers() -> Router<AppState> {
     let routers = Router::new()
-        .route("/", get(show_pota_reference_list))
         .route("/import", post(import_pota_reference))
         .route(
             "/upload/activator/:user_id",
@@ -207,9 +229,11 @@ pub fn build_pota_routers() -> Router<AppState> {
         .route("/upload/hunter/:user_id", post(upload_pota_hunter_log))
         .route("/spots", get(show_pota_spots))
         .route("/alerts", get(show_pota_alerts))
-        .route("/:park_code", get(show_pota_reference))
-        .route("/:park_code", put(update_pota_reference))
-        .route("/:park_code", delete(delete_pota_reference));
+        .route("/park-list", get(show_all_reference))
+        .route("/park", get(show_pota_reference_list))
+        .route("/park/:park_code", get(show_pota_reference))
+        .route("/park/:park_code", put(update_pota_reference))
+        .route("/park/:park_code", delete(delete_pota_reference));
 
     Router::new().nest("/pota", routers)
 }

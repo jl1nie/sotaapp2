@@ -3,7 +3,7 @@ use shaku::Component;
 use sqlx::PgConnection;
 
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{DeleteRef, FindRef};
+use domain::model::common::event::{DeleteRef, FindRef, PagenatedResult};
 use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::database::model::sota::SOTAReferenceImpl;
@@ -148,11 +148,13 @@ impl SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn select_by_condition(
-        &self,
-        query: &str,
-        // params: &Vec<String>,
-    ) -> AppResult<Vec<SOTAReferenceImpl>> {
+    async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<SOTAReferenceImpl>)> {
+        let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
+            .fetch_one(self.pool.inner_ref())
+            .await
+            .map_err(AppError::SpecificOperationError)?;
+        let total: i64 = row.count.unwrap_or(0);
+
         let mut select = r#"
             SELECT
                 summit_code,
@@ -185,6 +187,46 @@ impl SOTAReferenceReposityImpl {
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
+        Ok((total, rows))
+    }
+
+    async fn select_by_condition(
+        &self,
+        query: &str,
+        // params: &Vec<String>,
+    ) -> AppResult<Vec<SOTAReferenceImpl>> {
+        let mut select = r#"
+            SELECT
+                summit_code,
+                association_name,
+                region_name,
+                summit_name,
+                summit_name_j,
+                city,
+                city_j,
+                alt_m,
+                alt_ft,
+                grid_ref1,
+                grid_ref2,
+                ST_X(coordinates) AS longitude,
+                ST_Y(coordinates) AS latitude,
+                points,
+                bonus_points,
+                valid_from,
+                valid_to,
+                activation_count,
+                activation_date,
+                activation_call
+            FROM sota_references WHERE "#
+            .to_string();
+
+        select.push_str(query);
+        tracing::info!("query: {}", select);
+        let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
+        let rows: Vec<SOTAReferenceImpl> = sql_query
+            .fetch_all(self.pool.inner_ref())
+            .await
+            .map_err(AppError::SpecificOperationError)?;
         Ok(rows)
     }
 }
@@ -207,6 +249,19 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
+    }
+
+    async fn show_reference(&self, event: &FindRef) -> AppResult<PagenatedResult<SOTAReference>> {
+        let limit = event.limit.unwrap_or(10);
+        let offset = event.offset.unwrap_or(0);
+        let query = findref_query_builder(event);
+        let (total, results) = self.select_pagenated(&query).await?;
+        Ok(PagenatedResult {
+            total,
+            limit,
+            offset,
+            results: results.into_iter().map(SOTAReference::from).collect(),
+        })
     }
 
     async fn update_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {

@@ -26,10 +26,38 @@
         <button id="upload-pota-button" type="submit">Upload</button>
     </form>
 
+    <h4>Upload POTA Activator Log </h4>
+    <form id="upload-activator" method="post" enctype="multipart/form-data">
+        <input id="upload-activator-file" type="file" name="file">
+        <button id="upload-activator-button" type="submit">Upload</button>
+    </form>
+
+    <h4>Upload POTA Hunter Log </h4>
+    <form id="upload-hunter" method="post" enctype="multipart/form-data">
+        <input id="upload-hunter-file" type="file" name="file">
+        <button id="upload-hunter-button" type="submit">Upload</button>
+    </form>
+
+
     <h4>Import JCC-JCG list </h4>
     <form id="upload-jcc" method="post" enctype="multipart/form-data">
         <input id="upload-jcc-file" type="file" name="file">
         <button id="upload-jcc-button" type="submit">Upload</button>
+    </form>
+
+    <h4>Reference list</h4>
+    <form id="reflist" method="get">
+        <label for="prog-reflist">Program:</label>
+        <select id="prog-reflist" name="prog-refid">
+            <option value="SOTA">SOTA</option>
+            <option value="POTA">POTA</option>
+        </select><br><br>
+        <label for="reflist-limit">Limit:</label>
+        <input type="text" id="reflist-limit" name="reflist-limit" value="10"><br><br>
+        <label for="reflist-offset">Offset:</label>
+        <input type="text" id="reflist-offset" name="reflist-offset" value="0"><br><br>
+
+        <input type="submit" value="送信">
     </form>
 
     <h4>Search by Ref_id</h4>
@@ -56,9 +84,6 @@
 
         <label for="limit">Limit:</label>
         <input type="text" id="limit" name="limit" value="10"><br><br>
-
-        <label for="offset">Offset:</label>
-        <input type="text" id="offset" name="offset" value="0"><br><br>
 
         <input type="submit" value="送信">
     </form>
@@ -142,19 +167,22 @@
     <div id="result"></div>
 
     <script>
-        const baseurl = 'http://localhost:8000';
-
-        const sotasearch = baseurl + '/sota';
+        const baseurl = 'http://localhost:8000/api/v2';
+        const uid = "538b548f-12db-4230-b48d-46d8842b2da9"
+        const sotasearch = baseurl + '/sota/summit';
+        const sotalist = baseurl + '/sota/summit-list';
         const sotaalert = baseurl + '/sota/alerts';
         const sotaspot = baseurl + '/sota/spots';
         const importsota = baseurl + '/sota/import';
         const importsotaja = baseurl + '/sota/import/ja';
 
-        const potasearch = baseurl + '/pota';
+        const potasearch = baseurl + '/pota/park';
+        const potalist = baseurl + '/pota/park-list';
         const potaalert = baseurl + '/pota/alerts';
         const potaspot = baseurl + '/pota/spots';
         const importpota = baseurl + '/pota/import';
-
+        const uploadactivator = baseurl + '/pota/upload/activator';
+        const uploadhunter = baseurl + '/pota/upload/hunter';
         const locatejcc = baseurl + '/locators/jcc-jcg';
         const importjcc = baseurl + '/locators/jcc-jcg/import';
         const mapcode = baseurl + '/locators/mapcode';
@@ -232,10 +260,38 @@
                 uploadFile(importpota, 'upload-pota-file', 'upload-pota-button');
             });
 
+        document.getElementById('upload-activator')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let eid = encodeURIComponent(uid);
+                uploadFile(uploadactivator + `/${eid}`, 'upload-activator-file', 'upload-activator-button');
+            });
+
+        document.getElementById('upload-hunter')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let eid = encodeURIComponent(uid);
+                uploadFile(uploadhunter + `/${eid}`, 'upload-hunter-file', 'upload-hunter-button');
+            });
+
         document.getElementById('upload-jcc')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
                 uploadFile(importjcc, 'upload-jcc-file', 'upload-jcc-button');
+            });
+
+        document.getElementById('reflist')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let limit = document.getElementById('reflist-limit').value;
+                let offset = document.getElementById('reflist-offset').value;
+                let param = `limit=${limit}&offset=${offset}`;
+                let prog = document.getElementById('prog-reflist').value;
+                if (prog === 'SOTA') {
+                    search(sotalist, param);
+                } else if (prog === 'POTA') {
+                    search(potalist, param);
+                }
             });
 
         document.getElementById('search-refid')
@@ -282,9 +338,8 @@
                 event.preventDefault();
                 let name = document.getElementById('name').value;
                 let limit = document.getElementById('limit').value;
-                let offset = document.getElementById('offset').value;
                 let prog = document.getElementById('prog-name').value;
-                let param = `name=${name}&limit=${limit}&offset=${offset}`;
+                let param = `name=${name}&limit=${limit}`;
                 if (prog === 'SOTA') {
                     let url = sotasearch;
                     search(url, param);
@@ -303,7 +358,8 @@
                 let max_lat = document.getElementById('max_lat').value;
                 let min_elev = document.getElementById('min_elev').value;
                 let max_results = document.getElementById('max_results').value;
-                let param = `min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&mat_lat=${max_lat}&min_elev=${min_elev}&max_results=${max_results}`;
+                let eid = encodeURIComponent(uid);
+                let param = `user_id=${eid}&min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&max_lat=${max_lat}&min_elev=${min_elev}&max_results=${max_results}`;
                 let prog = document.getElementById('prog-location').value;
                 if (prog === 'SOTA') {
                     let url = sotasearch;

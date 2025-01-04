@@ -9,7 +9,7 @@ use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
-use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder};
+use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
@@ -111,6 +111,9 @@ impl AdminService for AdminServiceImpl {
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
         let requests: Vec<POTACSVFile> = csv_reader(data, 1)?;
         let newref = requests.into_iter().map(POTAReference::from).collect();
+        self.pota_repo
+            .delete_reference(DeleteRef::DeleteAll)
+            .await?;
         self.pota_repo.create_reference(newref).await?;
         Ok(())
     }
@@ -128,8 +131,11 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn find_sota_reference(&self, event: FindRef) -> AppResult<Vec<SOTAReference>> {
-        Ok(self.sota_repo.find_reference(&event).await?)
+    async fn show_sota_reference(
+        &self,
+        event: FindRef,
+    ) -> AppResult<PagenatedResult<SOTAReference>> {
+        Ok(self.sota_repo.show_reference(&event).await?)
     }
 
     async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
@@ -142,8 +148,11 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn find_pota_reference(&self, event: FindRef) -> AppResult<Vec<POTAReference>> {
-        Ok(self.pota_repo.find_reference(&event).await?)
+    async fn show_pota_reference(
+        &self,
+        event: FindRef,
+    ) -> AppResult<PagenatedResult<POTAReference>> {
+        Ok(self.pota_repo.show_reference(&event).await?)
     }
 
     async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {

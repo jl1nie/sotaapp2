@@ -35,7 +35,7 @@ impl From<MuniCSVFile> for MunicipalityCenturyCode {
                 jcc_text: jcc_text.unwrap(),
             },
             _ => CenturyCode::JCG {
-                jcg_code: jcg_code.unwrap(),
+                jcg_code: jcg_code.unwrap_or("".to_string()),
                 jcg_text: jcg_text.unwrap(),
                 hamlog_code,
             },

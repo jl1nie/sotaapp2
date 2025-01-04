@@ -6,8 +6,10 @@ pub fn findref_query_builder(r: &FindRef) -> String {
     if let Some(refid) = &r.ref_id {
         if r.is_sota() {
             query.push_str(&format!("(summit_code = '{}') AND ", refid))
-        } else {
-            query.push_str(&format!("(park_code = '{}') AND ", refid))
+        } else if r.is_pota() {
+            query.push_str(&format!("(p.pota_code = '{}') AND ", refid))
+        } else if r.is_wwff() {
+            query.push_str(&format!("(p.wwff_code = '{}') AND ", refid))
         }
     }
 
@@ -19,9 +21,10 @@ pub fn findref_query_builder(r: &FindRef) -> String {
                 name, name, name
             ));
         } else {
+            let name = format!("'{}%'", name);
             query.push_str(&format!(
-                "(park_code ILIKE {} OR park_name LIKE {} OR park_name_j LIKE {}) AND",
-                name, name, name
+                "(p.pota_code ILIKE {} OR p.wwff_code ILIKE {} OR p.park_name LIKE {} OR p.park_name_j LIKE {}) AND",
+                name, name, name, name
             ));
         }
     }
@@ -34,7 +37,7 @@ pub fn findref_query_builder(r: &FindRef) -> String {
 
     if let Some(min_area) = &r.min_area {
         if !r.is_sota() {
-            query.push_str(&format!("(park_area >= {}) AND", min_area));
+            query.push_str(&format!("(p.park_area >= {}) AND", min_area));
         }
     }
 
@@ -49,14 +52,16 @@ pub fn findref_query_builder(r: &FindRef) -> String {
 
     if r.is_sota() {
         query.push_str("GROUP BY summit_code ");
-    } else {
-        query.push_str("GROUP BY park_code ");
+    } else if r.is_pota() {
+        query.push_str("GROUP BY p.pota_code, p.wwff_code ");
+    } else if r.is_wwff() {
+        query.push_str("GROUP BY p.wwff_code, p.pota_code ");
     }
 
     if r.min_elev.is_some() && r.is_sota() {
         query.push_str("ORDER BY alt_m DESC ");
     } else if r.min_area.is_some() {
-        query.push_str("ORDER BY park_area DESC ");
+        query.push_str("ORDER BY p.park_area DESC ");
     }
 
     if let Some(limit) = &r.limit {
@@ -72,8 +77,6 @@ pub fn findref_query_builder(r: &FindRef) -> String {
 
 pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     let mut query: String = String::new();
-
-    tracing::info!("query: {:?}", r);
 
     if let Some(prog) = &r.program {
         query.push_str(format!("program = {} AND ", prog.as_i32()).as_str());

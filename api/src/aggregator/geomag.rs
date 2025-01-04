@@ -39,7 +39,7 @@ impl UpdateGeoMag {
 
         let ap: Vec<i32> = lines
             .iter()
-            .filter_map(|line| line.get(60..62).and_then(|s| s.parse().ok()))
+            .filter_map(|line| line.get(60..62).and_then(|s| s.trim().parse().ok()))
             .collect();
 
         let kp = lines
@@ -48,7 +48,7 @@ impl UpdateGeoMag {
                 line.get(63..)
                     .map(|part| {
                         part.split_whitespace()
-                            .filter_map(|s| s.parse::<f32>().ok())
+                            .filter_map(|s| s.trim().parse::<f32>().ok())
                             .rev()
                             .filter(|&k| k > 0.0f32)
                             .collect::<Vec<_>>()
@@ -58,7 +58,6 @@ impl UpdateGeoMag {
             .collect::<Vec<_>>();
 
         let mut index = GeomagIndex::default();
-
         if ap[0] < 0 {
             index.date = date[1];
             index.a_index = ap[1];
