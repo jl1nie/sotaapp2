@@ -13,7 +13,7 @@ use crate::model::pota::{
 use crate::services::UserService;
 
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteLog, FindAct, FindAppResult, FindRef};
+use domain::model::common::event::{DeleteLog, FindAct, FindRef, FindResult};
 use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
 
@@ -40,8 +40,8 @@ pub struct UserServiceImpl {
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    async fn find_references(&self, event: FindRef) -> AppResult<FindAppResult> {
-        let mut result = FindAppResult::default();
+    async fn find_references(&self, event: FindRef) -> AppResult<FindResult> {
+        let mut result = FindResult::default();
 
         if event.is_sota() {
             result.sota(self.sota_repo.find_reference(&event).await?)

@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idex_sota_reference_alt ON sota_references (alt_m DES
 CREATE INDEX IF NOT EXISTS idx_sota_references_coordinate ON sota_references USING GIST (coordinates);
 
 CREATE TABLE IF NOT EXISTS pota_references (
-    pota_code VARCHAR(255) NOT NULL PRIMARY KEY,
+    pota_code VARCHAR(255),
     wwff_code VARCHAR(255),
     park_name VARCHAR(255) NOT NULL,
     park_name_j VARCHAR(255) NOT NULL,
@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS pota_references (
     park_inactive BOOLEAN NOT NULL,
     park_area INTEGER,
     coordinates GEOMETRY(Point, 4326),
-    update TIMESTAMPTZ
+    update TIMESTAMPTZ,
+    PRIMARY KEY(pota_code, wwff_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pota_references_code ON pota_references (pota_code,wwff_code, park_name,park_name_j);

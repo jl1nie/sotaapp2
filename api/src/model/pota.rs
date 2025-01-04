@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
-use domain::model::common::id::UserId;
-use domain::model::pota::POTAReference;
+use domain::model::common::{event::PagenatedResult, id::UserId};
+use domain::model::pota::{POTAReference, POTAReferenceWithLog};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
@@ -16,7 +16,7 @@ pub struct CreateRefRequest {
     pub park_inactive: bool,
     pub park_area: i32,
     pub longitude: Option<f64>,
-    pub lattitude: Option<f64>,
+    pub latitude: Option<f64>,
 }
 
 impl From<CreateRefRequest> for Vec<POTAReference> {
@@ -32,7 +32,7 @@ impl From<CreateRefRequest> for Vec<POTAReference> {
             park_inactive,
             park_area,
             longitude,
-            lattitude,
+            latitude,
         } = value;
         let update: DateTime<Utc> = Utc::now();
         vec![POTAReference {
@@ -46,9 +46,33 @@ impl From<CreateRefRequest> for Vec<POTAReference> {
             park_inactive,
             park_area,
             longitude,
-            lattitude,
+            latitude,
             update,
         }]
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagenatedResponse<POTAReference> {
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+    pub results: Vec<POTAReference>,
+}
+
+impl From<PagenatedResult<POTAReference>> for PagenatedResponse<POTARefResponse> {
+    fn from(pagenated: PagenatedResult<POTAReference>) -> Self {
+        PagenatedResponse {
+            total: pagenated.total,
+            limit: pagenated.limit,
+            offset: pagenated.offset,
+            results: pagenated
+                .results
+                .into_iter()
+                .map(POTARefResponse::from)
+                .collect(),
+        }
     }
 }
 
@@ -65,7 +89,7 @@ pub struct UpdateRefRequest {
     pub park_inactive: bool,
     pub park_area: i32,
     pub longitude: Option<f64>,
-    pub lattitude: Option<f64>,
+    pub latitude: Option<f64>,
 }
 
 impl From<UpdateRefRequest> for Vec<POTAReference> {
@@ -81,7 +105,7 @@ impl From<UpdateRefRequest> for Vec<POTAReference> {
             park_inactive,
             park_area,
             longitude,
-            lattitude,
+            latitude,
         } = value;
         let update: DateTime<Utc> = Utc::now();
         vec![POTAReference {
@@ -95,7 +119,7 @@ impl From<UpdateRefRequest> for Vec<POTAReference> {
             park_inactive,
             park_area,
             longitude,
-            lattitude,
+            latitude,
             update,
         }]
     }
@@ -142,7 +166,7 @@ pub struct POTARefResponse {
     pub park_inactive: bool,
     pub park_area: i32,
     pub longitude: Option<f64>,
-    pub lattitude: Option<f64>,
+    pub latitude: Option<f64>,
 }
 
 impl From<POTAReference> for POTARefResponse {
@@ -158,7 +182,7 @@ impl From<POTAReference> for POTARefResponse {
             park_inactive: pota.park_inactive,
             park_area: pota.park_area,
             longitude: pota.longitude,
-            lattitude: pota.lattitude,
+            latitude: pota.latitude,
         }
     }
 }
@@ -180,10 +204,14 @@ pub struct POTASearchResult {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub lattitude: Option<f64>,
+    pub attempts: Option<i32>,
+    pub activations: Option<i32>,
+    pub first_qso_date: Option<NaiveDate>,
+    pub qsos: Option<i32>,
 }
 
-impl From<POTAReference> for POTASearchResult {
-    fn from(pota: POTAReference) -> Self {
+impl From<POTAReferenceWithLog> for POTASearchResult {
+    fn from(pota: POTAReferenceWithLog) -> Self {
         POTASearchResult {
             pota_code: pota.pota_code,
             wwff_code: pota.wwff_code,
@@ -191,7 +219,11 @@ impl From<POTAReference> for POTASearchResult {
             park_name_j: pota.park_name_j,
             park_area: pota.park_area,
             longitude: pota.longitude,
-            lattitude: pota.lattitude,
+            lattitude: pota.latitude,
+            attempts: pota.attempts,
+            activations: pota.activations,
+            first_qso_date: pota.first_qso_date,
+            qsos: pota.qsos,
         }
     }
 }

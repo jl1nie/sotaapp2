@@ -3,7 +3,7 @@ use shaku::Interface;
 
 use common::error::AppResult;
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteRef, FindAct, FindAppResult, FindRef};
+use domain::model::common::event::{DeleteRef, FindAct, FindRef, FindResult, PagenatedResult};
 use domain::model::common::id::UserId;
 use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
@@ -16,7 +16,7 @@ use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
-    async fn find_references(&self, event: FindRef) -> AppResult<FindAppResult>;
+    async fn find_references(&self, event: FindRef) -> AppResult<FindResult>;
     async fn find_alerts(&self, event: FindAct) -> AppResult<Vec<Alert>>;
     async fn find_spots(&self, event: FindAct) -> AppResult<Vec<Spot>>;
     async fn upload_activator_csv(
@@ -38,11 +38,17 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
 
-    async fn find_sota_reference(&self, query: FindRef) -> AppResult<Vec<SOTAReference>>;
+    async fn show_sota_reference(
+        &self,
+        query: FindRef,
+    ) -> AppResult<PagenatedResult<SOTAReference>>;
     async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()>;
     async fn delete_sota_reference(&self, query: DeleteRef<SummitCode>) -> AppResult<()>;
 
-    async fn find_pota_reference(&self, query: FindRef) -> AppResult<Vec<POTAReference>>;
+    async fn show_pota_reference(
+        &self,
+        query: FindRef,
+    ) -> AppResult<PagenatedResult<POTAReference>>;
     async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()>;
     async fn delete_pota_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
     async fn health_check(&self) -> AppResult<bool>;

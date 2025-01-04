@@ -24,8 +24,27 @@ pub struct POTAReference {
     pub park_inactive: bool,
     pub park_area: i32,
     pub longitude: Option<f64>,
-    pub lattitude: Option<f64>,
+    pub latitude: Option<f64>,
     pub update: DateTime<Utc>,
+}
+
+#[derive(Debug)]
+pub struct POTAReferenceWithLog {
+    pub pota_code: String,
+    pub wwff_code: String,
+    pub park_name: String,
+    pub park_name_j: String,
+    pub park_location: String,
+    pub park_locid: String,
+    pub park_type: String,
+    pub park_inactive: bool,
+    pub park_area: i32,
+    pub longitude: Option<f64>,
+    pub latitude: Option<f64>,
+    pub attempts: Option<i32>,
+    pub activations: Option<i32>,
+    pub first_qso_date: Option<NaiveDate>,
+    pub qsos: Option<i32>,
 }
 
 #[derive(Debug)]

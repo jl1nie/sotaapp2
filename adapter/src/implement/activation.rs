@@ -177,7 +177,6 @@ impl ActivationRepositryImpl {
         select.push_str(query);
 
         let sql_query = sqlx::query_as::<_, SpotImpl>(&select);
-        tracing::info!("query: {}", select);
         let rows: Vec<SpotImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await

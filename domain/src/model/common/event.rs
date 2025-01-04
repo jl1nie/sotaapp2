@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use derive_new::new;
 
 use crate::model::common::id::UserId;
-use crate::model::{pota::POTAReference, sota::SOTAReference, AwardProgram};
+use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference, AwardProgram};
 
 #[derive(new, Debug)]
 pub struct BoundingBox {
@@ -140,21 +140,29 @@ impl FindRefBuilder {
 
 pub enum ResultKind {
     SOTA(Vec<SOTAReference>),
-    POTA(Vec<POTAReference>),
+    POTA(Vec<POTAReferenceWithLog>),
 }
 
 #[derive(Default)]
-pub struct FindAppResult {
+pub struct FindResult {
     pub results: Vec<ResultKind>,
 }
-impl FindAppResult {
+impl FindResult {
     pub fn sota(&mut self, v: Vec<SOTAReference>) {
         self.results.push(ResultKind::SOTA(v))
     }
 
-    pub fn pota(&mut self, v: Vec<POTAReference>) {
+    pub fn pota(&mut self, v: Vec<POTAReferenceWithLog>) {
         self.results.push(ResultKind::POTA(v))
     }
+}
+
+#[derive(Default, Debug)]
+pub struct PagenatedResult<T> {
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+    pub results: Vec<T>,
 }
 
 #[derive(Debug)]

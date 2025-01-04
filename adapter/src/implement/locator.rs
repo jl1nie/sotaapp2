@@ -113,7 +113,6 @@ impl LocatorRepositry for LocatorRepositryImpl {
             .send()
             .await
             .map_err(AppError::PostError)?;
-        tracing::info!("response: {:?}", response);
         let response_json = response
             .json::<Value>()
             .await

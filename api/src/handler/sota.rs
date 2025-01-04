@@ -1,5 +1,3 @@
-use std::vec;
-
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
@@ -11,11 +9,13 @@ use chrono::{Duration, Utc};
 use shaku_axum::Inject;
 
 use crate::model::sota::{
-    SOTARefResponse, SOTARefSearchResponse, SOTASearchResult, UpdateRefRequest,
+    PagenatedResponse, SOTARefResponse, SOTARefSearchResponse, SOTASearchResult, UpdateRefRequest,
 };
 use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{DeleteRef, FindActBuilder, FindRefBuilder};
+use domain::model::common::event::{
+    DeleteRef, FindActBuilder, FindRefBuilder, FindResult, ResultKind,
+};
 use domain::model::sota::SummitCode;
 use registry::{AppRegistry, AppState};
 
@@ -82,18 +82,29 @@ async fn delete_sota_reference(
 async fn show_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
-) -> AppResult<Json<SOTARefResponse>> {
+) -> AppResult<Json<PagenatedResponse<SOTARefResponse>>> {
     let query = FindRefBuilder::default().sota().ref_id(summit_code).build();
-    let mut result = admin_service.find_sota_reference(query).await?;
-    if let Some(sotaref) = result.pop() {
-        Ok(Json(sotaref.into()))
-    } else {
-        Err(AppError::EntityNotFound("Summit not found.".to_string()))
-    }
+    let result = admin_service.show_sota_reference(query).await?;
+    Ok(Json(result.into()))
 }
 
-async fn show_sota_reference_list(
+async fn show_all_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<PagenatedResponse<SOTARefResponse>>> {
+    let mut query = FindRefBuilder::default().sota();
+    if param.limit.is_some() {
+        query = query.limit(param.limit.unwrap());
+    }
+
+    if param.offset.is_some() {
+        query = query.offset(param.offset.unwrap());
+    }
+    let result = admin_service.show_sota_reference(query.build()).await?;
+    Ok(Json(result.into()))
+}
+async fn show_sota_reference_list(
+    user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<SOTARefSearchResponse>> {
     let mut query = FindRefBuilder::default().sota();
@@ -131,9 +142,16 @@ async fn show_sota_reference_list(
         );
     }
 
-    let result = admin_service.find_sota_reference(query.build()).await?;
+    let FindResult { results } = user_service.find_references(query.build()).await?;
     let mut res = SOTARefSearchResponse::default();
-    res.results = result.into_iter().map(SOTASearchResult::from).collect();
+    let results: Vec<_> = results
+        .into_iter()
+        .flat_map(|r| match r {
+            ResultKind::SOTA(s) => s.into_iter(),
+            _ => vec![].into_iter(),
+        })
+        .collect();
+    res.results = results.into_iter().map(SOTASearchResult::from).collect();
     res.count = res.results.len() as i32;
     if param.max_results.is_some() && res.count > param.max_results.unwrap() {
         res.results = vec![];
@@ -172,14 +190,15 @@ async fn show_sota_alerts(
 
 pub fn build_sota_routers() -> Router<AppState> {
     let routers = Router::new()
-        .route("/", get(show_sota_reference_list))
         .route("/import", post(import_sota_reference))
         .route("/import/ja", post(import_sota_opt_reference))
         .route("/spots", get(show_sota_spots))
         .route("/alerts", get(show_sota_alerts))
-        .route("/:summit_code", get(show_sota_reference))
-        .route("/:summit_code", put(update_sota_reference))
-        .route("/:summit_code", delete(delete_sota_reference));
+        .route("/summit-list", get(show_all_reference))
+        .route("/summit", get(show_sota_reference_list))
+        .route("/summit/:summit_code", get(show_sota_reference))
+        .route("/summit/:summit_code", put(update_sota_reference))
+        .route("/summit/:summit_code", delete(delete_sota_reference));
 
     Router::new().nest("/sota", routers)
 }
