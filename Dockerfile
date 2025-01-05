@@ -4,6 +4,7 @@ WORKDIR /app
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
 
+RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config
 COPY . .
 RUN cargo build --release
 
