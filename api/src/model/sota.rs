@@ -1,6 +1,7 @@
-use domain::model::common::event::UpdateRef;
-use domain::model::sota::SOTAReference;
 use serde::{Deserialize, Serialize};
+
+use domain::model::common::event::PagenatedResult;
+use domain::model::sota::SOTAReference;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -27,7 +28,7 @@ pub struct CreateRefRequest {
     pub activation_call: Option<String>,
 }
 
-impl From<CreateRefRequest> for UpdateRef<SOTAReference> {
+impl From<CreateRefRequest> for Vec<SOTAReference> {
     fn from(value: CreateRefRequest) -> Self {
         let CreateRefRequest {
             summit_code,
@@ -51,30 +52,28 @@ impl From<CreateRefRequest> for UpdateRef<SOTAReference> {
             activation_date,
             activation_call,
         } = value;
-        Self {
-            requests: vec![SOTAReference {
-                summit_code,
-                association_name,
-                region_name,
-                summit_name,
-                summit_name_j: Some(summit_name_j),
-                city: Some(city),
-                city_j: Some(city_j),
-                alt_m,
-                alt_ft,
-                grid_ref1,
-                grid_ref2,
-                longitude: Some(longitude),
-                latitude: Some(latitude),
-                points,
-                bonus_points,
-                valid_from,
-                valid_to,
-                activation_count,
-                activation_date,
-                activation_call,
-            }],
-        }
+        vec![SOTAReference {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j: Some(summit_name_j),
+            city: Some(city),
+            city_j: Some(city_j),
+            alt_m,
+            alt_ft,
+            grid_ref1,
+            grid_ref2,
+            longitude: Some(longitude),
+            latitude: Some(latitude),
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
+        }]
     }
 }
 
@@ -103,7 +102,7 @@ pub struct UpdateRefRequest {
     pub activation_call: Option<String>,
 }
 
-impl From<UpdateRefRequest> for UpdateRef<SOTAReference> {
+impl From<UpdateRefRequest> for Vec<SOTAReference> {
     fn from(value: UpdateRefRequest) -> Self {
         let UpdateRefRequest {
             summit_code,
@@ -149,24 +148,8 @@ impl From<UpdateRefRequest> for UpdateRef<SOTAReference> {
             activation_date,
             activation_call,
         };
-        Self {
-            requests: vec![request],
-        }
+        vec![request]
     }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GetParam {
-    pub min_lon: Option<f64>,
-    pub min_lat: Option<f64>,
-    pub max_lon: Option<f64>,
-    pub max_lat: Option<f64>,
-    pub min_elev: Option<i32>,
-    pub min_area: Option<i32>,
-    pub ref_id: Option<String>,
-    pub name: Option<String>,
-    pub limit: Option<i32>,
-    pub offset: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -235,11 +218,35 @@ impl From<SOTAReference> for SOTARefResponse {
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PagenatedResponse<SOTAReference> {
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+    pub results: Vec<SOTAReference>,
+}
+
+impl From<PagenatedResult<SOTAReference>> for PagenatedResponse<SOTARefResponse> {
+    fn from(pagenated: PagenatedResult<SOTAReference>) -> Self {
+        PagenatedResponse {
+            total: pagenated.total,
+            limit: pagenated.limit,
+            offset: pagenated.offset,
+            results: pagenated
+                .results
+                .into_iter()
+                .map(SOTARefResponse::from)
+                .collect(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SOTARefSearchResponse {
-    pub counts: i32,
-    pub result: Vec<SOTASearchResult>,
+    pub count: i32,
+    pub results: Vec<SOTASearchResult>,
 }
 
 #[derive(Debug, Serialize)]

@@ -17,14 +17,18 @@ pub enum AppError {
     NoRowsAffectedError(String),
     #[error("CSVの読み込みに失敗しました。")]
     CSVReadError(#[source] csv::Error),
-    /*
-    #[error("{0}")]
-    KeyValueStoreError(#[from] redis::RedisError),
-    #[error("{0}")]
-    BcryptError(#[from] bcrypt::BcryptError),
+    #[error("POSTに失敗しました。")]
+    PostError(#[source] reqwest::Error),
+    #[error("HTTP-GETに失敗しました。")]
+    GetError(#[source] reqwest::Error),
+    #[error("JSON変換に失敗しました。")]
+    JsonError(#[source] serde_json::Error),
+    // #[error("{0}")]
+    // KeyValueStoreError(#[from] redis::RedisError),
+    // #[error("{0}")]
+    // BcryptError(#[from] bcrypt::BcryptError),
     #[error("{0}")]
     ConvertToUuidError(#[from] uuid::Error),
-    */
     #[error("ログインに失敗しました")]
     UnauthenticatedError,
     #[error("認可情報が誤っています")]
@@ -39,18 +43,20 @@ impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         let status_code = match self {
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::CSVReadError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::EntityNotFound(_) => StatusCode::NOT_FOUND,
-            /*
-                AppError::ValidationError(_) | AppError::ConvertToUuidError(_) => {
+            AppError::CSVReadError(e) =>{tracing::error!("CSV Error {:?}",e); StatusCode::UNPROCESSABLE_ENTITY},
+            AppError::EntityNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
+            /* AppError::ValidationError(_) |*/
+                 AppError::ConvertToUuidError(_) => {
                     StatusCode::BAD_REQUEST
-                }
-            }*/
+                },
             AppError::UnauthenticatedError | AppError::ForbiddenOperation => StatusCode::FORBIDDEN,
             AppError::UnauthorizedError => StatusCode::UNAUTHORIZED,
             e @ (AppError::TransactionError(_)
             | AppError::SpecificOperationError(_)
             | AppError::NoRowsAffectedError(_)
+            | AppError::PostError(_)
+            | AppError::GetError(_)
+            | AppError::JsonError(_)
             /* 
             | AppError::KeyValueStoreError(_)
             | AppError::BcryptError(_)

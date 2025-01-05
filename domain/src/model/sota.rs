@@ -1,8 +1,3 @@
-use crate::model::common::activation::{Alert, Spot};
-use sqlx::FromRow;
-pub type SOTAAlert = Alert;
-pub type SOTASpot = Spot;
-
 pub struct SummitCode(String);
 impl SummitCode {
     pub fn new(code: String) -> Self {
@@ -13,7 +8,7 @@ impl SummitCode {
     }
 }
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, Clone)]
 pub struct SOTAReference {
     pub summit_code: String,
     pub association_name: String,

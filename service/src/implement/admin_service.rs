@@ -1,23 +1,24 @@
 use async_trait::async_trait;
 use chrono::{Local, NaiveDate};
+
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
-use domain::model::common::event::{
-    CreateRef, DeleteRef, FindRef, FindRefBuilder, FindResult, UpdateRef,
-};
+use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
+use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
 use domain::repository::{
-    healthcheck::HealthCheckRepositry, pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
+    healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::POTAReferenceRepositry,
+    sota::SOTAReferenceReposity,
 };
 
-use crate::model::pota::UploadPOTACSV;
+use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
+use crate::model::pota::{POTACSVFile, UploadPOTACSV};
 use crate::model::sota::{SOTACSVFile, SOTACSVOptFile};
 use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 
@@ -32,32 +33,89 @@ pub struct AdminServiceImpl {
     pota_repo: Arc<dyn POTAReferenceRepositry>,
     #[shaku(inject)]
     check_repo: Arc<dyn HealthCheckRepositry>,
-    config: AppConfig,
+    #[shaku(inject)]
+    loc_repo: Arc<dyn LocatorRepositry>,
+}
+
+fn is_valid_summit(r: &SOTAReference) -> bool {
+    let today = Local::now().date_naive();
+    let validfrom = NaiveDate::parse_from_str(&r.valid_from, "%d/%m/%Y").unwrap_or(today);
+    let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
+    today <= validto && today >= validfrom
 }
 
 #[async_trait]
 impl AdminService for AdminServiceImpl {
     async fn import_summit_list(&self, UploadSOTACSV { data }: UploadSOTACSV) -> AppResult<()> {
-        let today = Local::now().date_naive();
         let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
+        let req: Vec<_> = csv
+            .into_iter()
+            .map(SOTAReference::from)
+            .filter(is_valid_summit)
+            .collect();
 
-        let is_valid_summit = |r: &SOTAReference| -> bool {
-            let validfrom = NaiveDate::parse_from_str(&r.valid_from, "%d/%m/%Y").unwrap_or(today);
-            let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
-            r.summit_code.starts_with("JA") && today <= validto && today >= validfrom
-        };
-        let req = CreateRef {
-            requests: csv
-                .into_iter()
-                .map(SOTAReference::from)
-                .filter(is_valid_summit)
-                .collect(),
-        };
-        eprintln!("import {} references.", req.requests.len());
+        tracing::info!("import {} references.", req.len());
         self.sota_repo
             .delete_reference(DeleteRef::DeleteAll)
             .await?;
         self.sota_repo.create_reference(req).await?;
+        Ok(())
+    }
+
+    async fn update_summit_list(&self, UploadSOTACSV { data }: UploadSOTACSV) -> AppResult<()> {
+        let partial_equal = |r: &SOTAReference, other: &SOTAReference| {
+            r.summit_code == other.summit_code
+                && r.association_name == other.association_name
+                && r.region_name == other.region_name
+                && r.alt_ft == other.alt_ft
+                && r.grid_ref1 == other.grid_ref1
+                && r.grid_ref2 == other.grid_ref2
+                && r.points == other.points
+                && r.bonus_points == other.bonus_points
+                && r.valid_from == other.valid_from
+                && r.valid_to == other.valid_to
+                && r.activation_count == other.activation_count
+                && r.activation_date == other.activation_date
+                && r.activation_call == other.activation_call
+        };
+
+        let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
+
+        let new_hash: HashMap<_, _> = csv
+            .into_iter()
+            .map(SOTAReference::from)
+            .filter(is_valid_summit)
+            .map(|r| (r.summit_code.clone(), r))
+            .collect();
+
+        let query = FindRefBuilder::new().sota().build();
+        let result = self.sota_repo.find_reference(&query).await?;
+        let old_hash: HashMap<_, _> = result
+            .into_iter()
+            .map(|r| (r.summit_code.clone(), r))
+            .collect();
+
+        let updated: Vec<_> = new_hash
+            .keys()
+            .cloned()
+            .filter_map(|summit_code| {
+                let newsummit = new_hash.get(&summit_code).unwrap().clone();
+                if old_hash.contains_key(&summit_code) {
+                    let oldsummit = old_hash.get(&summit_code).unwrap();
+                    if !partial_equal(&newsummit, oldsummit) {
+                        Some(newsummit)
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(newsummit)
+                }
+            })
+            .collect();
+
+        tracing::info!("update summit {} references.", updated.len());
+
+        self.sota_repo.upsert_reference(updated).await?;
         Ok(())
     }
 
@@ -81,42 +139,58 @@ impl AdminService for AdminServiceImpl {
         for assoc in associations {
             let query = FindRefBuilder::new().sota().name(assoc).build();
             let result = self.sota_repo.find_reference(&query).await?;
-            if let Some(target) = result.results {
-                let newref = target
-                    .into_iter()
-                    .filter(|r| ja_hash.contains_key(&r.summit_code))
-                    .map(|mut r| {
-                        let ja = ja_hash.get(&r.summit_code).unwrap();
-                        r.summit_name = ja.summit_name.clone();
-                        r.summit_name_j = Some(ja.summit_name_j.clone());
-                        r.city = Some(ja.city.clone());
-                        r.city_j = Some(ja.city_j.clone());
-                        r.longitude = ja.longitude;
-                        r.latitude = ja.latitude;
-                        r.alt_m = ja.alt_m;
-                        r
-                    })
-                    .collect();
-                let req = UpdateRef { requests: newref };
-                self.sota_repo.update_reference(req).await?;
-            }
+            let newref = result
+                .into_iter()
+                .filter(|r| ja_hash.contains_key(&r.summit_code))
+                .map(|mut r| {
+                    let ja = ja_hash.get(&r.summit_code).unwrap();
+                    r.summit_name = ja.summit_name.clone();
+                    r.summit_name_j = Some(ja.summit_name_j.clone());
+                    r.city = Some(ja.city.clone());
+                    r.city_j = Some(ja.city_j.clone());
+                    r.longitude = ja.longitude;
+                    r.latitude = ja.latitude;
+                    r.alt_m = ja.alt_m;
+                    r
+                })
+                .collect();
+            self.sota_repo.update_reference(newref).await?;
         }
         Ok(())
     }
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
-        let requests: Vec<POTAReference> = csv_reader(data, 1)?;
-        let req = CreateRef { requests };
-        self.pota_repo.create_reference(req).await?;
+        let requests: Vec<POTACSVFile> = csv_reader(data, 1)?;
+        let newref = requests.into_iter().map(POTAReference::from).collect();
+        self.pota_repo
+            .delete_reference(DeleteRef::DeleteAll)
+            .await?;
+        self.pota_repo.create_reference(newref).await?;
         Ok(())
     }
 
-    async fn find_sota_reference(&self, event: FindRef) -> AppResult<FindResult<SOTAReference>> {
-        Ok(self.sota_repo.find_reference(&event).await?)
+    async fn import_muni_century_list(
+        &self,
+        UploadMuniCSV { data }: UploadMuniCSV,
+    ) -> AppResult<()> {
+        let requests: Vec<MuniCSVFile> = csv_reader(data, 1)?;
+        let newtable = requests
+            .into_iter()
+            .map(MunicipalityCenturyCode::from)
+            .collect();
+        self.loc_repo.upload_muni_century_list(newtable).await?;
+        Ok(())
     }
 
-    async fn update_sota_reference(&self, event: UpdateRef<SOTAReference>) -> AppResult<()> {
-        self.sota_repo.update_reference(event).await?;
+    async fn show_sota_reference(
+        &self,
+        event: FindRef,
+    ) -> AppResult<PagenatedResult<SOTAReference>> {
+        Ok(self.sota_repo.show_reference(&event).await?)
+    }
+
+    async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
+        self.sota_repo.update_reference(references).await?;
         Ok(())
     }
 
@@ -125,12 +199,15 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn find_pota_reference(&self, event: FindRef) -> AppResult<FindResult<POTAReference>> {
-        Ok(self.pota_repo.find_reference(&event).await?)
+    async fn show_pota_reference(
+        &self,
+        event: FindRef,
+    ) -> AppResult<PagenatedResult<POTAReference>> {
+        Ok(self.pota_repo.show_reference(&event).await?)
     }
 
-    async fn update_pota_reference(&self, event: UpdateRef<POTAReference>) -> AppResult<()> {
-        self.pota_repo.update_reference(event).await?;
+    async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {
+        self.pota_repo.update_reference(references).await?;
         Ok(())
     }
 
@@ -138,7 +215,6 @@ impl AdminService for AdminServiceImpl {
         self.pota_repo.delete_reference(event).await?;
         Ok(())
     }
-
     async fn health_check(&self) -> AppResult<bool> {
         Ok(self.check_repo.check_database().await?)
     }
