@@ -47,7 +47,7 @@ async fn bootstrap() -> Result<()> {
         .with_state(app_state)
         .nest_service("/admin-console", ServeDir::new("static"));
 
-    let addr: SocketAddr = "0.0.0.0:8000".parse().unwrap();
+    let addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
     let listener = TcpListener::bind(&addr).await?;
     tracing::info!("Listening on {}", addr);
 

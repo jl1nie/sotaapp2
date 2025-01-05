@@ -62,7 +62,9 @@ pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
         .build_fn(geomag_executer);
 
     let summitlist = UpdateSummitList::new(config, state);
-    summitlist.update(config.import_all_at_startup).await?;
+    if config.import_all_at_startup {
+        summitlist.update(config.import_all_at_startup).await?;
+    }
     let summitlist_schedule =
         Schedule::from_str(&config.sota_summitlist_update_schedule).expect("bad cron format");
     let summit_job = WorkerBuilder::new("update-spots")
