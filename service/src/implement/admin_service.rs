@@ -5,7 +5,6 @@ use shaku::Component;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
@@ -36,35 +35,87 @@ pub struct AdminServiceImpl {
     check_repo: Arc<dyn HealthCheckRepositry>,
     #[shaku(inject)]
     loc_repo: Arc<dyn LocatorRepositry>,
-    config: AppConfig,
+}
+
+fn is_valid_summit(r: &SOTAReference) -> bool {
+    let today = Local::now().date_naive();
+    let validfrom = NaiveDate::parse_from_str(&r.valid_from, "%d/%m/%Y").unwrap_or(today);
+    let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
+    today <= validto && today >= validfrom
 }
 
 #[async_trait]
 impl AdminService for AdminServiceImpl {
     async fn import_summit_list(&self, UploadSOTACSV { data }: UploadSOTACSV) -> AppResult<()> {
-        let today = Local::now().date_naive();
         let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
-
-        let is_valid_summit = |r: &SOTAReference| -> bool {
-            let validfrom = NaiveDate::parse_from_str(&r.valid_from, "%d/%m/%Y").unwrap_or(today);
-            let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
-            self.config
-                .sota_import_association
-                .as_ref()
-                .map_or(true, |re| re.is_match(&r.summit_code))
-                && today <= validto
-                && today >= validfrom
-        };
         let req: Vec<_> = csv
             .into_iter()
             .map(SOTAReference::from)
             .filter(is_valid_summit)
             .collect();
+
         tracing::info!("import {} references.", req.len());
         self.sota_repo
             .delete_reference(DeleteRef::DeleteAll)
             .await?;
         self.sota_repo.create_reference(req).await?;
+        Ok(())
+    }
+
+    async fn update_summit_list(&self, UploadSOTACSV { data }: UploadSOTACSV) -> AppResult<()> {
+        let partial_equal = |r: &SOTAReference, other: &SOTAReference| {
+            r.summit_code == other.summit_code
+                && r.association_name == other.association_name
+                && r.region_name == other.region_name
+                && r.alt_ft == other.alt_ft
+                && r.grid_ref1 == other.grid_ref1
+                && r.grid_ref2 == other.grid_ref2
+                && r.points == other.points
+                && r.bonus_points == other.bonus_points
+                && r.valid_from == other.valid_from
+                && r.valid_to == other.valid_to
+                && r.activation_count == other.activation_count
+                && r.activation_date == other.activation_date
+                && r.activation_call == other.activation_call
+        };
+
+        let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
+
+        let new_hash: HashMap<_, _> = csv
+            .into_iter()
+            .map(SOTAReference::from)
+            .filter(is_valid_summit)
+            .map(|r| (r.summit_code.clone(), r))
+            .collect();
+
+        let query = FindRefBuilder::new().sota().build();
+        let result = self.sota_repo.find_reference(&query).await?;
+        let old_hash: HashMap<_, _> = result
+            .into_iter()
+            .map(|r| (r.summit_code.clone(), r))
+            .collect();
+
+        let updated: Vec<_> = new_hash
+            .keys()
+            .cloned()
+            .filter_map(|summit_code| {
+                let newsummit = new_hash.get(&summit_code).unwrap().clone();
+                if old_hash.contains_key(&summit_code) {
+                    let oldsummit = old_hash.get(&summit_code).unwrap();
+                    if !partial_equal(&newsummit, oldsummit) {
+                        Some(newsummit)
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(newsummit)
+                }
+            })
+            .collect();
+
+        tracing::info!("update summit {} references.", updated.len());
+
+        self.sota_repo.upsert_reference(updated).await?;
         Ok(())
     }
 

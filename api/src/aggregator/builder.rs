@@ -11,6 +11,8 @@ use crate::aggregator::geomag::UpdateGeoMag;
 
 use common::config::AppConfig;
 
+use super::summitlist::UpdateSummitList;
+
 async fn alert_executer(job: DateTime<Utc>, svc: Data<UpdateAlerts>) {
     tracing::info!("Update Alerts {}", job);
     let _ = svc.update().await;
@@ -24,6 +26,11 @@ async fn spot_executer(job: DateTime<Utc>, svc: Data<UpdateSpots>) {
 async fn geomag_executer(job: DateTime<Utc>, svc: Data<UpdateGeoMag>) {
     tracing::info!("Update geomag {}", job);
     let _ = svc.update().await;
+}
+
+async fn summitlist_executer(job: DateTime<Utc>, svc: Data<UpdateSummitList>) {
+    tracing::info!("Update summitlist {}", job);
+    let _ = svc.update(false).await;
 }
 
 pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
@@ -54,10 +61,20 @@ pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
         .backend(CronStream::new(geomag_schedule))
         .build_fn(geomag_executer);
 
+    let summitlist = UpdateSummitList::new(config, state);
+    summitlist.update(config.import_all_at_startup).await?;
+    let summitlist_schedule =
+        Schedule::from_str(&config.sota_summitlist_update_schedule).expect("bad cron format");
+    let summit_job = WorkerBuilder::new("update-spots")
+        .data(summitlist)
+        .backend(CronStream::new(summitlist_schedule))
+        .build_fn(summitlist_executer);
+
     let alert_future = Monitor::new().register(alert_job).run();
     let spot_future = Monitor::new().register(spot_job).run();
     let geomag_future = Monitor::new().register(geomag_job).run();
+    let summit_future = Monitor::new().register(summit_job).run();
 
-    let _res = tokio::join!(alert_future, spot_future, geomag_future);
+    let _res = tokio::join!(alert_future, spot_future, geomag_future, summit_future);
     Ok(())
 }

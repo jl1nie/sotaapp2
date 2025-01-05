@@ -19,6 +19,8 @@ pub enum AppError {
     CSVReadError(#[source] csv::Error),
     #[error("POSTに失敗しました。")]
     PostError(#[source] reqwest::Error),
+    #[error("HTTP-GETに失敗しました。")]
+    GetError(#[source] reqwest::Error),
     #[error("JSON変換に失敗しました。")]
     JsonError(#[source] serde_json::Error),
     // #[error("{0}")]
@@ -53,6 +55,7 @@ impl IntoResponse for AppError {
             | AppError::SpecificOperationError(_)
             | AppError::NoRowsAffectedError(_)
             | AppError::PostError(_)
+            | AppError::GetError(_)
             | AppError::JsonError(_)
             /* 
             | AppError::KeyValueStoreError(_)

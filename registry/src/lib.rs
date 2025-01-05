@@ -55,9 +55,7 @@ impl AppRegistry {
             .with_component_parameters::<UserServiceImpl>(UserServiceImplParameters {
                 config: config.clone(),
             })
-            .with_component_parameters::<AdminServiceImpl>(AdminServiceImplParameters {
-                config: config.clone(),
-            })
+            .with_component_parameters::<AdminServiceImpl>(AdminServiceImplParameters {})
             .with_component_parameters::<AdminPeriodicServiceImpl>(
                 AdminPeriodicServiceImplParameters {
                     config: config.clone(),

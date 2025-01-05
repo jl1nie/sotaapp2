@@ -34,6 +34,7 @@ pub trait UserService: Send + Sync + Interface {
 #[async_trait]
 pub trait AdminService: Send + Sync + Interface {
     async fn import_summit_list(&self, event: UploadSOTACSV) -> AppResult<()>;
+    async fn update_summit_list(&self, event: UploadSOTACSV) -> AppResult<()>;
     async fn import_summit_opt_list(&self, event: UploadSOTAOptCSV) -> AppResult<()>;
     async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;

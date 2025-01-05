@@ -67,6 +67,7 @@ regex = "1.5.4"
 [dependencies]
 api.workspace = true
 service.workspace = true
+chrono.workspace = true
 common.workspace = true
 domain.workspace = true
 adapter.workspace = true

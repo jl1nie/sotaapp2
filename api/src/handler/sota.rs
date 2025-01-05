@@ -32,7 +32,7 @@ async fn update_sota_reference(
         .map(|_| StatusCode::CREATED)
 }
 
-async fn import_sota_reference(
+async fn import_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
@@ -44,6 +44,24 @@ async fn import_sota_reference(
 
         return admin_service
             .import_summit_list(reqs)
+            .await
+            .map(|_| StatusCode::CREATED);
+    }
+    Err(AppError::ForbiddenOperation)
+}
+
+async fn update_summit_list(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    mut multipart: Multipart,
+) -> AppResult<StatusCode> {
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let data = field.bytes().await.unwrap();
+        let data = String::from_utf8(data.to_vec()).unwrap();
+
+        let reqs = UploadSOTACSV { data };
+
+        return admin_service
+            .update_summit_list(reqs)
             .await
             .map(|_| StatusCode::CREATED);
     }
@@ -182,7 +200,6 @@ async fn show_sota_alerts(
         .sota()
         .after(Utc::now() - Duration::hours(hours))
         .build();
-    tracing::info!("query: {:?}", query);
     let result = user_service.find_alerts(query).await?;
     let alerts: Vec<_> = result.into_iter().map(AlertResponse::from).collect();
     Ok(Json(alerts))
@@ -190,8 +207,9 @@ async fn show_sota_alerts(
 
 pub fn build_sota_routers() -> Router<AppState> {
     let routers = Router::new()
-        .route("/import", post(import_sota_reference))
+        .route("/import", post(import_summit_list))
         .route("/import/ja", post(import_sota_opt_reference))
+        .route("/update", post(update_summit_list))
         .route("/spots", get(show_sota_spots))
         .route("/alerts", get(show_sota_alerts))
         .route("/summit-list", get(show_all_reference))

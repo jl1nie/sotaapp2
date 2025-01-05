@@ -9,9 +9,15 @@
 
 <body>
     <h4>Import SOTA Summits list </h4>
-    <form id="upload-summit" method="post" enctype="multipart/form-data">
-        <input id="upload-summit-file" type="file" name="file">
-        <button id="upload-summit-button" type="submit">Upload</button>
+    <form id="import-summit" method="post" enctype="multipart/form-data">
+        <input id="import-summit-file" type="file" name="file">
+        <button id="import-summit-button" type="submit">Upload</button>
+    </form>
+
+    <h4>Update SOTA Summits list </h4>
+    <form id="import-activation" method="post" enctype="multipart/form-data">
+        <input id="import-activation-file" type="file" name="file">
+        <button id="import-activation-button" type="submit">Upload</button>
     </form>
 
     <h4>Import SOTA JA Summits list </h4>
@@ -174,6 +180,7 @@
         const sotaalert = baseurl + '/sota/alerts';
         const sotaspot = baseurl + '/sota/spots';
         const importsota = baseurl + '/sota/import';
+        const importactivation = baseurl + '/sota/update';
         const importsotaja = baseurl + '/sota/import/ja';
 
         const potasearch = baseurl + '/pota/park';
@@ -242,10 +249,16 @@
                 });
         };
 
-        document.getElementById('upload-summit')
+        document.getElementById('import-summit')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                uploadFile(importsota, 'upload-summit-file', 'upload-summit-button');
+                uploadFile(importsota, 'import-summit-file', 'import-summit-button');
+            });
+
+        document.getElementById('import-activation')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                uploadFile(importactivation, 'import-activation-file', 'import-activation-button');
             });
 
         document.getElementById('upload-ja-summit')
