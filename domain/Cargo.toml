@@ -12,3 +12,4 @@ serde.workspace = true
 common.workspace = true
 shaku.workspace = true
 sqlx.workspace = true
+uuid.workspace = true

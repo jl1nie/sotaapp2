@@ -1,17 +1,26 @@
 use async_trait::async_trait;
+use chrono::Utc;
 use common::config::AppConfig;
+use common::csv_reader::csv_reader;
 use common::error::AppResult;
+use domain::model::common::id::UserId;
 use shaku::Component;
 use std::sync::Arc;
 
-use domain::model::pota::{POTAAlert, POTAReference, POTASpot};
-use domain::model::sota::{SOTAAlert, SOTAReference, SOTASpot};
-
-use domain::model::common::event::{FindAct, FindAppResult, FindRef};
-
+use crate::model::pota::{
+    POTAActivatorLogCSV, POTAHunterLogCSV, UploadActivatorCSV, UploadHunterCSV,
+};
 use crate::services::UserService;
-use domain::repository::pota::{POTAActivationRepositry, POTAReferenceRepositry};
-use domain::repository::sota::{SOTAActivationRepositry, SOTAReferenceReposity};
+
+use domain::model::common::activation::{Alert, Spot};
+use domain::model::common::event::{DeleteLog, FindAct, FindRef, FindResult};
+use domain::model::geomag::GeomagIndex;
+use domain::model::locator::MunicipalityCenturyCode;
+
+use domain::repository::{
+    activation::ActivationRepositry, geomag::GeoMagRepositry, locator::LocatorRepositry,
+    pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
+};
 
 #[derive(Component)]
 #[shaku(interface = UserService)]
@@ -21,44 +30,87 @@ pub struct UserServiceImpl {
     #[shaku(inject)]
     pota_repo: Arc<dyn POTAReferenceRepositry>,
     #[shaku(inject)]
-    sota_act_repo: Arc<dyn SOTAActivationRepositry>,
+    act_repo: Arc<dyn ActivationRepositry>,
     #[shaku(inject)]
-    pota_act_repo: Arc<dyn POTAActivationRepositry>,
+    locator_repo: Arc<dyn LocatorRepositry>,
+    #[shaku(inject)]
+    geomag_repo: Arc<dyn GeoMagRepositry>,
     config: AppConfig,
 }
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    async fn find_reference(
+    async fn find_references(&self, event: FindRef) -> AppResult<FindResult> {
+        let mut result = FindResult::default();
+
+        if event.is_sota() {
+            result.sota(self.sota_repo.find_reference(&event).await?)
+        }
+        if event.is_pota() {
+            result.pota(self.pota_repo.find_reference(&event).await?)
+        }
+        Ok(result)
+    }
+
+    async fn find_alerts(&self, event: FindAct) -> AppResult<Vec<Alert>> {
+        Ok(self.act_repo.find_alerts(&event).await?)
+    }
+
+    async fn find_spots(&self, event: FindAct) -> AppResult<Vec<Spot>> {
+        Ok(self.act_repo.find_spots(&event).await?)
+    }
+
+    async fn upload_activator_csv(
         &self,
-        event: FindRef,
-    ) -> AppResult<FindAppResult<SOTAReference, POTAReference>> {
-        let sota = if event.is_sota() {
-            Some(self.sota_repo.find_reference(&event).await?)
-        } else {
-            None
-        };
-
-        let pota = if event.is_pota() {
-            Some(self.pota_repo.find_reference(&event).await?)
-        } else {
-            None
-        };
-
-        Ok(FindAppResult { sota, pota })
+        user_id: UserId,
+        UploadActivatorCSV { data }: UploadActivatorCSV,
+    ) -> AppResult<()> {
+        let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, 1)?;
+        let newlog: Vec<_> = requests
+            .into_iter()
+            .map(|l| POTAActivatorLogCSV::to_log(user_id, l))
+            .collect();
+        self.pota_repo.upload_activator_log(newlog).await?;
+        self.pota_repo
+            .delete_log(DeleteLog {
+                before: Utc::now() - self.config.log_expire,
+            })
+            .await?;
+        Ok(())
     }
 
-    async fn find_alert(&self, event: FindAct) -> AppResult<FindAppResult<SOTAAlert, POTAAlert>> {
-        let sota = Some(self.sota_act_repo.find_alert(&event).await?);
-        let pota = Some(self.pota_act_repo.find_alert(&event).await?);
-
-        Ok(FindAppResult { sota, pota })
+    async fn upload_hunter_csv(
+        &self,
+        user_id: UserId,
+        UploadHunterCSV { data }: UploadHunterCSV,
+    ) -> AppResult<()> {
+        let requests: Vec<POTAHunterLogCSV> = csv_reader(data, 1)?;
+        let newlog: Vec<_> = requests
+            .into_iter()
+            .map(|l| POTAHunterLogCSV::to_log(user_id, l))
+            .collect();
+        self.pota_repo.upload_hunter_log(newlog).await?;
+        self.pota_repo
+            .delete_log(DeleteLog {
+                before: Utc::now() - self.config.log_expire,
+            })
+            .await?;
+        Ok(())
     }
 
-    async fn find_spot(&self, event: FindAct) -> AppResult<FindAppResult<SOTASpot, POTASpot>> {
-        let sota = Some(self.sota_act_repo.find_spot(&event).await?);
-        let pota = Some(self.pota_act_repo.find_spot(&event).await?);
+    async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode> {
+        let result = self
+            .locator_repo
+            .find_location_by_muni_code(muni_code)
+            .await?;
+        Ok(result)
+    }
 
-        Ok(FindAppResult { sota, pota })
+    async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String> {
+        Ok(self.locator_repo.find_mapcode(lon, lat).await?)
+    }
+
+    async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>> {
+        Ok(self.geomag_repo.get_geomag().await?)
     }
 }

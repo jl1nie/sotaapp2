@@ -5,24 +5,24 @@ use axum::{
     Json, Router,
 };
 
+use chrono::{Duration, Utc};
 use shaku_axum::Inject;
 
 use crate::model::sota::{
-    GetParam, SOTARefResponse, SOTARefSearchResponse, SOTASearchResult, UpdateRefRequest,
+    PagenatedResponse, SOTARefResponse, SOTARefSearchResponse, SOTASearchResult, UpdateRefRequest,
 };
+use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{DeleteRef, FindRefBuilder};
+use domain::model::common::event::{
+    DeleteRef, FindActBuilder, FindRefBuilder, FindResult, ResultKind,
+};
 use domain::model::sota::SummitCode;
 use registry::{AppRegistry, AppState};
 
 use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
-use service::services::AdminService;
+use service::services::{AdminService, UserService};
 
-pub async fn health_check() -> StatusCode {
-    StatusCode::OK
-}
-
-pub async fn update_sota_reference(
+async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Json(req): Json<UpdateRefRequest>,
 ) -> AppResult<StatusCode> {
@@ -32,7 +32,7 @@ pub async fn update_sota_reference(
         .map(|_| StatusCode::CREATED)
 }
 
-pub async fn import_sota_reference(
+async fn import_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
@@ -50,7 +50,25 @@ pub async fn import_sota_reference(
     Err(AppError::ForbiddenOperation)
 }
 
-pub async fn import_sota_opt_reference(
+async fn update_summit_list(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    mut multipart: Multipart,
+) -> AppResult<StatusCode> {
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let data = field.bytes().await.unwrap();
+        let data = String::from_utf8(data.to_vec()).unwrap();
+
+        let reqs = UploadSOTACSV { data };
+
+        return admin_service
+            .update_summit_list(reqs)
+            .await
+            .map(|_| StatusCode::CREATED);
+    }
+    Err(AppError::ForbiddenOperation)
+}
+
+async fn import_sota_opt_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
@@ -68,7 +86,7 @@ pub async fn import_sota_opt_reference(
     Err(AppError::ForbiddenOperation)
 }
 
-pub async fn delete_sota_reference(
+async fn delete_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
 ) -> AppResult<StatusCode> {
@@ -79,25 +97,32 @@ pub async fn delete_sota_reference(
         .map(|_| StatusCode::OK)
 }
 
-pub async fn show_sota_reference(
+async fn show_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
-) -> AppResult<Json<SOTARefResponse>> {
+) -> AppResult<Json<PagenatedResponse<SOTARefResponse>>> {
     let query = FindRefBuilder::default().sota().ref_id(summit_code).build();
-    let result = admin_service.find_sota_reference(query).await?;
-    if let Some(mut sotarefs) = result.results {
-        if sotarefs.len() == 1 {
-            Ok(Json(sotarefs.pop().unwrap().into()))
-        } else {
-            Err(AppError::EntityNotFound("Summit not found.".to_string()))
-        }
-    } else {
-        Err(AppError::EntityNotFound("Summit not found.".to_string()))
-    }
+    let result = admin_service.show_sota_reference(query).await?;
+    Ok(Json(result.into()))
 }
 
-pub async fn show_sota_reference_list(
+async fn show_all_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<PagenatedResponse<SOTARefResponse>>> {
+    let mut query = FindRefBuilder::default().sota();
+    if param.limit.is_some() {
+        query = query.limit(param.limit.unwrap());
+    }
+
+    if param.offset.is_some() {
+        query = query.offset(param.offset.unwrap());
+    }
+    let result = admin_service.show_sota_reference(query.build()).await?;
+    Ok(Json(result.into()))
+}
+async fn show_sota_reference_list(
+    user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<SOTARefSearchResponse>> {
     let mut query = FindRefBuilder::default().sota();
@@ -135,32 +160,63 @@ pub async fn show_sota_reference_list(
         );
     }
 
-    let result = admin_service.find_sota_reference(query.build()).await?;
-
-    let mut res = SOTARefSearchResponse {
-        counts: result.counts as i32,
-        ..Default::default()
-    };
-
-    if let Some(sotarefs) = result.results {
-        res.result = sotarefs.into_iter().map(SOTASearchResult::from).collect();
+    let FindResult { results } = user_service.find_references(query.build()).await?;
+    let mut res = SOTARefSearchResponse::default();
+    let results: Vec<_> = results
+        .into_iter()
+        .flat_map(|r| match r {
+            ResultKind::SOTA(s) => s.into_iter(),
+            _ => vec![].into_iter(),
+        })
+        .collect();
+    res.results = results.into_iter().map(SOTASearchResult::from).collect();
+    res.count = res.results.len() as i32;
+    if param.max_results.is_some() && res.count > param.max_results.unwrap() {
+        res.results = vec![];
     }
+    Ok(Json(res))
+}
 
-    if res.counts > 0 {
-        return Ok(Json(res));
-    }
-    Err(AppError::EntityNotFound("Summit not found.".to_string()))
+async fn show_sota_spots(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<Vec<SpotResponse>>> {
+    let hours = param.after.unwrap_or(3);
+    let query = FindActBuilder::default()
+        .sota()
+        .after(Utc::now() - Duration::hours(hours))
+        .build();
+    let result = user_service.find_spots(query).await?;
+    let spots: Vec<_> = result.into_iter().map(SpotResponse::from).collect();
+    Ok(Json(spots))
+}
+
+async fn show_sota_alerts(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<Vec<AlertResponse>>> {
+    let hours = param.after.unwrap_or(3);
+    let query = FindActBuilder::default()
+        .sota()
+        .after(Utc::now() - Duration::hours(hours))
+        .build();
+    let result = user_service.find_alerts(query).await?;
+    let alerts: Vec<_> = result.into_iter().map(AlertResponse::from).collect();
+    Ok(Json(alerts))
 }
 
 pub fn build_sota_routers() -> Router<AppState> {
     let routers = Router::new()
-        .route("/", post(update_sota_reference))
-        .route("/", get(show_sota_reference_list))
-        .route("/import", post(import_sota_reference))
+        .route("/import", post(import_summit_list))
         .route("/import/ja", post(import_sota_opt_reference))
-        .route("/:summit_code", get(show_sota_reference))
-        .route("/:summit_code", put(update_sota_reference))
-        .route("/:summit_code", delete(delete_sota_reference));
+        .route("/update", post(update_summit_list))
+        .route("/spots", get(show_sota_spots))
+        .route("/alerts", get(show_sota_alerts))
+        .route("/summit-list", get(show_all_reference))
+        .route("/summit", get(show_sota_reference_list))
+        .route("/summit/:summit_code", get(show_sota_reference))
+        .route("/summit/:summit_code", put(update_sota_reference))
+        .route("/summit/:summit_code", delete(delete_sota_reference));
 
     Router::new().nest("/sota", routers)
 }

@@ -1,15 +1,14 @@
 use axum::extract::FromRef;
 use common::config::AppConfig;
 use shaku::module;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use adapter::{
     database::connect_database_with,
     implement::{
-        healthcheck::HealthCheckRepositryImplParameters,
-        pota_activation::POTActivationRepositryImplParameters,
+        activation::ActivationRepositryImplParameters, geomag::GeoMagRepositryImplParameters,
+        healthcheck::HealthCheckRepositryImplParameters, locator::LocatorRepositryImplParameters,
         pota_reference::POTAReferenceRepositryImplParameters,
-        sota_activation::SOTAActivationRepositryImplParameters,
         sota_reference::SOTAReferenceReposityImplParameters,
     },
 };
@@ -21,15 +20,16 @@ use service::implement::{
 };
 
 use adapter::implement::{
-    healthcheck::HealthCheckRepositryImpl, pota_activation::POTActivationRepositryImpl,
-    pota_reference::POTAReferenceRepositryImpl, sota_activation::SOTAActivationRepositryImpl,
-    sota_reference::SOTAReferenceReposityImpl,
+    activation::ActivationRepositryImpl, geomag::GeoMagRepositryImpl,
+    healthcheck::HealthCheckRepositryImpl, locator::LocatorRepositryImpl,
+    pota_reference::POTAReferenceRepositryImpl, sota_reference::SOTAReferenceReposityImpl,
 };
 
 module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,
-        SOTAReferenceReposityImpl,SOTAActivationRepositryImpl,POTAReferenceRepositryImpl,POTActivationRepositryImpl,
+        SOTAReferenceReposityImpl,ActivationRepositryImpl,POTAReferenceRepositryImpl,
+        LocatorRepositryImpl,GeoMagRepositryImpl,
         HealthCheckRepositryImpl],
         providers = [],
     }
@@ -40,40 +40,30 @@ impl AppRegistry {
         let pool = connect_database_with(config).unwrap();
         AppRegistry::builder()
             .with_component_parameters::<SOTAReferenceReposityImpl>(
-                SOTAReferenceReposityImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
-            )
-            .with_component_parameters::<SOTAActivationRepositryImpl>(
-                SOTAActivationRepositryImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
+                SOTAReferenceReposityImplParameters { pool: pool.clone() },
             )
             .with_component_parameters::<POTAReferenceRepositryImpl>(
-                POTAReferenceRepositryImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
+                POTAReferenceRepositryImplParameters { pool: pool.clone() },
             )
-            .with_component_parameters::<POTActivationRepositryImpl>(
-                POTActivationRepositryImplParameters {
-                    config: config.clone(),
-                    pool: pool.clone(),
-                },
+            .with_component_parameters::<ActivationRepositryImpl>(
+                ActivationRepositryImplParameters { pool: pool.clone() },
             )
+            .with_component_parameters::<LocatorRepositryImpl>(LocatorRepositryImplParameters {
+                config: config.clone(),
+                pool: pool.clone(),
+            })
             .with_component_parameters::<UserServiceImpl>(UserServiceImplParameters {
                 config: config.clone(),
             })
-            .with_component_parameters::<AdminServiceImpl>(AdminServiceImplParameters {
-                config: config.clone(),
-            })
+            .with_component_parameters::<AdminServiceImpl>(AdminServiceImplParameters {})
             .with_component_parameters::<AdminPeriodicServiceImpl>(
                 AdminPeriodicServiceImplParameters {
                     config: config.clone(),
                 },
             )
+            .with_component_parameters::<GeoMagRepositryImpl>(GeoMagRepositryImplParameters {
+                latest_data: Arc::new(Mutex::new(None)),
+            })
             .with_component_parameters::<HealthCheckRepositryImpl>(
                 HealthCheckRepositryImplParameters { pool: pool.clone() },
             )

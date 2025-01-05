@@ -132,7 +132,7 @@ extend = "set-env-local"
 install_crate = { crate_name = "sqlx-cli", binary = "sqlx", test_arg = "--help", version = "0.8.2" }
 script = '''
 #!/bin/bash
-until sqlx migrate run --source data_access/migrations; do
+until sqlx migrate run --source adapter/migrations; do
     sleep 1
 done
 '''
@@ -141,7 +141,7 @@ done
 extend = "set-env-local"
 install_crate = { crate_name = "sqlx-cli", binary = "sqlx", test_arg = "--help", version = "0.8.2" }
 command = "sqlx"
-args = ["${@}", "--source", "data_access/migrations"]
+args = ["${@}", "--source", "adapter/migrations"]
 
 [tasks.psql]
 extend = "set-env-local"

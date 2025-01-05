@@ -1,4 +1,4 @@
-use std::time::Duration;
+use chrono::Duration;
 
 #[derive(Default, Clone)]
 pub struct AppConfig {
@@ -8,11 +8,18 @@ pub struct AppConfig {
     pub sota_spot_endpoint: String,
     pub pota_alert_endpoint: String,
     pub pota_spot_endpoint: String,
-
+    pub sota_summitlist_endpoint: String,
+    pub sota_summitlist_update_schedule: String,
+    pub import_all_at_startup: bool,
+    pub geomag_endpoint: String,
+    pub geomag_update_schedule: String,
+    pub mapcode_endpoint: String,
     pub alert_update_schedule: String,
     pub alert_expire: Duration,
-    pub spot_expire: Duration,
     pub spot_update_schedule: String,
+    pub spot_expire: Duration,
+
+    pub log_expire: Duration,
 }
 
 pub struct AppConfigBuilder {
@@ -60,6 +67,33 @@ impl AppConfigBuilder {
         self
     }
 
+    pub fn sota_summitlist_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.sota_summitlist_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn sota_summitlist_update_schedule(mut self, schedule: &str) -> Self {
+        self.config.sota_summitlist_update_schedule = schedule.to_string();
+        self
+    }
+    pub fn import_all_at_startup(mut self, flag: bool) -> Self {
+        self.config.import_all_at_startup = flag;
+        self
+    }
+    pub fn mapcode_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.mapcode_endpoint = endpoint.to_string();
+        self
+    }
+    pub fn geomag_endpoint(mut self, endpoint: &str) -> Self {
+        self.config.geomag_endpoint = endpoint.to_string();
+        self
+    }
+
+    pub fn geomag_update_schedule(mut self, schedule: &str) -> Self {
+        self.config.geomag_update_schedule = schedule.to_string();
+        self
+    }
+
     pub fn alert_expire(mut self, expire: Duration) -> Self {
         self.config.alert_expire = expire;
         self
@@ -77,6 +111,11 @@ impl AppConfigBuilder {
 
     pub fn spot_update_schedule(mut self, schedule: &str) -> Self {
         self.config.spot_update_schedule = schedule.to_string();
+        self
+    }
+
+    pub fn log_expire(mut self, expire: Duration) -> Self {
+        self.config.log_expire = expire;
         self
     }
 

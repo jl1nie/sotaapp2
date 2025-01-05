@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
-use std::time::Duration;
 
-use crate::model::AwardProgram;
+use crate::model::common::id::UserId;
+use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference, AwardProgram};
 
 #[derive(new, Debug)]
 pub struct BoundingBox {
@@ -12,18 +12,11 @@ pub struct BoundingBox {
     pub max_lat: f64,
 }
 
-// 中心位置と中心位置からの距離を指定するための構造体
 #[derive(new, Debug)]
 pub struct CenterRadius {
     pub lon: f64,
     pub lat: f64,
     pub rad: f64,
-}
-
-impl<T> From<Vec<T>> for CreateRef<T> {
-    fn from(requests: Vec<T>) -> Self {
-        Self { requests }
-    }
 }
 
 #[derive(Default, Debug)]
@@ -35,6 +28,7 @@ pub struct FindRef {
     pub center: Option<CenterRadius>,
     pub min_elev: Option<i32>,
     pub min_area: Option<i32>,
+    pub user_id: Option<UserId>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -124,6 +118,11 @@ impl FindRefBuilder {
         self
     }
 
+    pub fn user_id(mut self, id: UserId) -> Self {
+        self.param.user_id = Some(id);
+        self
+    }
+
     pub fn limit(mut self, l: i32) -> Self {
         self.param.limit = Some(l);
         self
@@ -139,50 +138,49 @@ impl FindRefBuilder {
     }
 }
 
-pub struct CreateRef<T> {
-    pub requests: Vec<T>,
+pub enum ResultKind {
+    SOTA(Vec<SOTAReference>),
+    POTA(Vec<POTAReferenceWithLog>),
 }
 
-pub struct UpdateRef<T> {
-    pub requests: Vec<T>,
+#[derive(Default)]
+pub struct FindResult {
+    pub results: Vec<ResultKind>,
 }
+impl FindResult {
+    pub fn sota(&mut self, v: Vec<SOTAReference>) {
+        self.results.push(ResultKind::SOTA(v))
+    }
 
-pub struct FindResult<T> {
-    pub counts: usize,
-    pub results: Option<Vec<T>>,
-}
-
-impl<T> FindResult<T> {
-    pub fn get_reference(self) -> Option<T> {
-        self.results.and_then(|mut r| r.pop())
+    pub fn pota(&mut self, v: Vec<POTAReferenceWithLog>) {
+        self.results.push(ResultKind::POTA(v))
     }
 }
 
-pub struct FindAppResult<SOTA, POTA> {
-    pub sota: Option<FindResult<SOTA>>,
-    pub pota: Option<FindResult<POTA>>,
+#[derive(Default, Debug)]
+pub struct PagenatedResult<T> {
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+    pub results: Vec<T>,
 }
+
 #[derive(Debug)]
 pub enum DeleteRef<T> {
     Delete(T),
     DeleteAll,
 }
 
-pub struct UpdateAct<T> {
-    pub requests: Vec<T>,
-}
-
-impl<T> From<Vec<T>> for UpdateAct<T> {
-    fn from(requests: Vec<T>) -> Self {
-        Self { requests }
-    }
+pub struct DeleteLog {
+    pub before: DateTime<Utc>,
 }
 
 #[derive(Default, Debug)]
 pub struct FindAct {
+    pub program: Option<AwardProgram>,
     pub after: Option<DateTime<Utc>>,
-    pub before: Option<DateTime<Utc>>,
-    pub duration: Option<Duration>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
 }
 
 #[derive(Default)]
@@ -191,18 +189,33 @@ pub struct FindActBuilder {
 }
 
 impl FindActBuilder {
+    pub fn sota(mut self) -> Self {
+        self.param.program = Some(AwardProgram::SOTA);
+        self
+    }
+
+    pub fn pota(mut self) -> Self {
+        self.param.program = Some(AwardProgram::POTA);
+        self
+    }
+
+    pub fn wwff(mut self) -> Self {
+        self.param.program = Some(AwardProgram::WWFF);
+        self
+    }
+
     pub fn after(mut self, aft: DateTime<Utc>) -> Self {
         self.param.after = Some(aft);
         self
     }
 
-    pub fn before(mut self, bfr: DateTime<Utc>) -> Self {
-        self.param.before = Some(bfr);
+    pub fn limit(mut self, limit: i32) -> Self {
+        self.param.limit = Some(limit);
         self
     }
 
-    pub fn duration(mut self, drt: Duration) -> Self {
-        self.param.duration = Some(drt);
+    pub fn offset(mut self, offset: i32) -> Self {
+        self.param.offset = Some(offset);
         self
     }
 

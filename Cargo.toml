@@ -20,7 +20,12 @@ registry = { path = "./registry" }
 
 anyhow = "^1.0"
 derive-new = "0.7.0"
-uuid = { version = "^1.11", features = ["v4", "fast-rng", "macro-diagnostics"] }
+uuid = { version = "^1.11", features = [
+    "v4",
+    "fast-rng",
+    "serde",
+    "macro-diagnostics",
+] }
 async-trait = "0.1.83"
 axum = { version = "0.7.9", features = ["macros", "http2", "multipart", "ws"] }
 axum-extra = { version = "0.9.6", features = [
@@ -31,13 +36,14 @@ axum-extra = { version = "0.9.6", features = [
 ] }
 apalis = "^0.6.2"
 apalis-cron = "^0.6.2"
-tower = "0.5.1"
+tower = "0.5.2"
 tower-http = { version = "^0.6", features = ["trace", "cors", "fs"] }
-tokio = { version = "^1.41.1", features = ["full"] }
+tokio = { version = "^1.42", features = ["full"] }
 
 sqlx = { version = "^0.8", features = [
     "runtime-tokio",
     "tls-rustls",
+    "uuid",
     "chrono",
     "postgres",
     "macros",
@@ -56,10 +62,12 @@ csv = "1.3.1"
 rstest = "0.23.0"
 shaku = "0.6.2"
 shaku_axum = "0.5.0"
+regex = "1.5.4"
 
 [dependencies]
 api.workspace = true
 service.workspace = true
+chrono.workspace = true
 common.workspace = true
 domain.workspace = true
 adapter.workspace = true
@@ -69,3 +77,5 @@ axum.workspace = true
 tokio.workspace = true
 tower-http.workspace = true
 shaku_axum.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

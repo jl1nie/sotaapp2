@@ -2,6 +2,8 @@ use anyhow::Result;
 use common::config::AppConfig;
 use sqlx::postgres::PgPool;
 
+pub mod model;
+
 #[derive(Clone)]
 pub struct ConnectionPool(PgPool);
 
