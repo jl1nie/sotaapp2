@@ -17,13 +17,13 @@ pub fn findref_query_builder(r: &FindRef) -> String {
         if r.is_sota() {
             let name = format!("'{}%'", name);
             query.push_str(&format!(
-                "(summit_code ILIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND",
+                "(summit_code ILIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND ",
                 name, name, name
             ));
         } else {
             let name = format!("'{}%'", name);
             query.push_str(&format!(
-                "(p.pota_code ILIKE {} OR p.wwff_code ILIKE {} OR p.park_name LIKE {} OR p.park_name_j LIKE {}) AND",
+                "(p.pota_code ILIKE {} OR p.wwff_code ILIKE {} OR p.park_name LIKE {} OR p.park_name_j LIKE {}) AND ",
                 name, name, name, name
             ));
         }
@@ -31,37 +31,37 @@ pub fn findref_query_builder(r: &FindRef) -> String {
 
     if let Some(min_elev) = &r.min_elev {
         if r.is_sota() {
-            query.push_str(&format!("(alt_m >= {}) AND", min_elev));
+            query.push_str(&format!("(alt_m >= {}) AND ", min_elev));
         }
     }
 
     if let Some(min_area) = &r.min_area {
         if !r.is_sota() {
-            query.push_str(&format!("(p.park_area >= {}) AND", min_area));
+            query.push_str(&format!("(p.park_area >= {}) AND ", min_area));
         }
     }
 
     if let Some(bbox) = &r.bbox {
         query.push_str(&format!(
-            "(ST_Within(coordinates, ST_MakeEnvelope({}, {}, {}, {}, 4326))) AND",
+            "(ST_Within(coordinates, ST_MakeEnvelope({}, {}, {}, {}, 4326))) AND ",
             bbox.min_lon, bbox.min_lat, bbox.max_lon, bbox.max_lat
         ));
     }
 
-    query.push_str(" TRUE ");
+    query.push_str("TRUE ");
 
     if r.is_sota() {
-        query.push_str("GROUP BY summit_code ");
+        if r.min_elev.is_some() {
+            query.push_str("ORDER BY alt_m DESC ");
+        } else {
+            query.push_str("ORDER BY summit_code ");
+        }
     } else if r.is_pota() {
-        query.push_str("GROUP BY p.pota_code, p.wwff_code ");
-    } else if r.is_wwff() {
-        query.push_str("GROUP BY p.wwff_code, p.pota_code ");
-    }
-
-    if r.min_elev.is_some() && r.is_sota() {
-        query.push_str("ORDER BY alt_m DESC ");
-    } else if r.min_area.is_some() {
-        query.push_str("ORDER BY p.park_area DESC ");
+        if r.min_area.is_some() {
+            query.push_str("ORDER BY p.park_area DESC ");
+        } else {
+            query.push_str("ORDER BY p.pota_code ");
+        }
     }
 
     if let Some(limit) = &r.limit {

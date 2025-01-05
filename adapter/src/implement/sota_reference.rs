@@ -122,6 +122,78 @@ impl SOTAReferenceReposityImpl {
         Ok(())
     }
 
+    async fn upsert_partial(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+                INSERT INTO sota_references (
+                    summit_code,
+                    association_name,
+                    region_name,
+                    summit_name,
+                    summit_name_j,
+                    city,
+                    city_j,
+                    alt_m,
+                    alt_ft,
+                    grid_ref1,
+                    grid_ref2,
+                    coordinates,
+                    points,
+                    bonus_points,
+                    valid_from,
+                    valid_to,
+                    activation_count,
+                    activation_date,
+                    activation_call
+                ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ST_SetSRID(ST_MakePoint($12, $13), 4326), 
+                $14, $15, $16, $17, $18, $19, $20)
+                ON CONFLICT (summit_code) DO UPDATE SET
+                    association_name = EXCLUDED.association_name,
+                    region_name = EXCLUDED.region_name,
+                    summit_name = sota_references.summit_name,
+                    summit_name_j = sota_references.summit_name_j,
+                    city = sota_references.city,
+                    city_j = sota_references.city_j,
+                    alt_m = sota_references.alt_m,
+                    alt_ft = EXCLUDED.alt_ft,
+                    grid_ref1 = EXCLUDED.grid_ref1,
+                    grid_ref2 = EXCLUDED.grid_ref2,
+                    coordinates = sota_references.coordinates,
+                    points = sota_references.points,
+                    bonus_points = EXCLUDED.bonus_points,
+                    valid_from = EXCLUDED.valid_from,
+                    valid_to = EXCLUDED.valid_to,
+                    activation_count = EXCLUDED.activation_count,
+                    activation_date = EXCLUDED.activation_date,
+                    activation_call = EXCLUDED.activation_call
+               "#,
+            r.summit_code,
+            r.association_name,
+            r.region_name,
+            r.summit_name,
+            r.summit_name_j,
+            r.city,
+            r.city_j,
+            r.alt_m,
+            r.alt_ft,
+            r.grid_ref1,
+            r.grid_ref2,
+            r.longitude,
+            r.latitude,
+            r.points,
+            r.bonus_points,
+            r.valid_from,
+            r.valid_to,
+            r.activation_count,
+            r.activation_date,
+            r.activation_call
+        )
+        .execute(db)
+        .await
+        .map_err(AppError::SpecificOperationError)?;
+        Ok(())
+    }
+
     async fn delete(&self, ref_id: SummitCode, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
@@ -190,11 +262,7 @@ impl SOTAReferenceReposityImpl {
         Ok((total, rows))
     }
 
-    async fn select_by_condition(
-        &self,
-        query: &str,
-        // params: &Vec<String>,
-    ) -> AppResult<Vec<SOTAReferenceImpl>> {
+    async fn select_by_condition(&self, query: &str) -> AppResult<Vec<SOTAReferenceImpl>> {
         let mut select = r#"
             SELECT
                 summit_code,
@@ -221,7 +289,7 @@ impl SOTAReferenceReposityImpl {
             .to_string();
 
         select.push_str(query);
-        tracing::info!("query: {}", select);
+
         let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
         let rows: Vec<SOTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
@@ -243,8 +311,8 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
 
         for r in references.into_iter().enumerate() {
             self.create(SOTAReferenceImpl::from(r.1), &mut tx).await?;
-            if r.0 % 1000 == 0 {
-                tracing::info!("insert db {} rescords", r.0);
+            if r.0 % 500 == 0 {
+                tracing::info!("insert sota {} rescords", r.0);
             }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
@@ -271,10 +339,29 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
+
+        tracing::info!("update sota {} rescords", references.len());
+
+        for r in references.into_iter() {
+            self.update(SOTAReferenceImpl::from(r), &mut tx).await?;
+        }
+        tx.commit().await.map_err(AppError::TransactionError)?;
+        Ok(())
+    }
+
+    async fn upsert_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+
         for r in references.into_iter().enumerate() {
-            self.update(SOTAReferenceImpl::from(r.1), &mut tx).await?;
+            self.upsert_partial(SOTAReferenceImpl::from(r.1), &mut tx)
+                .await?;
             if r.0 % 500 == 0 {
-                tracing::info!("update db {} rescords", r.0);
+                tracing::info!("upsert partial sota {} rescords", r.0);
             }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;

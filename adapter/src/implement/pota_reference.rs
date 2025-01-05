@@ -199,6 +199,7 @@ impl POTAReferenceRepositryImpl {
     }
 
     async fn delete_log(&self, d: DeleteLog, db: &mut PgConnection) -> AppResult<()> {
+        tracing::info!("delete log before: {}", d.before);
         let before = d.before;
         sqlx::query!(
             r#"
@@ -225,11 +226,7 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn select_pagenated(
-        &self,
-        query: &str,
-        // params: &Vec<String>,
-    ) -> AppResult<(i64, Vec<POTAReferenceImpl>)> {
+    async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<POTAReferenceImpl>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM pota_references")
             .fetch_one(self.pool.inner_ref())
             .await
@@ -267,7 +264,6 @@ impl POTAReferenceRepositryImpl {
         &self,
         user_id: Option<UserId>,
         query: &str,
-        // params: &Vec<String>,
     ) -> AppResult<Vec<POTAReferenceWithLogImpl>> {
         let mut select = String::new();
         if user_id.is_none() {
@@ -320,8 +316,6 @@ impl POTAReferenceRepositryImpl {
         }
         select.push_str(query);
 
-        tracing::info!("query: {}", select);
-
         let sql_query = sqlx::query_as::<_, POTAReferenceWithLogImpl>(&select);
         let rows: Vec<POTAReferenceWithLogImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
@@ -335,7 +329,6 @@ impl POTAReferenceRepositryImpl {
 impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<POTAReferenceWithLog>> {
         let user_id = event.user_id;
-        tracing::info!("event: {:?}", event);
         let query = findref_query_builder(event);
         let results = self.select_by_condition(user_id, &query).await?;
         let results = results
@@ -356,7 +349,7 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
         for r in references.into_iter().enumerate() {
             self.create(POTAReferenceImpl::from(r.1), &mut tx).await?;
             if r.0 % 100 == 0 {
-                tracing::info!("insert db {} rescords", r.0);
+                tracing::info!("insert pota {} rescords", r.0);
             }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
@@ -383,11 +376,8 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        for r in references.into_iter().enumerate() {
-            self.update(POTAReferenceImpl::from(r.1), &mut tx).await?;
-            if r.0 % 500 == 0 {
-                tracing::info!("update db {} rescords", r.0);
-            }
+        for r in references.into_iter() {
+            self.update(POTAReferenceImpl::from(r), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
@@ -415,12 +405,10 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        for r in logs.into_iter().enumerate() {
-            self.update_activator_log(POTAActivatorLogImpl::from(r.1), &mut tx)
+        tracing::info!("upload activator log {} rescords", logs.len());
+        for r in logs.into_iter() {
+            self.update_activator_log(POTAActivatorLogImpl::from(r), &mut tx)
                 .await?;
-            if r.0 % 50 == 0 {
-                tracing::info!("update activator log {} rescords", r.0);
-            }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
@@ -433,12 +421,10 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        for r in logs.into_iter().enumerate() {
-            self.update_hunter_log(POTAHunterLogImpl::from(r.1), &mut tx)
+        tracing::info!("upload hunter log {} rescords", logs.len());
+        for r in logs.into_iter() {
+            self.update_hunter_log(POTAHunterLogImpl::from(r), &mut tx)
                 .await?;
-            if r.0 % 50 == 0 {
-                tracing::info!("update hunter log {} rescords", r.0);
-            }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())

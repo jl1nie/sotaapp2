@@ -1,10 +1,10 @@
-use anyhow::Result;
 use chrono::NaiveDate;
 use reqwest;
 use shaku::HasComponent;
 use std::sync::Arc;
 
-use common::config::AppConfig;
+use common::error::AppResult;
+use common::{config::AppConfig, error::AppError};
 use domain::model::geomag::GeomagIndex;
 use registry::{AppRegistry, AppState};
 use service::services::AdminPeriodicService;
@@ -23,10 +23,17 @@ impl UpdateGeoMag {
         }
     }
 
-    pub async fn update(&self) -> Result<()> {
+    pub async fn update(&self) -> AppResult<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
         let endpoint = self.config.geomag_endpoint.clone();
-        let response = reqwest::get(&endpoint).await?.text().await?;
+
+        let response = reqwest::get(&endpoint)
+            .await
+            .map_err(AppError::GetError)?
+            .text()
+            .await
+            .map_err(AppError::GetError)?;
+
         let lines: Vec<_> = response.lines().rev().take(2).collect();
 
         let date: Vec<NaiveDate> = lines

@@ -8,7 +8,7 @@ impl SummitCode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SOTAReference {
     pub summit_code: String,
     pub association_name: String,
