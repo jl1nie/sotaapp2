@@ -9,3 +9,4 @@ shaku.workspace = true
 adapter.workspace = true
 service.workspace = true
 common.workspace = true
+tracing.workspace = true

@@ -44,11 +44,20 @@ impl UserService for UserServiceImpl {
         let mut result = FindResult::default();
 
         if event.is_sota() {
-            result.sota(self.sota_repo.find_reference(&event).await?)
+            result.sota = Some(self.sota_repo.find_reference(&event).await?)
         }
+
         if event.is_pota() {
-            result.pota(self.pota_repo.find_reference(&event).await?)
+            let active_ref = self
+                .pota_repo
+                .find_reference(&event)
+                .await?
+                .into_iter()
+                .filter(|r| !r.park_inactive)
+                .collect();
+            result.pota = Some(active_ref)
         }
+
         Ok(result)
     }
 
@@ -73,7 +82,7 @@ impl UserService for UserServiceImpl {
         self.pota_repo.upload_activator_log(newlog).await?;
         self.pota_repo
             .delete_log(DeleteLog {
-                before: Utc::now() - self.config.log_expire,
+                before: Utc::now() - self.config.pota_log_expire,
             })
             .await?;
         Ok(())
@@ -92,7 +101,7 @@ impl UserService for UserServiceImpl {
         self.pota_repo.upload_hunter_log(newlog).await?;
         self.pota_repo
             .delete_log(DeleteLog {
-                before: Utc::now() - self.config.log_expire,
+                before: Utc::now() - self.config.pota_log_expire,
             })
             .await?;
         Ok(())

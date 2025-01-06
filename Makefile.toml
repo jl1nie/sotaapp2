@@ -12,6 +12,22 @@ DATABASE_PORT_INNER = 5432
 REDIS_PORT_OUTER = 6379
 REDIS_PORT_INNER = 6379
 AUTH_TOKEN_TTL = 86400
+LOG_LEVEL = "info"
+SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
+SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
+SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
+SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
+IMPORT_STARTUP = "false"
+POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
+POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
+GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
+GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
+ALERT_SCHEDULE = "30 */10 * * * *"
+SPOT_SCHEDULE = "0 */2 * * * *"
+ALERT_EXPIRE = "24"
+SPOT_EXPIRE = "48"
+POTA_LOG_EXPIRE = "180"
 
 # Docker Composeのネットワーク内でのDB等への接続情報
 [tasks.set-env-docker.env]
@@ -22,7 +38,22 @@ REDIS_HOST = "redis"
 REDIS_PORT = "${REDIS_PORT_INNER}"
 JAEGER_HOST = "jaeger"
 JAEGER_PORT = 6831
-
+LOG_LEVEL = "info"
+SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
+SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
+SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
+SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
+IMPORT_STARTUP = "false"
+POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
+POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
+GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
+GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
+ALERT_SCHEDULE = "30 */10 * * * *"
+SPOT_SCHEDULE = "0 */2 * * * *"
+ALERT_EXPIRE = "24"
+SPOT_EXPIRE = "48"
+POTA_LOG_EXPIRE = "180"
 # Docker Compose外からDB等にアクセスする際の接続情報
 [tasks.set-env-local.env]
 DATABASE_HOST = "localhost"
@@ -32,8 +63,22 @@ REDIS_HOST = "localhost"
 REDIS_PORT = "${REDIS_PORT_OUTER}"
 JAEGER_HOST = "localhost"
 JAEGER_PORT = 6831
-
-
+LOG_LEVEL = "info"
+SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
+SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
+SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
+SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
+IMPORT_STARTUP = "false"
+POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
+POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
+GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
+GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
+ALERT_SCHEDULE = "30 */10 * * * *"
+SPOT_SCHEDULE = "0 */2 * * * *"
+ALERT_EXPIRE = "24"
+SPOT_EXPIRE = "48"
+POTA_LOG_EXPIRE = "180"
 [tasks.before-build]
 run_task = [{ name = ["compose-up-db", "compose-up-redis"] }]
 

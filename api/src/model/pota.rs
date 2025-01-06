@@ -187,42 +187,35 @@ impl From<POTAReference> for POTARefResponse {
     }
 }
 
-#[derive(Debug, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct POTARefSearchResponse {
-    pub count: i32,
-    pub results: Vec<POTASearchResult>,
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct POTASearchResult {
-    pub pota_code: String,
-    pub wwff_code: String,
-    pub park_name: String,
-    pub park_name_j: String,
-    pub park_area: i32,
-    pub longitude: Option<f64>,
-    pub lattitude: Option<f64>,
-    pub attempts: Option<i32>,
-    pub activations: Option<i32>,
-    pub first_qso_date: Option<NaiveDate>,
+    pub pota: String,
+    pub wwff: String,
+    pub name: String,
+    pub name_j: String,
+    pub area: i32,
+    pub lon: Option<f64>,
+    pub lat: Option<f64>,
+    pub atmpt: Option<i32>,
+    pub activ: Option<i32>,
+    pub date: Option<NaiveDate>,
     pub qsos: Option<i32>,
 }
 
 impl From<POTAReferenceWithLog> for POTASearchResult {
     fn from(pota: POTAReferenceWithLog) -> Self {
         POTASearchResult {
-            pota_code: pota.pota_code,
-            wwff_code: pota.wwff_code,
-            park_name: pota.park_name,
-            park_name_j: pota.park_name_j,
-            park_area: pota.park_area,
-            longitude: pota.longitude,
-            lattitude: pota.latitude,
-            attempts: pota.attempts,
-            activations: pota.activations,
-            first_qso_date: pota.first_qso_date,
+            pota: pota.pota_code,
+            wwff: pota.wwff_code,
+            name: pota.park_name,
+            name_j: pota.park_name_j,
+            area: pota.park_area,
+            lon: pota.longitude,
+            lat: pota.latitude,
+            atmpt: pota.attempts,
+            activ: pota.activations,
+            date: pota.first_qso_date,
             qsos: pota.qsos,
         }
     }

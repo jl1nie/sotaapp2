@@ -138,23 +138,10 @@ impl FindRefBuilder {
     }
 }
 
-pub enum ResultKind {
-    SOTA(Vec<SOTAReference>),
-    POTA(Vec<POTAReferenceWithLog>),
-}
-
 #[derive(Default)]
 pub struct FindResult {
-    pub results: Vec<ResultKind>,
-}
-impl FindResult {
-    pub fn sota(&mut self, v: Vec<SOTAReference>) {
-        self.results.push(ResultKind::SOTA(v))
-    }
-
-    pub fn pota(&mut self, v: Vec<POTAReferenceWithLog>) {
-        self.results.push(ResultKind::POTA(v))
-    }
+    pub sota: Option<Vec<SOTAReference>>,
+    pub pota: Option<Vec<POTAReferenceWithLog>>,
 }
 
 #[derive(Default, Debug)]

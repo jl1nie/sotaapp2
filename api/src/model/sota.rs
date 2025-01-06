@@ -242,13 +242,6 @@ impl From<PagenatedResult<SOTAReference>> for PagenatedResponse<SOTARefResponse>
     }
 }
 
-#[derive(Debug, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SOTARefSearchResponse {
-    pub count: i32,
-    pub results: Vec<SOTASearchResult>,
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SOTASearchResult {

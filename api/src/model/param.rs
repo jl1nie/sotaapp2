@@ -10,7 +10,7 @@ pub struct GetParam {
     pub max_lat: Option<f64>,
     pub min_elev: Option<i32>,
     pub min_area: Option<i32>,
-    pub max_results: Option<i32>,
+    pub max_count: Option<u32>,
     pub ref_id: Option<String>,
     pub user_id: Option<String>,
     pub name: Option<String>,

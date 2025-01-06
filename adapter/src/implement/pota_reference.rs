@@ -9,6 +9,7 @@ use domain::model::common::event::{DeleteLog, DeleteRef, FindRef, PagenatedResul
 use domain::model::pota::{
     POTAActivatorLog, POTAHunterLog, POTAReference, POTAReferenceWithLog, ParkCode,
 };
+use domain::model::AwardProgram::POTA;
 
 use crate::database::model::pota::{
     POTAActivatorLogImpl, POTAHunterLogImpl, POTAReferenceImpl, POTAReferenceWithLogImpl,
@@ -329,7 +330,7 @@ impl POTAReferenceRepositryImpl {
 impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<POTAReferenceWithLog>> {
         let user_id = event.user_id;
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(POTA, event);
         let results = self.select_by_condition(user_id, &query).await?;
         let results = results
             .into_iter()
@@ -359,7 +360,7 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
     async fn show_reference(&self, event: &FindRef) -> AppResult<PagenatedResult<POTAReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(POTA, event);
         let (total, results) = self.select_pagenated(&query).await?;
         Ok(PagenatedResult {
             total,
@@ -405,7 +406,9 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
+
         tracing::info!("upload activator log {} rescords", logs.len());
+
         for r in logs.into_iter() {
             self.update_activator_log(POTAActivatorLogImpl::from(r), &mut tx)
                 .await?;
@@ -421,7 +424,9 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
+
         tracing::info!("upload hunter log {} rescords", logs.len());
+
         for r in logs.into_iter() {
             self.update_hunter_log(POTAHunterLogImpl::from(r), &mut tx)
                 .await?;
