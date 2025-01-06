@@ -8,19 +8,18 @@ use axum::{
 use chrono::{Duration, Utc};
 use shaku_axum::Inject;
 
-use crate::model::sota::{
-    PagenatedResponse, SOTARefResponse, SOTARefSearchResponse, SOTASearchResult, UpdateRefRequest,
-};
-use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{
-    DeleteRef, FindActBuilder, FindRefBuilder, FindResult, ResultKind,
-};
-use domain::model::sota::SummitCode;
-use registry::{AppRegistry, AppState};
 
+use domain::model::common::event::{DeleteRef, FindActBuilder, FindRefBuilder};
+use domain::model::sota::SummitCode;
+
+use registry::{AppRegistry, AppState};
 use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 use service::services::{AdminService, UserService};
+
+use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
+
+use crate::model::sota::{PagenatedResponse, SOTARefResponse, SOTASearchResult, UpdateRefRequest};
 
 async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -124,7 +123,7 @@ async fn show_all_reference(
 async fn show_sota_reference_list(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<SOTARefSearchResponse>> {
+) -> AppResult<Json<Vec<SOTASearchResult>>> {
     let mut query = FindRefBuilder::default().sota();
 
     if param.limit.is_some() {
@@ -160,20 +159,13 @@ async fn show_sota_reference_list(
         );
     }
 
-    let FindResult { results } = user_service.find_references(query.build()).await?;
-    let mut res = SOTARefSearchResponse::default();
-    let results: Vec<_> = results
+    let results = user_service.find_references(query.build()).await?;
+    let res: Vec<_> = results
+        .sota
+        .unwrap_or(vec![])
         .into_iter()
-        .flat_map(|r| match r {
-            ResultKind::SOTA(s) => s.into_iter(),
-            _ => vec![].into_iter(),
-        })
+        .map(SOTASearchResult::from)
         .collect();
-    res.results = results.into_iter().map(SOTASearchResult::from).collect();
-    res.count = res.results.len() as i32;
-    if param.max_results.is_some() && res.count > param.max_results.unwrap() {
-        res.results = vec![];
-    }
     Ok(Json(res))
 }
 

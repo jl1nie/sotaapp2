@@ -56,5 +56,5 @@ pub fn build_locator_routers() -> Router<AppState> {
         .route("/jcc-jcg/import", post(import_muni_csv))
         .route("/jcc-jcg/:muni_code", get(find_century_code))
         .route("/mapcode", get(find_mapcode));
-    Router::new().nest("/locators", routers)
+    Router::new().nest("/locator", routers)
 }

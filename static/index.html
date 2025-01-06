@@ -78,30 +78,8 @@
         <input type="submit" value="送信">
     </form>
 
-    <h4>Search Name</h4>
-    <form id="search-name" method="get">
-        <label for="prog-name">Program:</label>
-        <select id="prog-name" name="prog-name">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" value="JA"><br><br>
-
-        <label for="limit">Limit:</label>
-        <input type="text" id="limit" name="limit" value="10"><br><br>
-
-        <input type="submit" value="送信">
-    </form>
-
     <h4>Search Location</h4>
     <form id="search-location" method="get">
-        <label for="prog-location">Program:</label>
-        <select id="prog-location" name="prog-location">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
-
         <label for="min_lon">Min Lon:</label>
         <input type="text" id="min_lon" name="min_lon" value="138.860"><br><br>
 
@@ -169,11 +147,21 @@
         <input type="submit" value="送信">
     </form>
 
+    <h4>Search Name</h4>
+    <form id="search-name" method="get">
+        <label for="name">Name:</label>
+        <input type="text" id="name-field" name="name"><br><br>
+
+        <label for="limit">Limit:</label>
+        <input type="text" id="limit" name="limit" value="10"><br><br>
+    </form>
+
     <h4>JSON Result</h4>
     <div id="result"></div>
 
     <script>
-        const baseurl = 'http://localhost:8080/api/v2';
+        const url = new URL(document.documentURI);
+        const baseurl = `${url.protocol}//${url.host}/api/v2`;
         const uid = "538b548f-12db-4230-b48d-46d8842b2da9"
         const sotasearch = baseurl + '/sota/summit';
         const sotalist = baseurl + '/sota/summit-list';
@@ -190,10 +178,12 @@
         const importpota = baseurl + '/pota/import';
         const uploadactivator = baseurl + '/pota/upload/activator';
         const uploadhunter = baseurl + '/pota/upload/hunter';
-        const locatejcc = baseurl + '/locators/jcc-jcg';
-        const importjcc = baseurl + '/locators/jcc-jcg/import';
-        const mapcode = baseurl + '/locators/mapcode';
-        const geomag = baseurl + '/geomag';
+        const locatejcc = baseurl + '/locator/jcc-jcg';
+        const importjcc = baseurl + '/locator/jcc-jcg/import';
+        const mapcode = baseurl + '/locator/mapcode';
+        const geomag = baseurl + '/propagation/geomag';
+        const searchurl = baseurl + '/search';
+        const searchbreif = baseurl + '/search/brief';
 
         function uploadFile(url, inputid, buttonid) {
             event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
@@ -346,19 +336,14 @@
                 search(geomag, '');
             });
 
-        document.getElementById('search-name')
-            .addEventListener('submit', function (event) {
+        document.getElementById('name-field')
+            .addEventListener('input', function (event) {
                 event.preventDefault();
-                let name = document.getElementById('name').value;
+                let name = document.getElementById('name-field').value;
                 let limit = document.getElementById('limit').value;
-                let prog = document.getElementById('prog-name').value;
-                let param = `name=${name}&limit=${limit}`;
-                if (prog === 'SOTA') {
-                    let url = sotasearch;
-                    search(url, param);
-                } else if (prog === 'POTA') {
-                    let url = potasearch;
-                    search(url, param);
+                let param = `name=${name}&max_count=${limit}`;
+                if (name.length > 2) {
+                    search(searchbreif, param)
                 }
             });
 
@@ -373,14 +358,7 @@
                 let max_results = document.getElementById('max_results').value;
                 let eid = encodeURIComponent(uid);
                 let param = `user_id=${eid}&min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&max_lat=${max_lat}&min_elev=${min_elev}&max_results=${max_results}`;
-                let prog = document.getElementById('prog-location').value;
-                if (prog === 'SOTA') {
-                    let url = sotasearch;
-                    search(url, param);
-                } else if (prog === 'POTA') {
-                    let url = potasearch;
-                    search(url, param);
-                }
+                search(searchurl, param);
             });
 
         document.getElementById('alerts')

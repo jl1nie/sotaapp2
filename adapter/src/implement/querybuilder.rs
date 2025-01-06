@@ -1,20 +1,21 @@
 use domain::model::common::event::{FindAct, FindRef};
+use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
 
-pub fn findref_query_builder(r: &FindRef) -> String {
+pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
     let mut query: String = String::new();
 
     if let Some(refid) = &r.ref_id {
-        if r.is_sota() {
+        if r.is_sota() && mode == SOTA {
             query.push_str(&format!("(summit_code = '{}') AND ", refid))
-        } else if r.is_pota() {
+        } else if r.is_pota() && mode == POTA {
             query.push_str(&format!("(p.pota_code = '{}') AND ", refid))
-        } else if r.is_wwff() {
+        } else if r.is_wwff() && mode == WWFF {
             query.push_str(&format!("(p.wwff_code = '{}') AND ", refid))
         }
     }
 
     if let Some(name) = &r.name {
-        if r.is_sota() {
+        if r.is_sota() && mode == SOTA {
             let name = format!("'{}%'", name);
             query.push_str(&format!(
                 "(summit_code ILIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND ",
@@ -30,13 +31,13 @@ pub fn findref_query_builder(r: &FindRef) -> String {
     }
 
     if let Some(min_elev) = &r.min_elev {
-        if r.is_sota() {
+        if r.is_sota() && mode == SOTA {
             query.push_str(&format!("(alt_m >= {}) AND ", min_elev));
         }
     }
 
     if let Some(min_area) = &r.min_area {
-        if !r.is_sota() {
+        if !r.is_sota() && mode != SOTA {
             query.push_str(&format!("(p.park_area >= {}) AND ", min_area));
         }
     }
@@ -50,13 +51,13 @@ pub fn findref_query_builder(r: &FindRef) -> String {
 
     query.push_str("TRUE ");
 
-    if r.is_sota() {
+    if r.is_sota() && mode == SOTA {
         if r.min_elev.is_some() {
             query.push_str("ORDER BY alt_m DESC ");
         } else {
             query.push_str("ORDER BY summit_code ");
         }
-    } else if r.is_pota() {
+    } else if r.is_pota() && (mode == POTA || mode == WWFF) {
         if r.min_area.is_some() {
             query.push_str("ORDER BY p.park_area DESC ");
         } else {

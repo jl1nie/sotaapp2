@@ -5,6 +5,7 @@ use sqlx::PgConnection;
 use common::error::{AppError, AppResult};
 use domain::model::common::event::{DeleteRef, FindRef, PagenatedResult};
 use domain::model::sota::{SOTAReference, SummitCode};
+use domain::model::AwardProgram::SOTA;
 
 use crate::database::model::sota::SOTAReferenceImpl;
 use crate::database::ConnectionPool;
@@ -322,7 +323,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
     async fn show_reference(&self, event: &FindRef) -> AppResult<PagenatedResult<SOTAReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(SOTA, event);
         let (total, results) = self.select_pagenated(&query).await?;
         Ok(PagenatedResult {
             total,
@@ -384,7 +385,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
     }
 
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SOTAReference>> {
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(SOTA, event);
         let results = self.select_by_condition(&query).await?;
         let results = results.into_iter().map(SOTAReference::from).collect();
         Ok(results)

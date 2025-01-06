@@ -4,27 +4,24 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
-
 use chrono::{Duration, Utc};
+use common::error::{AppError, AppResult};
 use shaku_axum::Inject;
 use std::str::FromStr;
 
-use crate::model::pota::{
-    POTARefResponse, POTARefSearchResponse, POTASearchResult, PagenatedResponse, UpdateRefRequest,
-};
-use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
-use common::error::{AppError, AppResult};
-
 use domain::model::common::{
-    event::{DeleteRef, FindActBuilder, FindRefBuilder, FindResult, ResultKind},
+    event::{DeleteRef, FindActBuilder, FindRefBuilder},
     id::UserId,
 };
 use domain::model::pota::ParkCode;
 
 use registry::{AppRegistry, AppState};
-
 use service::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
 use service::services::{AdminService, UserService};
+
+use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
+
+use crate::model::pota::{POTARefResponse, POTASearchResult, PagenatedResponse, UpdateRefRequest};
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -131,7 +128,7 @@ async fn show_all_reference(
 async fn show_pota_reference_list(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<POTARefSearchResponse>> {
+) -> AppResult<Json<Vec<POTASearchResult>>> {
     let mut query = FindRefBuilder::default().pota();
 
     if param.limit.is_some() {
@@ -154,8 +151,8 @@ async fn show_pota_reference_list(
         query = query.user_id(UserId::from_str(&param.user_id.unwrap())?);
     }
 
-    if param.min_elev.is_some() {
-        query = query.min_elev(param.min_elev.unwrap());
+    if param.min_area.is_some() {
+        query = query.min_area(param.min_elev.unwrap());
     }
 
     if param.max_lat.is_some()
@@ -170,23 +167,14 @@ async fn show_pota_reference_list(
             param.max_lat.unwrap(),
         );
     }
-    let query = query.build();
-    tracing::info!("query: {:?}", query);
 
-    let FindResult { results } = user_service.find_references(query).await?;
-    let mut res = POTARefSearchResponse::default();
-    let results: Vec<_> = results
+    let results = user_service.find_references(query.build()).await?;
+    let res = results
+        .pota
+        .unwrap_or(vec![])
         .into_iter()
-        .flat_map(|r| match r {
-            ResultKind::POTA(s) => s.into_iter(),
-            _ => vec![].into_iter(),
-        })
+        .map(POTASearchResult::from)
         .collect();
-    res.results = results.into_iter().map(POTASearchResult::from).collect();
-    res.count = res.results.len() as i32;
-    if param.max_results.is_some() && res.count > param.max_results.unwrap() {
-        res.results = vec![];
-    }
     Ok(Json(res))
 }
 

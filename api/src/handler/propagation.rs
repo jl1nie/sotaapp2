@@ -16,7 +16,7 @@ async fn get_geomag(
     Err(AppError::EntityNotFound("GeoMag Error".to_string()))
 }
 
-pub fn build_geomag_routers() -> Router<AppState> {
-    let routers = Router::new().route("/", get(get_geomag));
-    Router::new().nest("/geomag", routers)
+pub fn build_propagation_routers() -> Router<AppState> {
+    let routers = Router::new().route("/geomag", get(get_geomag));
+    Router::new().nest("/propagation", routers)
 }
