@@ -65,17 +65,23 @@ impl UpdateGeoMag {
             .collect::<Vec<_>>();
 
         let mut index = GeomagIndex::default();
-        if ap[0] < 0 {
-            index.date = date[1];
-            index.a_index = ap[1];
-            index.k_index = kp[1][0]
+        if ap.len() > 1 && kp.len() > 1 {
+            if ap[0] < 0 {
+                index.date = date[1];
+                index.a_index = ap[1];
+                index.k_index = kp.get(1).cloned().unwrap_or(vec![]);
+            } else {
+                index.date = date[0];
+                index.a_index = ap[0];
+                index.k_index = kp.get(0).cloned().unwrap_or(vec![]);
+            }
+            service.update_geomag(index).await?;
+            Ok(())
         } else {
-            index.date = date[0];
-            index.a_index = ap[0];
-            index.k_index = kp[0][0];
+            Err(AppError::UnprocessableEntity(format!(
+                "GeoMag file fortmat error: {}",
+                endpoint
+            )))
         }
-
-        service.update_geomag(index).await?;
-        Ok(())
     }
 }
