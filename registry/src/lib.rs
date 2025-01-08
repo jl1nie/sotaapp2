@@ -37,11 +37,8 @@ module! {
 
 impl AppRegistry {
     pub fn new(config: &AppConfig) -> Self {
-        tracing::info!("Connect to {:}", config.database);
         let pool = connect_database_with(config)
             .expect(&format!("Unable to connect DB {:}", config.database));
-        tracing::info!("Connected.");
-
         AppRegistry::builder()
             .with_component_parameters::<SOTAReferenceReposityImpl>(
                 SOTAReferenceReposityImplParameters { pool: pool.clone() },
