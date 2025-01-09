@@ -2,7 +2,7 @@ use domain::model::locator::{CenturyCode, MunicipalityCenturyCode};
 use serde::Serialize;
 
 #[derive(Debug, Default, Serialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct CenturyCodeResponse {
     pub muni_code: i32,
     pub prefecture: String,
@@ -62,7 +62,7 @@ impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct MapcodeResponse {
     pub mapcode: String,
 }

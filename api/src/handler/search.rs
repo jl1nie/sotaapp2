@@ -3,6 +3,7 @@ use axum::{extract::Query, routing::get, Json, Router};
 use domain::model::common::event::FindResult;
 use shaku_axum::Inject;
 use std::str::FromStr;
+use std::time::Instant;
 use std::vec;
 
 use common::error::AppResult;
@@ -20,6 +21,7 @@ async fn search(
     user_service: Inject<AppRegistry, dyn UserService>,
     param: GetParam,
 ) -> AppResult<FindResult> {
+    let start = Instant::now();
     let mut query = FindRefBuilder::default().sota().pota();
 
     if param.limit.is_some() {
@@ -43,7 +45,7 @@ async fn search(
     }
 
     if param.min_area.is_some() {
-        query = query.min_area(param.min_elev.unwrap());
+        query = query.min_area(param.min_area.unwrap());
     }
 
     if param.min_elev.is_some() {
@@ -64,6 +66,8 @@ async fn search(
     }
 
     let results = user_service.find_references(query.build()).await?;
+    let end = start.elapsed();
+    tracing::info!("find reference {}ms", end.as_millis());
     Ok(results)
 }
 

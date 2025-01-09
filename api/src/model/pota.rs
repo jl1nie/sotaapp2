@@ -4,7 +4,7 @@ use domain::model::pota::{POTAReference, POTAReferenceWithLog};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct CreateRefRequest {
     pub pota_code: String,
     pub wwff_code: String,
@@ -77,7 +77,7 @@ impl From<PagenatedResult<POTAReference>> for PagenatedResponse<POTARefResponse>
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateRefRequest {
     pub pota_code: String,
     pub wwff_code: String,
@@ -154,7 +154,7 @@ pub struct POTAHunterLog {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct POTARefResponse {
     pub pota_code: String,
     pub wwff_code: String,
@@ -188,7 +188,7 @@ impl From<POTAReference> for POTARefResponse {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct POTASearchResult {
     pub pota: String,
     pub wwff: String,
