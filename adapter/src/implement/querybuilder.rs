@@ -37,7 +37,7 @@ pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
     }
 
     if let Some(min_area) = &r.min_area {
-        if !r.is_sota() && mode != SOTA {
+        if r.is_pota() && (mode == POTA || mode == WWFF) {
             query.push_str(&format!("(p.park_area >= {}) AND ", min_area));
         }
     }

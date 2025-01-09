@@ -4,7 +4,7 @@ use serde::Serialize;
 use domain::model::geomag::GeomagIndex;
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct GeomagResponse {
     pub date: NaiveDate,
     pub a_index: i32,

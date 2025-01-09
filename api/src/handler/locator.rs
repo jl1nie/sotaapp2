@@ -39,15 +39,12 @@ async fn find_century_code(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<CenturyCodeResponse>> {
-    let start = std::time::Instant::now();
     let muni_code: i32 = param.muni_code.unwrap_or_default();
     let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
     let result = user_service.find_century_code(muni_code).await?;
     let maidenhead = longlat_to_grid(lon, lat, 8).unwrap_or("--------".to_string());
     let mut result: CenturyCodeResponse = result.into();
     result.maidenhead = Some(maidenhead);
-    let end = start.elapsed();
-    tracing::info!("find_century_code {}ms", end.as_millis());
     Ok(Json(result))
 }
 
@@ -55,11 +52,8 @@ async fn find_map_code(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<MapcodeResponse>> {
-    let start = std::time::Instant::now();
     let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
     let mapcode = user_service.find_mapcode(lon, lat).await?;
-    let end = start.elapsed();
-    tracing::info!("find_map_code {}ms", end.as_millis());
     Ok(Json(mapcode.into()))
 }
 
