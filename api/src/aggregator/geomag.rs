@@ -73,7 +73,7 @@ impl UpdateGeoMag {
             } else {
                 index.date = date[0];
                 index.a_index = ap[0];
-                index.k_index = kp.get(0).cloned().unwrap_or(vec![]);
+                index.k_index = kp.first().cloned().unwrap_or(vec![]);
             }
             service.update_geomag(index).await?;
             Ok(())

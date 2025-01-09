@@ -15,6 +15,4 @@ RUN adduser admin && chown -R admin /app
 USER admin
 COPY --from=builder ./app/target/release/app ./target/release/app
 COPY static/ static/
-#ENV PORT 8080
-#EXPOSE $PORT
 ENTRYPOINT ["./target/release/app"]

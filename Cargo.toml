@@ -36,6 +36,7 @@ axum-extra = { version = "0.9.6", features = [
 ] }
 apalis = "^0.6.2"
 apalis-cron = "^0.6.2"
+maidenhead = "0.1.0"
 tower = "0.5.2"
 tower-http = { version = "^0.6", features = ["trace", "cors", "fs"] }
 tokio = { version = "^1.42", features = ["full"] }

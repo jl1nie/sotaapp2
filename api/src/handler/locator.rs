@@ -1,37 +1,21 @@
 use axum::{
-    extract::{Multipart, Path, Query},
+    extract::{Multipart, Query},
     http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
-
+use maidenhead::longlat_to_grid;
 use shaku_axum::Inject;
 
-use crate::model::locator::{CenturyCodeResponse, MapcodeResponse};
-use crate::model::param::GetParam;
+use crate::model::{
+    locator::{CenturyCodeResponse, MapcodeResponse},
+    param::GetParam,
+};
 use common::error::{AppError, AppResult};
 use registry::{AppRegistry, AppState};
 
 use service::model::locator::UploadMuniCSV;
 use service::services::{AdminService, UserService};
-
-async fn find_century_code(
-    user_service: Inject<AppRegistry, dyn UserService>,
-    Path(muni_code): Path<String>,
-) -> AppResult<Json<CenturyCodeResponse>> {
-    let muni_code: i32 = muni_code.parse().unwrap_or_default();
-    let result = user_service.find_century_code(muni_code).await?;
-    Ok(Json(result.into()))
-}
-
-async fn find_mapcode(
-    user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
-) -> AppResult<Json<MapcodeResponse>> {
-    let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
-    let result = user_service.find_mapcode(lon, lat).await?;
-    Ok(Json(result.into()))
-}
 
 async fn import_muni_csv(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -51,10 +35,38 @@ async fn import_muni_csv(
     Err(AppError::ForbiddenOperation)
 }
 
+async fn find_century_code(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<CenturyCodeResponse>> {
+    let start = std::time::Instant::now();
+    let muni_code: i32 = param.muni_code.unwrap_or_default();
+    let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
+    let result = user_service.find_century_code(muni_code).await?;
+    let maidenhead = longlat_to_grid(lon, lat, 8).unwrap_or("--------".to_string());
+    let mut result: CenturyCodeResponse = result.into();
+    result.maidenhead = Some(maidenhead);
+    let end = start.elapsed();
+    tracing::info!("find_century_code {}ms", end.as_millis());
+    Ok(Json(result))
+}
+
+async fn find_map_code(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<MapcodeResponse>> {
+    let start = std::time::Instant::now();
+    let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
+    let mapcode = user_service.find_mapcode(lon, lat).await?;
+    let end = start.elapsed();
+    tracing::info!("find_map_code {}ms", end.as_millis());
+    Ok(Json(mapcode.into()))
+}
+
 pub fn build_locator_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/jcc-jcg/import", post(import_muni_csv))
-        .route("/jcc-jcg/:muni_code", get(find_century_code))
-        .route("/mapcode", get(find_mapcode));
+        .route("/jcc-jcg", get(find_century_code))
+        .route("/mapcode", get(find_map_code));
     Router::new().nest("/locator", routers)
 }
