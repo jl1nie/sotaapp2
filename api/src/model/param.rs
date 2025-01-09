@@ -17,4 +17,7 @@ pub struct GetParam {
     pub after: Option<i64>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
+    pub muni_code: Option<i32>,
+    pub distinct_call: Option<bool>,
+    pub distinct_ref: Option<bool>,
 }

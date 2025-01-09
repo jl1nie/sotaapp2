@@ -1,9 +1,12 @@
 use anyhow::{Error, Result};
-use axum::Router;
+use axum::{http::HeaderValue, Router};
 use common::config::AppConfig;
 use std::net::{IpAddr, SocketAddr};
 use tokio::net::TcpListener;
-use tower_http::services::ServeDir;
+use tower_http::{
+    cors::{Any, CorsLayer},
+    services::ServeDir,
+};
 use tracing_subscriber::EnvFilter;
 
 use api::handler::v2;
@@ -28,9 +31,15 @@ async fn bootstrap() -> Result<()> {
     let app_state = AppState::new(module);
     let job_state = app_state.clone();
 
+    let cors = match config.cors_origin.clone() {
+        Some(origin) => CorsLayer::new().allow_origin(origin.parse::<HeaderValue>().unwrap()),
+        None => CorsLayer::new().allow_origin(Any),
+    };
+
     let app = Router::new()
         .merge(v2::routes())
         .with_state(app_state)
+        .layer(cors)
         .nest_service("/admin-console", ServeDir::new("static"));
 
     let ip_addr: IpAddr = config.host.parse().expect("Invalid IP Address");

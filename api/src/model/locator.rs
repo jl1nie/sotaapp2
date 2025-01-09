@@ -1,7 +1,7 @@
 use domain::model::locator::{CenturyCode, MunicipalityCenturyCode};
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CenturyCodeResponse {
     pub muni_code: i32,
@@ -13,6 +13,7 @@ pub struct CenturyCodeResponse {
     pub jcg_code: Option<String>,
     pub jcg_text: Option<String>,
     pub hamlog_code: Option<String>,
+    pub maidenhead: Option<String>,
 }
 
 impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
@@ -38,6 +39,7 @@ impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
                 jcg_code: None,
                 jcg_text: None,
                 hamlog_code: None,
+                ..Default::default()
             },
             CenturyCode::JCG {
                 jcg_code,
@@ -53,6 +55,7 @@ impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
                 jcg_code: Some(jcg_code),
                 jcg_text: Some(jcg_text),
                 hamlog_code,
+                ..Default::default()
             },
         }
     }

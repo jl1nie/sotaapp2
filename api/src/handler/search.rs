@@ -87,7 +87,7 @@ async fn search_all_reference_breif(
         res.candidates = vec![];
     }
 
-    Ok(Json(res.into()))
+    Ok(Json(res))
 }
 
 pub fn build_search_routers() -> Router<AppState> {
