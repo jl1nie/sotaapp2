@@ -38,15 +38,16 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_summit_opt_list(&self, event: UploadSOTAOptCSV) -> AppResult<()>;
     async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
-
-    async fn show_sota_reference(
+    async fn show_sota_reference(&self, query: FindRef) -> AppResult<SOTAReference>;
+    async fn show_all_sota_references(
         &self,
         query: FindRef,
     ) -> AppResult<PagenatedResult<SOTAReference>>;
+
     async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()>;
     async fn delete_sota_reference(&self, query: DeleteRef<SummitCode>) -> AppResult<()>;
-
-    async fn show_pota_reference(
+    async fn show_pota_reference(&self, query: FindRef) -> AppResult<POTAReference>;
+    async fn show_all_pota_references(
         &self,
         query: FindRef,
     ) -> AppResult<PagenatedResult<POTAReference>>;

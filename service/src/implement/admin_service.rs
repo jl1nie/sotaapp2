@@ -182,11 +182,15 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn show_sota_reference(
+    async fn show_sota_reference(&self, event: FindRef) -> AppResult<SOTAReference> {
+        Ok(self.sota_repo.show_reference(&event).await?)
+    }
+
+    async fn show_all_sota_references(
         &self,
         event: FindRef,
     ) -> AppResult<PagenatedResult<SOTAReference>> {
-        Ok(self.sota_repo.show_reference(&event).await?)
+        Ok(self.sota_repo.show_all_references(&event).await?)
     }
 
     async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
@@ -199,11 +203,15 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn show_pota_reference(
+    async fn show_pota_reference(&self, event: FindRef) -> AppResult<POTAReference> {
+        Ok(self.pota_repo.show_reference(&event).await?)
+    }
+
+    async fn show_all_pota_references(
         &self,
         event: FindRef,
     ) -> AppResult<PagenatedResult<POTAReference>> {
-        Ok(self.pota_repo.show_reference(&event).await?)
+        Ok(self.pota_repo.show_all_references(&event).await?)
     }
 
     async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {

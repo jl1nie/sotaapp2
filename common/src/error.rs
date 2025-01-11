@@ -13,6 +13,8 @@ pub enum AppError {
     TransactionError(#[source] sqlx::Error),
     #[error("データベース処理実行中にエラーが発生しました。")]
     SpecificOperationError(#[source] sqlx::Error),
+    #[error("指定さえた行が見つかりません。")]
+    RowNotFound(#[source] sqlx::Error),
     #[error("No rows affected: {0}")]
     NoRowsAffectedError(String),
     #[error("CSVの読み込みに失敗しました。")]
@@ -45,6 +47,7 @@ impl IntoResponse for AppError {
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::CSVReadError(e) =>{tracing::error!("CSV Error {:?}",e); StatusCode::UNPROCESSABLE_ENTITY},
             AppError::EntityNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
+            | AppError::RowNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
             /* AppError::ValidationError(_) |*/
                  AppError::ConvertToUuidError(_) => {
                     StatusCode::BAD_REQUEST
@@ -53,6 +56,7 @@ impl IntoResponse for AppError {
             AppError::UnauthorizedError => StatusCode::UNAUTHORIZED,
             e @ (AppError::TransactionError(_)
             | AppError::SpecificOperationError(_)
+   
             | AppError::NoRowsAffectedError(_)
             | AppError::PostError(_)
             | AppError::GetError(_)

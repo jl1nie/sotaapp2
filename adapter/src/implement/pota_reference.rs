@@ -227,6 +227,34 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
+    async fn select(&self, query: &str) -> AppResult<POTAReferenceImpl> {
+        let mut select = r#"
+            SELECT
+                pota_code,
+                wwff_code,
+                park_name,
+                park_name_j,
+                park_location,
+                park_locid,
+                park_type,
+                park_inactive,
+                park_area,
+                ST_X(coordinates) AS longitude,
+                ST_Y(coordinates) AS latitude,
+                update
+            FROM pota_references AS p WHERE "#
+            .to_string();
+
+        select.push_str(query);
+
+        let sql_query = sqlx::query_as::<_, POTAReferenceImpl>(&select);
+        let row: POTAReferenceImpl = sql_query
+            .fetch_one(self.pool.inner_ref())
+            .await
+            .map_err(AppError::RowNotFound)?;
+        Ok(row)
+    }
+
     async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<POTAReferenceImpl>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM pota_references")
             .fetch_one(self.pool.inner_ref())
@@ -257,7 +285,7 @@ impl POTAReferenceRepositryImpl {
         let rows: Vec<POTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok((total, rows))
     }
 
@@ -321,7 +349,7 @@ impl POTAReferenceRepositryImpl {
         let rows: Vec<POTAReferenceWithLogImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok(rows)
     }
 }
@@ -357,7 +385,16 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn show_reference(&self, event: &FindRef) -> AppResult<PagenatedResult<POTAReference>> {
+    async fn show_reference(&self, event: &FindRef) -> AppResult<POTAReference> {
+        let query = findref_query_builder(POTA, event);
+        let result = self.select(&query).await?;
+        Ok(result.into())
+    }
+
+    async fn show_all_references(
+        &self,
+        event: &FindRef,
+    ) -> AppResult<PagenatedResult<POTAReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
         let query = findref_query_builder(POTA, event);

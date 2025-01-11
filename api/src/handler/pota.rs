@@ -19,7 +19,11 @@ use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
 use service::services::{AdminService, UserService};
 
-use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
+use crate::model::{
+    alerts::AlertResponse,
+    param::{build_findref_query, GetParam},
+    spots::SpotResponse,
+};
 
 use crate::model::pota::{POTARefResponse, POTASearchResult, PagenatedResponse, UpdateRefRequest};
 
@@ -103,13 +107,13 @@ async fn delete_pota_reference(
 async fn show_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(park_code): Path<String>,
-) -> AppResult<Json<PagenatedResponse<POTARefResponse>>> {
+) -> AppResult<Json<POTARefResponse>> {
     let query = FindRefBuilder::default().pota().ref_id(park_code).build();
     let result = admin_service.show_pota_reference(query).await?;
     Ok(Json(result.into()))
 }
 
-async fn show_all_reference(
+async fn show_all_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<POTARefResponse>>> {
@@ -121,54 +125,21 @@ async fn show_all_reference(
     if param.offset.is_some() {
         query = query.offset(param.offset.unwrap());
     }
-    let result = admin_service.show_pota_reference(query.build()).await?;
+    let result = admin_service
+        .show_all_pota_references(query.build())
+        .await?;
     Ok(Json(result.into()))
 }
 
-async fn show_pota_reference_list(
+async fn find_pota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<POTASearchResult>>> {
-    let mut query = FindRefBuilder::default().pota();
+    let query = FindRefBuilder::default().pota();
+    let query = build_findref_query(param, query)?;
 
-    if param.limit.is_some() {
-        query = query.limit(param.limit.unwrap());
-    }
+    let results = user_service.find_references(query).await?;
 
-    if param.offset.is_some() {
-        query = query.offset(param.offset.unwrap());
-    }
-
-    if param.name.is_some() {
-        query = query.name(param.name.unwrap());
-    }
-
-    if param.ref_id.is_some() {
-        query = query.ref_id(param.ref_id.unwrap());
-    }
-
-    if param.user_id.is_some() {
-        query = query.user_id(UserId::from_str(&param.user_id.unwrap())?);
-    }
-
-    if param.min_area.is_some() {
-        query = query.min_area(param.min_elev.unwrap());
-    }
-
-    if param.max_lat.is_some()
-        && param.min_lat.is_some()
-        && param.max_lon.is_some()
-        && param.min_lon.is_some()
-    {
-        query = query.bbox(
-            param.min_lon.unwrap(),
-            param.min_lat.unwrap(),
-            param.max_lon.unwrap(),
-            param.max_lat.unwrap(),
-        );
-    }
-
-    let results = user_service.find_references(query.build()).await?;
     let res = results
         .pota
         .unwrap_or(vec![])
@@ -217,11 +188,11 @@ pub fn build_pota_routers() -> Router<AppState> {
         .route("/upload/hunter/:user_id", post(upload_pota_hunter_log))
         .route("/spots", get(show_pota_spots))
         .route("/alerts", get(show_pota_alerts))
-        .route("/park-list", get(show_all_reference))
-        .route("/park", get(show_pota_reference_list))
-        .route("/park/:park_code", get(show_pota_reference))
-        .route("/park/:park_code", put(update_pota_reference))
-        .route("/park/:park_code", delete(delete_pota_reference));
+        .route("/parks", get(show_all_pota_reference))
+        .route("/parks/search", get(find_pota_reference))
+        .route("/parks/:park_code", get(show_pota_reference))
+        .route("/parks/:park_code", put(update_pota_reference))
+        .route("/parks/:park_code", delete(delete_pota_reference));
 
     Router::new().nest("/pota", routers)
 }

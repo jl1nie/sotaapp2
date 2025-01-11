@@ -221,11 +221,47 @@ impl SOTAReferenceReposityImpl {
         Ok(())
     }
 
+    async fn select(&self, query: &str) -> AppResult<SOTAReferenceImpl> {
+        let mut select = r#"
+            SELECT
+                summit_code,
+                association_name,
+                region_name,
+                summit_name,
+                summit_name_j,
+                city,
+                city_j,
+                alt_m,
+                alt_ft,
+                grid_ref1,
+                grid_ref2,
+                ST_X(coordinates) AS longitude,
+                ST_Y(coordinates) AS latitude,
+                points,
+                bonus_points,
+                valid_from,
+                valid_to,
+                activation_count,
+                activation_date,
+                activation_call
+            FROM sota_references WHERE "#
+            .to_string();
+
+        select.push_str(query);
+
+        let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
+        let row: SOTAReferenceImpl = sql_query
+            .fetch_one(self.pool.inner_ref())
+            .await
+            .map_err(AppError::RowNotFound)?;
+        Ok(row)
+    }
+
     async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<SOTAReferenceImpl>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         let total: i64 = row.count.unwrap_or(0);
 
         let mut select = r#"
@@ -259,7 +295,7 @@ impl SOTAReferenceReposityImpl {
         let rows: Vec<SOTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok((total, rows))
     }
 
@@ -295,7 +331,7 @@ impl SOTAReferenceReposityImpl {
         let rows: Vec<SOTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok(rows)
     }
 }
@@ -320,7 +356,16 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn show_reference(&self, event: &FindRef) -> AppResult<PagenatedResult<SOTAReference>> {
+    async fn show_reference(&self, event: &FindRef) -> AppResult<SOTAReference> {
+        let query = findref_query_builder(SOTA, event);
+        let result = self.select(&query).await?;
+        Ok(result.into())
+    }
+
+    async fn show_all_references(
+        &self,
+        event: &FindRef,
+    ) -> AppResult<PagenatedResult<SOTAReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
         let query = findref_query_builder(SOTA, event);
