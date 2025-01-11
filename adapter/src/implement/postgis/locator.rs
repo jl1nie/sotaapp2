@@ -37,7 +37,7 @@ impl LocatorRepositryImpl {
                     jcg_text = EXCLUDED.jcg_text,
                     hamlog_code = EXCLUDED.hamlog_code
             "#,
-            m.muni_code,
+            m.muni_code as i32,
             m.prefecture,
             m.municipality,
             m.jcc_code,

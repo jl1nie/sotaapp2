@@ -15,10 +15,10 @@ domain = { path = "./domain" }
 common = { path = "./common" }
 api = { path = "./api" }
 service = { path = "./service" }
-adapter = { path = "./adapter", features = ["sqlite"] }
-registry = { path = "./registry", features = ["sqlite"] }
-#adapter = { path = "./adapter", features = [] }
-#registry = { path = "./registry", features = [] }
+#adapter = { path = "./adapter", features = ["sqlite"] }
+#registry = { path = "./registry", features = ["sqlite"] }
+adapter = { path = "./adapter", features = [] }
+registry = { path = "./registry", features = [] }
 
 anyhow = "^1.0"
 derive-new = "0.7.0"
