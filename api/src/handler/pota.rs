@@ -108,7 +108,10 @@ async fn show_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(park_code): Path<String>,
 ) -> AppResult<Json<POTARefResponse>> {
-    let query = FindRefBuilder::default().pota().ref_id(park_code).build();
+    let query = FindRefBuilder::default()
+        .pota()
+        .pota_code(park_code)
+        .build();
     let result = admin_service.show_pota_reference(query).await?;
     Ok(Json(result.into()))
 }

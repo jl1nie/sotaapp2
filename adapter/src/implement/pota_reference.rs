@@ -40,10 +40,11 @@ impl POTAReferenceRepositryImpl {
                     park_inactive,
                     park_area,
                     coordinates,
+                    maidenhead,
                     update
                 )
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,ST_SetSRID(ST_MakePoint($10, $11), 4326), 
-                $12)
+                $12,$13)
             "#,
             r.pota_code,
             r.wwff_code,
@@ -56,6 +57,7 @@ impl POTAReferenceRepositryImpl {
             r.park_area,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.update
         )
         .execute(db)
@@ -77,7 +79,8 @@ impl POTAReferenceRepositryImpl {
                     park_inactive = $8,
                     park_area = $9,
                     coordinates = ST_SetSRID(ST_MakePoint($10, $11), 4326),
-                    update = $12
+                    maidenhead = $12,
+                    update = $13
                 WHERE pota_code = $1
             "#,
             r.pota_code,
@@ -91,6 +94,7 @@ impl POTAReferenceRepositryImpl {
             r.park_area,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.update
         )
         .execute(db)
@@ -241,6 +245,7 @@ impl POTAReferenceRepositryImpl {
                 park_area,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 update
             FROM pota_references AS p WHERE "#
             .to_string();
@@ -275,6 +280,7 @@ impl POTAReferenceRepositryImpl {
                 park_area,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 update
             FROM pota_references AS p WHERE "#
             .to_string();
@@ -310,6 +316,7 @@ impl POTAReferenceRepositryImpl {
                     park_area,
                     ST_X(coordinates) AS longitude,
                     ST_Y(coordinates) AS latitude,
+                    maidenhead,
                     NULL as attempts,
                     NULL as activations,
                     NULL as first_qso_date,
@@ -332,6 +339,7 @@ impl POTAReferenceRepositryImpl {
                     p.park_area AS park_area,
                     ST_X(p.coordinates) AS longitude,
                     ST_Y(p.coordinates) AS latitude,
+                    p.maidenhead AS maidenhead,
                     a.attempts as attempts,
                     a.activations AS activations,
                     h.first_qso_date AS first_qso_date,

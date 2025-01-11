@@ -35,6 +35,7 @@ impl SOTAReferenceReposityImpl {
                     grid_ref1,
                     grid_ref2,
                     coordinates,
+                    maidenhead,
                     points,
                     bonus_points,
                     valid_from,
@@ -44,7 +45,7 @@ impl SOTAReferenceReposityImpl {
                     activation_call
                 )
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ST_SetSRID(ST_MakePoint($12, $13), 4326), 
-                $14, $15, $16, $17, $18, $19, $20)
+                $14, $15, $16, $17, $18, $19, $20, $21)
             "#,
             r.summit_code,
             r.association_name,
@@ -59,6 +60,7 @@ impl SOTAReferenceReposityImpl {
             r.grid_ref2,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.points,
             r.bonus_points,
             r.valid_from,
@@ -87,13 +89,14 @@ impl SOTAReferenceReposityImpl {
                     grid_ref1 = $10,
                     grid_ref2 = $11,
                     coordinates = ST_SetSRID(ST_MakePoint($12, $13), 4326),
-                    points = $14,
-                    bonus_points = $15,
-                    valid_from = $16,
-                    valid_to = $17,
-                    activation_count = $18,
-                    activation_date = $19,
-                    activation_call = $20
+                    maidenhead = $14,
+                    points = $15,
+                    bonus_points = $16,
+                    valid_from = $17,
+                    valid_to = $18,
+                    activation_count = $19,
+                    activation_date = $20,
+                    activation_call = $21
                 WHERE summit_code = $1
             "#,
             r.summit_code,
@@ -109,6 +112,7 @@ impl SOTAReferenceReposityImpl {
             r.grid_ref2,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.points,
             r.bonus_points,
             r.valid_from,
@@ -139,6 +143,7 @@ impl SOTAReferenceReposityImpl {
                     grid_ref1,
                     grid_ref2,
                     coordinates,
+                    maidenhead,
                     points,
                     bonus_points,
                     valid_from,
@@ -147,7 +152,7 @@ impl SOTAReferenceReposityImpl {
                     activation_date,
                     activation_call
                 ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ST_SetSRID(ST_MakePoint($12, $13), 4326), 
-                $14, $15, $16, $17, $18, $19, $20)
+                $14, $15, $16, $17, $18, $19, $20, $21)
                 ON CONFLICT (summit_code) DO UPDATE SET
                     association_name = EXCLUDED.association_name,
                     region_name = EXCLUDED.region_name,
@@ -181,6 +186,7 @@ impl SOTAReferenceReposityImpl {
             r.grid_ref2,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.points,
             r.bonus_points,
             r.valid_from,
@@ -237,6 +243,7 @@ impl SOTAReferenceReposityImpl {
                 grid_ref2,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 points,
                 bonus_points,
                 valid_from,
@@ -279,6 +286,7 @@ impl SOTAReferenceReposityImpl {
                 grid_ref2,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 points,
                 bonus_points,
                 valid_from,
@@ -315,6 +323,7 @@ impl SOTAReferenceReposityImpl {
                 grid_ref2,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 points,
                 bonus_points,
                 valid_from,

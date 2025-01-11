@@ -4,13 +4,13 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use maidenhead::longlat_to_grid;
 use shaku_axum::Inject;
 
 use crate::model::{
     locator::{CenturyCodeResponse, MapcodeResponse},
     param::GetParam,
 };
+use common::csv_reader::maidenhead;
 use common::error::{AppError, AppResult};
 use registry::{AppRegistry, AppState};
 
@@ -42,9 +42,8 @@ async fn find_century_code(
     let muni_code: i32 = param.muni_code.unwrap_or_default();
     let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
     let result = user_service.find_century_code(muni_code).await?;
-    let maidenhead = longlat_to_grid(lon, lat, 8).unwrap_or("--------".to_string());
     let mut result: CenturyCodeResponse = result.into();
-    result.maidenhead = Some(maidenhead);
+    result.maidenhead = Some(maidenhead(lon, lat));
     Ok(Json(result))
 }
 

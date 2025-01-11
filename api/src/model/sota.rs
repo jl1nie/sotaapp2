@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+use common::csv_reader::maidenhead;
 use domain::model::common::event::PagenatedResult;
 use domain::model::sota::SOTAReference;
+use domain::model::Maidenhead;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -66,6 +68,7 @@ impl From<CreateRefRequest> for Vec<SOTAReference> {
             grid_ref2,
             longitude: Some(longitude),
             latitude: Some(latitude),
+            maidenhead: maidenhead(longitude, latitude),
             points,
             bonus_points,
             valid_from,
@@ -140,6 +143,7 @@ impl From<UpdateRefRequest> for Vec<SOTAReference> {
             grid_ref2,
             longitude: Some(longitude),
             latitude: Some(latitude),
+            maidenhead: maidenhead(longitude, latitude),
             points,
             bonus_points,
             valid_from,
@@ -152,7 +156,7 @@ impl From<UpdateRefRequest> for Vec<SOTAReference> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SOTARefResponse {
     pub summit_code: String,
@@ -165,6 +169,7 @@ pub struct SOTARefResponse {
     pub alt_m: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
+    pub maidenhead: String,
     pub points: i32,
     pub bonus_points: i32,
     pub activation_count: i32,
@@ -189,6 +194,7 @@ impl From<SOTAReference> for SOTARefResponse {
             grid_ref2,
             longitude,
             latitude,
+            maidenhead,
             points,
             bonus_points,
             valid_from,
@@ -209,6 +215,55 @@ impl From<SOTAReference> for SOTARefResponse {
             alt_m,
             longitude,
             latitude,
+            maidenhead,
+            points,
+            bonus_points,
+            activation_count,
+            activation_date,
+            activation_call,
+        }
+    }
+}
+
+impl From<(Maidenhead, SOTAReference)> for SOTARefResponse {
+    #[allow(unused_variables)]
+    fn from((maidenhead, value): (Maidenhead, SOTAReference)) -> Self {
+        let SOTAReference {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j,
+            city,
+            city_j,
+            alt_m,
+            alt_ft,
+            grid_ref1,
+            grid_ref2,
+            longitude,
+            latitude,
+            maidenhead,
+            points,
+            bonus_points,
+            valid_from,
+            valid_to,
+            activation_count,
+            activation_date,
+            activation_call,
+        } = value;
+
+        Self {
+            summit_code,
+            association_name,
+            region_name,
+            summit_name,
+            summit_name_j,
+            city,
+            city_j,
+            alt_m,
+            longitude,
+            latitude,
+            maidenhead,
             points,
             bonus_points,
             activation_count,

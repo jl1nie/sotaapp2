@@ -44,11 +44,12 @@ impl UserService for UserServiceImpl {
         let mut result = FindResult::default();
 
         if event.is_sota() {
-            result.sota = Some(self.sota_repo.find_reference(&event).await?)
+            let sota_ref = self.sota_repo.find_reference(&event).await?;
+            result.sota = Some(sota_ref)
         }
 
         if event.is_pota() {
-            let active_ref = self
+            let active_ref: Vec<_> = self
                 .pota_repo
                 .find_reference(&event)
                 .await?

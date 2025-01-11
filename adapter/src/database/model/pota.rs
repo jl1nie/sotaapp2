@@ -24,6 +24,7 @@ pub struct POTAReferenceImpl {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
+    pub maidenhead: String,
     pub update: DateTime<Utc>,
 }
 
@@ -41,6 +42,7 @@ impl From<POTAReference> for POTAReferenceImpl {
             park_area: r.park_area,
             longitude: r.longitude,
             latitude: r.latitude,
+            maidenhead: r.maidenhead,
             update: r.update,
         }
     }
@@ -59,6 +61,7 @@ pub struct POTAReferenceWithLogImpl {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
+    pub maidenhead: String,
     pub attempts: Option<i32>,
     pub activations: Option<i32>,
     pub first_qso_date: Option<NaiveDate>,
@@ -79,6 +82,7 @@ impl From<POTAReferenceWithLogImpl> for POTAReferenceWithLog {
             park_area: r.park_area,
             longitude: r.longitude,
             latitude: r.latitude,
+            maidenhead: r.maidenhead,
             attempts: r.attempts,
             activations: r.activations,
             first_qso_date: r.first_qso_date,
@@ -101,6 +105,7 @@ impl From<POTAReferenceImpl> for POTAReference {
             park_area: r.park_area,
             longitude: r.longitude,
             latitude: r.latitude,
+            maidenhead: r.maidenhead,
             update: r.update,
         }
     }

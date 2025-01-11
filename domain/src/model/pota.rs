@@ -25,6 +25,7 @@ pub struct POTAReference {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
+    pub maidenhead: String,
     pub update: DateTime<Utc>,
 }
 
@@ -41,6 +42,7 @@ pub struct POTAReferenceWithLog {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
+    pub maidenhead: String,
     pub attempts: Option<i32>,
     pub activations: Option<i32>,
     pub first_qso_date: Option<NaiveDate>,

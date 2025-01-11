@@ -1,7 +1,10 @@
 use chrono::{DateTime, NaiveDate, Utc};
+use serde::{Deserialize, Serialize};
+
+use common::csv_reader::maidenhead;
 use domain::model::common::id::UserId;
 use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference};
-use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct POTACSVFile {
@@ -46,6 +49,7 @@ impl From<POTACSVFile> for POTAReference {
             park_area,
             longitude,
             latitude,
+            maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
             update,
         }
     }

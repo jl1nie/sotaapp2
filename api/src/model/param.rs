@@ -19,7 +19,9 @@ pub struct GetParam {
     pub min_elev: Option<i32>,
     pub min_area: Option<i32>,
     pub max_count: Option<u32>,
-    pub ref_id: Option<String>,
+    pub pota_code: Option<String>,
+    pub sota_code: Option<String>,
+    pub wwff_code: Option<String>,
     pub user_id: Option<String>,
     pub name: Option<String>,
     pub after: Option<i64>,
@@ -41,8 +43,16 @@ pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppRes
         query = query.name(param.name.unwrap());
     }
 
-    if param.ref_id.is_some() {
-        query = query.ref_id(param.ref_id.unwrap());
+    if param.sota_code.is_some() {
+        query = query.sota_code(param.sota_code.unwrap());
+    }
+
+    if param.pota_code.is_some() {
+        query = query.pota_code(param.pota_code.unwrap());
+    }
+
+    if param.wwff_code.is_some() {
+        query = query.wwff_code(param.wwff_code.unwrap());
     }
 
     if param.user_id.is_some() {

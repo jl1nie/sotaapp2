@@ -4,14 +4,16 @@ use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
 pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
     let mut query: String = String::new();
 
-    if let Some(refid) = &r.ref_id {
-        if r.is_sota() && mode == SOTA {
-            query.push_str(&format!("(summit_code = '{}') AND ", refid))
-        } else if r.is_pota() && mode == POTA {
-            query.push_str(&format!("(p.pota_code = '{}') AND ", refid))
-        } else if r.is_wwff() && mode == WWFF {
-            query.push_str(&format!("(p.wwff_code = '{}') AND ", refid))
-        }
+    if let Some(refid) = &r.sota_code {
+        query.push_str(&format!("(summit_code = '{}') AND ", refid));
+    }
+
+    if let Some(refid) = &r.pota_code {
+        query.push_str(&format!("(p.pota_code = '{}') AND ", refid));
+    }
+
+    if let Some(refid) = &r.wwff_code {
+        query.push_str(&format!("(p.wwff_code = '{}') AND ", refid))
     }
 
     if let Some(name) = &r.name {
