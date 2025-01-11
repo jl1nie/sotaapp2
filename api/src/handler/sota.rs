@@ -17,9 +17,13 @@ use registry::{AppRegistry, AppState};
 use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 use service::services::{AdminService, UserService};
 
-use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
+use crate::model::{
+    alerts::AlertResponse,
+    param::{build_findref_query, GetParam},
+    spots::SpotResponse,
+};
 
-use crate::model::sota::{PagenatedResponse, SOTARefResponse, SOTASearchResult, UpdateRefRequest};
+use crate::model::sota::{PagenatedResponse, SOTARefResponse, UpdateRefRequest};
 
 async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -99,13 +103,13 @@ async fn delete_sota_reference(
 async fn show_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
-) -> AppResult<Json<PagenatedResponse<SOTARefResponse>>> {
+) -> AppResult<Json<SOTARefResponse>> {
     let query = FindRefBuilder::default().sota().ref_id(summit_code).build();
     let result = admin_service.show_sota_reference(query).await?;
     Ok(Json(result.into()))
 }
 
-async fn show_all_reference(
+async fn show_all_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<SOTARefResponse>>> {
@@ -117,54 +121,25 @@ async fn show_all_reference(
     if param.offset.is_some() {
         query = query.offset(param.offset.unwrap());
     }
-    let result = admin_service.show_sota_reference(query.build()).await?;
+    let result = admin_service
+        .show_all_sota_references(query.build())
+        .await?;
     Ok(Json(result.into()))
 }
-async fn show_sota_reference_list(
+async fn search_sota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<SOTASearchResult>>> {
-    let mut query = FindRefBuilder::default().sota();
+) -> AppResult<Json<Vec<SOTARefResponse>>> {
+    let query = FindRefBuilder::default().sota();
+    let query = build_findref_query(param, query)?;
 
-    if param.limit.is_some() {
-        query = query.limit(param.limit.unwrap());
-    }
+    let results = user_service.find_references(query).await?;
 
-    if param.offset.is_some() {
-        query = query.offset(param.offset.unwrap());
-    }
-
-    if param.name.is_some() {
-        query = query.name(param.name.unwrap());
-    }
-
-    if param.ref_id.is_some() {
-        query = query.ref_id(param.ref_id.unwrap());
-    }
-
-    if param.min_elev.is_some() {
-        query = query.min_elev(param.min_elev.unwrap());
-    }
-
-    if param.max_lat.is_some()
-        && param.min_lat.is_some()
-        && param.max_lon.is_some()
-        && param.min_lon.is_some()
-    {
-        query = query.bbox(
-            param.min_lon.unwrap(),
-            param.min_lat.unwrap(),
-            param.max_lon.unwrap(),
-            param.max_lat.unwrap(),
-        );
-    }
-
-    let results = user_service.find_references(query.build()).await?;
     let res: Vec<_> = results
         .sota
         .unwrap_or(vec![])
         .into_iter()
-        .map(SOTASearchResult::from)
+        .map(SOTARefResponse::from)
         .collect();
     Ok(Json(res))
 }
@@ -204,11 +179,11 @@ pub fn build_sota_routers() -> Router<AppState> {
         .route("/update", post(update_summit_list))
         .route("/spots", get(show_sota_spots))
         .route("/alerts", get(show_sota_alerts))
-        .route("/summit-list", get(show_all_reference))
-        .route("/summit", get(show_sota_reference_list))
-        .route("/summit/:summit_code", get(show_sota_reference))
-        .route("/summit/:summit_code", put(update_sota_reference))
-        .route("/summit/:summit_code", delete(delete_sota_reference));
+        .route("/summits", get(show_all_sota_reference))
+        .route("/summits/search", get(search_sota_reference))
+        .route("/summits/:summit_code", get(show_sota_reference))
+        .route("/summits/:summit_code", put(update_sota_reference))
+        .route("/summits/:summit_code", delete(delete_sota_reference));
 
     Router::new().nest("/sota", routers)
 }

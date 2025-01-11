@@ -47,6 +47,13 @@ pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
             "(ST_Within(coordinates, ST_MakeEnvelope({}, {}, {}, {}, 4326))) AND ",
             bbox.min_lon, bbox.min_lat, bbox.max_lon, bbox.max_lat
         ));
+    } else if let Some(dist) = &r.dist {
+        let lon = r.lon.unwrap_or_default();
+        let lat = r.lat.unwrap_or_default();
+        query.push_str(&format!(
+            "(ST_DWithin(coordinates,ST_GeogFromText('SRID=4326;POINT({} {})'),{})) AND ",
+            lon, lat, dist
+        ));
     }
 
     query.push_str("TRUE ");
@@ -72,7 +79,6 @@ pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
     if let Some(offset) = &r.offset {
         query.push_str(&format!("OFFSET {} ", offset));
     }
-
     query
 }
 

@@ -12,7 +12,11 @@ pub trait POTAReferenceRepositry: Send + Sync + Interface {
     async fn find_reference(&self, query: &FindRef) -> AppResult<Vec<POTAReferenceWithLog>>;
 
     async fn create_reference(&self, refernces: Vec<POTAReference>) -> AppResult<()>;
-    async fn show_reference(&self, query: &FindRef) -> AppResult<PagenatedResult<POTAReference>>;
+    async fn show_reference(&self, query: &FindRef) -> AppResult<POTAReference>;
+    async fn show_all_references(
+        &self,
+        query: &FindRef,
+    ) -> AppResult<PagenatedResult<POTAReference>>;
     async fn update_reference(&self, refernces: Vec<POTAReference>) -> AppResult<()>;
     async fn delete_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
 

@@ -1,17 +1,16 @@
 use serde::Serialize;
 
-use super::pota::POTASearchResult;
-use super::sota::SOTASearchResult;
+use super::pota::{POTARefResponseWithLog, POTASearchResult};
+use super::sota::{SOTARefResponse, SOTASearchResult};
 use domain::model::common::event::FindResult;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SerachFullResponse {
+pub struct SearchResponse {
     pub sota: Option<Vec<SOTASearchResult>>,
     pub pota: Option<Vec<POTASearchResult>>,
 }
-
-impl From<FindResult> for SerachFullResponse {
+impl From<FindResult> for SearchResponse {
     fn from(FindResult { sota, pota }: FindResult) -> Self {
         Self {
             sota: if let Some(sota) = sota {
@@ -22,6 +21,31 @@ impl From<FindResult> for SerachFullResponse {
             },
             pota: if let Some(pota) = pota {
                 let res = pota.into_iter().map(POTASearchResult::from).collect();
+                Some(res)
+            } else {
+                None
+            },
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchFullResponse {
+    pub sota: Option<Vec<SOTARefResponse>>,
+    pub pota: Option<Vec<POTARefResponseWithLog>>,
+}
+impl From<FindResult> for SearchFullResponse {
+    fn from(FindResult { sota, pota }: FindResult) -> Self {
+        Self {
+            sota: if let Some(sota) = sota {
+                let res = sota.into_iter().map(SOTARefResponse::from).collect();
+                Some(res)
+            } else {
+                None
+            },
+            pota: if let Some(pota) = pota {
+                let res = pota.into_iter().map(POTARefResponseWithLog::from).collect();
                 Some(res)
             } else {
                 None

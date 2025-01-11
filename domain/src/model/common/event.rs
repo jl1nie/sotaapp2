@@ -24,6 +24,9 @@ pub struct FindRef {
     pub program: Vec<AwardProgram>,
     pub ref_id: Option<String>,
     pub name: Option<String>,
+    pub lon: Option<f64>,
+    pub lat: Option<f64>,
+    pub dist: Option<f64>,
     pub bbox: Option<BoundingBox>,
     pub center: Option<CenterRadius>,
     pub min_elev: Option<i32>,
@@ -93,6 +96,21 @@ impl FindRefBuilder {
 
     pub fn name(mut self, n: String) -> Self {
         self.param.name = Some(n);
+        self
+    }
+
+    pub fn lon(mut self, lon: f64) -> Self {
+        self.param.lon = Some(lon);
+        self
+    }
+
+    pub fn lat(mut self, lat: f64) -> Self {
+        self.param.lat = Some(lat);
+        self
+    }
+
+    pub fn dist(mut self, dist: f64) -> Self {
+        self.param.dist = Some(dist);
         self
     }
 
