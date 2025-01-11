@@ -24,9 +24,10 @@ pub trait UserService: Send + Sync + Interface {
         user_id: UserId,
         event: UploadActivatorCSV,
     ) -> AppResult<()>;
+    async fn upload_hunter_csv(&self, user_id: UserId, event: UploadHunterCSV) -> AppResult<()>;
+
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;
-    async fn upload_hunter_csv(&self, user_id: UserId, event: UploadHunterCSV) -> AppResult<()>;
 
     async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>>;
 }
