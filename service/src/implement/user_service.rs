@@ -19,16 +19,16 @@ use domain::model::locator::MunicipalityCenturyCode;
 
 use domain::repository::{
     activation::ActivationRepositry, geomag::GeoMagRepositry, locator::LocatorRepositry,
-    pota::POTAReferenceRepositry, sota::SOTAReferenceReposity,
+    pota::POTARepository, sota::SOTARepository,
 };
 
 #[derive(Component)]
 #[shaku(interface = UserService)]
 pub struct UserServiceImpl {
     #[shaku(inject)]
-    sota_repo: Arc<dyn SOTAReferenceReposity>,
+    sota_repo: Arc<dyn SOTARepository>,
     #[shaku(inject)]
-    pota_repo: Arc<dyn POTAReferenceRepositry>,
+    pota_repo: Arc<dyn POTARepository>,
     #[shaku(inject)]
     act_repo: Arc<dyn ActivationRepositry>,
     #[shaku(inject)]

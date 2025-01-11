@@ -22,10 +22,11 @@ use service::services::{AdminService, UserService};
 use crate::model::{
     alerts::AlertResponse,
     param::{build_findref_query, GetParam},
+    pota::POTARefResponseWithLog,
     spots::SpotResponse,
 };
 
-use crate::model::pota::{POTARefResponse, POTASearchResult, PagenatedResponse, UpdateRefRequest};
+use crate::model::pota::{POTARefResponse, PagenatedResponse, UpdateRefRequest};
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -137,7 +138,7 @@ async fn show_all_pota_reference(
 async fn find_pota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<POTASearchResult>>> {
+) -> AppResult<Json<Vec<POTARefResponseWithLog>>> {
     let query = FindRefBuilder::default().pota();
     let query = build_findref_query(param, query)?;
 
@@ -147,7 +148,7 @@ async fn find_pota_reference(
         .pota
         .unwrap_or(vec![])
         .into_iter()
-        .map(POTASearchResult::from)
+        .map(POTARefResponseWithLog::from)
         .collect();
     Ok(Json(res))
 }

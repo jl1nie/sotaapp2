@@ -4,13 +4,8 @@ use shaku::module;
 use std::sync::{Arc, Mutex};
 
 use adapter::{
-    database::connect_database_with,
-    implement::{
-        activation::ActivationRepositryImplParameters, geomag::GeoMagRepositryImplParameters,
-        healthcheck::HealthCheckRepositryImplParameters, locator::LocatorRepositryImplParameters,
-        pota_reference::POTAReferenceRepositryImplParameters,
-        sota_reference::SOTAReferenceReposityImplParameters,
-    },
+    database::connect::connect_database_with,
+    implement::geomag::{GeoMagRepositryImpl, GeoMagRepositryImplParameters},
 };
 
 use service::implement::{
@@ -19,16 +14,28 @@ use service::implement::{
     user_service::{UserServiceImpl, UserServiceImplParameters},
 };
 
-use adapter::implement::{
-    activation::ActivationRepositryImpl, geomag::GeoMagRepositryImpl,
-    healthcheck::HealthCheckRepositryImpl, locator::LocatorRepositryImpl,
-    pota_reference::POTAReferenceRepositryImpl, sota_reference::SOTAReferenceReposityImpl,
+#[cfg(not(feature = "sqlite"))]
+use adapter::implement::postgis::{
+    activation::{ActivationRepositryImpl, ActivationRepositryImplParameters},
+    healthcheck::{HealthCheckRepositryImpl, HealthCheckRepositryImplParameters},
+    locator::{LocatorRepositryImpl, LocatorRepositryImplParameters},
+    pota_reference::{POTARepositoryImpl, POTARepositoryImplParameters},
+    sota_reference::{SOTARepositoryImpl, SOTARepositoryImplParameters},
+};
+
+#[cfg(feature = "sqlite")]
+use adapter::implement::sqlite::{
+    activation::{ActivationRepositryImpl, ActivationRepositryImplParameters},
+    healthcheck::{HealthCheckRepositryImpl, HealthCheckRepositryImplParameters},
+    locator::{LocatorRepositryImpl, LocatorRepositryImplParameters},
+    pota_reference::{POTARepositoryImpl, POTARepositoryImplParameters},
+    sota_reference::{SOTARepositoryImpl, SOTARepositoryImplParameters},
 };
 
 module! {
     pub AppRegistry {
-        components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,
-        SOTAReferenceReposityImpl,ActivationRepositryImpl,POTAReferenceRepositryImpl,
+        components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
+        SOTARepositoryImpl,POTARepositoryImpl,
         LocatorRepositryImpl,GeoMagRepositryImpl,
         HealthCheckRepositryImpl],
         providers = [],
@@ -40,12 +47,12 @@ impl AppRegistry {
         let pool = connect_database_with(config)
             .unwrap_or_else(|_| panic!("{}", format!("Unable to connect DB {}", config.database)));
         AppRegistry::builder()
-            .with_component_parameters::<SOTAReferenceReposityImpl>(
-                SOTAReferenceReposityImplParameters { pool: pool.clone() },
-            )
-            .with_component_parameters::<POTAReferenceRepositryImpl>(
-                POTAReferenceRepositryImplParameters { pool: pool.clone() },
-            )
+            .with_component_parameters::<SOTARepositoryImpl>(SOTARepositoryImplParameters {
+                pool: pool.clone(),
+            })
+            .with_component_parameters::<POTARepositoryImpl>(POTARepositoryImplParameters {
+                pool: pool.clone(),
+            })
             .with_component_parameters::<ActivationRepositryImpl>(
                 ActivationRepositryImplParameters { pool: pool.clone() },
             )

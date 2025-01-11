@@ -3,14 +3,14 @@ use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
 use shaku::Component;
-use sqlx::PgConnection;
+use sqlx::SqliteConnection;
 
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 use domain::model::locator::MunicipalityCenturyCode;
 
+use crate::database::connect::ConnectionPool;
 use crate::database::model::locator::MunicipalityCenturyCodeImpl;
-use crate::database::ConnectionPool;
 use domain::repository::locator::LocatorRepositry;
 
 #[derive(Component)]
@@ -21,7 +21,11 @@ pub struct LocatorRepositryImpl {
 }
 
 impl LocatorRepositryImpl {
-    async fn update(&self, m: MunicipalityCenturyCodeImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update(
+        &self,
+        m: MunicipalityCenturyCodeImpl,
+        db: &mut SqliteConnection,
+    ) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO municipality_century_codes(muni_code, prefecture, municipality, jcc_code, ward_code, jcc_text, jcg_code, jcg_text, hamlog_code)

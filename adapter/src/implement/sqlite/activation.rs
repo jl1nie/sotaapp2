@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use shaku::Component;
-use sqlx::PgConnection;
+use sqlx::SqliteConnection;
 
 use common::error::{AppError, AppResult};
 
@@ -8,9 +8,9 @@ use domain::model::common::activation::{Alert, Spot};
 use domain::model::common::event::{DeleteAct, FindAct};
 use domain::repository::activation::ActivationRepositry;
 
+use super::querybuilder::findact_query_builder;
+use crate::database::connect::ConnectionPool;
 use crate::database::model::activation::{AlertImpl, SpotImpl};
-use crate::database::ConnectionPool;
-use crate::implement::querybuilder::findact_query_builder;
 
 #[derive(Component)]
 #[shaku(interface = ActivationRepositry)]
@@ -19,7 +19,8 @@ pub struct ActivationRepositryImpl {
 }
 
 impl ActivationRepositryImpl {
-    async fn update_alert_impl(&self, a: AlertImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update_alert_impl(&self, a: AlertImpl, db: &mut SqliteConnection) -> AppResult<()> {
+        let program = a.program.as_i32();
         sqlx::query!(
             r#"
                 INSERT INTO alerts (program, alert_id, user_id, reference, reference_detail, 
@@ -40,7 +41,7 @@ impl ActivationRepositryImpl {
                     comment = EXCLUDED.comment,
                     poster = EXCLUDED.poster
             "#,
-            a.program.as_i32(),
+            program,
             a.alert_id,
             a.user_id,
             a.reference,
@@ -60,7 +61,8 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn update_spot_impl(&self, s: SpotImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update_spot_impl(&self, s: SpotImpl, db: &mut SqliteConnection) -> AppResult<()> {
+        let program = s.program.as_i32();
         sqlx::query!(
             r#"
                 INSERT INTO spots (program, spot_id, reference, reference_detail, activator, activator_name, spot_time, frequency, mode, spotter,comment) 
@@ -78,7 +80,7 @@ impl ActivationRepositryImpl {
                     spotter = EXCLUDED.spotter,
                     comment = EXCLUDED.comment
             "#,
-            s.program.as_i32(),
+            program,
             s.spot_id,
             s.reference,
             s.reference_detail,
@@ -96,7 +98,7 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn delete_alerts_impl(&self, d: DeleteAct, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete_alerts_impl(&self, d: DeleteAct, db: &mut SqliteConnection) -> AppResult<()> {
         let before = d.before;
         sqlx::query!(
             r#"
@@ -111,7 +113,7 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn delete_spots_impl(&self, d: DeleteAct, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete_spots_impl(&self, d: DeleteAct, db: &mut SqliteConnection) -> AppResult<()> {
         let before = d.before;
         sqlx::query!(
             r#"

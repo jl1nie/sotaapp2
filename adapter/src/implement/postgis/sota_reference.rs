@@ -7,18 +7,18 @@ use domain::model::common::event::{DeleteRef, FindRef, PagenatedResult};
 use domain::model::sota::{SOTAReference, SummitCode};
 use domain::model::AwardProgram::SOTA;
 
+use super::querybuilder::findref_query_builder;
+use crate::database::connect::ConnectionPool;
 use crate::database::model::sota::SOTAReferenceImpl;
-use crate::database::ConnectionPool;
-use crate::implement::querybuilder::findref_query_builder;
-use domain::repository::sota::SOTAReferenceReposity;
+use domain::repository::sota::SOTARepository;
 
 #[derive(Component)]
-#[shaku(interface = SOTAReferenceReposity)]
-pub struct SOTAReferenceReposityImpl {
+#[shaku(interface = SOTARepository)]
+pub struct SOTARepositoryImpl {
     pool: ConnectionPool,
 }
 
-impl SOTAReferenceReposityImpl {
+impl SOTARepositoryImpl {
     async fn create(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
@@ -346,7 +346,7 @@ impl SOTAReferenceReposityImpl {
 }
 
 #[async_trait]
-impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
+impl SOTARepository for SOTARepositoryImpl {
     async fn create_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
         let mut tx = self
             .pool

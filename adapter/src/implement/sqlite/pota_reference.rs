@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use domain::model::common::id::UserId;
 use shaku::Component;
-use sqlx::PgConnection;
+use sqlx::SqliteConnection;
 
 use common::error::{AppError, AppResult};
 
@@ -11,22 +11,22 @@ use domain::model::pota::{
 };
 use domain::model::AwardProgram::POTA;
 
+use super::querybuilder::findref_query_builder;
+use crate::database::connect::ConnectionPool;
 use crate::database::model::pota::{
     POTAActivatorLogImpl, POTAHunterLogImpl, POTAReferenceImpl, POTAReferenceWithLogImpl,
 };
-use crate::database::ConnectionPool;
-use crate::implement::querybuilder::findref_query_builder;
 
-use domain::repository::pota::POTAReferenceRepositry;
+use domain::repository::pota::POTARepository;
 
 #[derive(Component)]
-#[shaku(interface = POTAReferenceRepositry)]
-pub struct POTAReferenceRepositryImpl {
+#[shaku(interface = POTARepository)]
+pub struct POTARepositoryImpl {
     pool: ConnectionPool,
 }
 
-impl POTAReferenceRepositryImpl {
-    async fn create(&self, r: POTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
+impl POTARepositoryImpl {
+    async fn create(&self, r: POTAReferenceImpl, db: &mut SqliteConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO pota_references(
@@ -39,12 +39,12 @@ impl POTAReferenceRepositryImpl {
                     park_type,
                     park_inactive,
                     park_area,
-                    coordinates,
+                    longitude,
+                    latitude,
                     maidenhead,
-                    update
+                    "update"
                 )
-                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,ST_SetSRID(ST_MakePoint($10, $11), 4326), 
-                $12,$13)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,$10, $11,$12,$13)
             "#,
             r.pota_code,
             r.wwff_code,
@@ -66,7 +66,7 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn update(&self, r: POTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update(&self, r: POTAReferenceImpl, db: &mut SqliteConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 UPDATE pota_references SET
@@ -78,9 +78,10 @@ impl POTAReferenceRepositryImpl {
                     park_type = $7,
                     park_inactive = $8,
                     park_area = $9,
-                    coordinates = ST_SetSRID(ST_MakePoint($10, $11), 4326),
+                    longitude = $10, 
+                    latitude = $11,
                     maidenhead = $12,
-                    update = $13
+                    "update" = $13
                 WHERE pota_code = $1
             "#,
             r.pota_code,
@@ -103,13 +104,14 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn delete(&self, ref_id: ParkCode, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete(&self, ref_id: ParkCode, db: &mut SqliteConnection) -> AppResult<()> {
+        let ref_id = ref_id.inner_ref();
         sqlx::query!(
             r#"
                 DELETE FROM pota_references
                WHERE pota_code = $1
             "#,
-            ref_id.inner_ref(),
+            ref_id,
         )
         .execute(db)
         .await
@@ -117,7 +119,7 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn delete_all(&self, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete_all(&self, db: &mut SqliteConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 DELETE FROM pota_references
@@ -132,8 +134,9 @@ impl POTAReferenceRepositryImpl {
     async fn update_activator_log(
         &self,
         r: POTAActivatorLogImpl,
-        db: &mut PgConnection,
+        db: &mut SqliteConnection,
     ) -> AppResult<()> {
+        let user_id = r.user_id.raw();
         sqlx::query!(
             r#"
                 INSERT INTO pota_activator_log (user_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, attempts, activations, qsos, upload)
@@ -150,7 +153,7 @@ impl POTAReferenceRepositryImpl {
                     qsos = EXCLUDED.qsos,
                     upload = EXCLUDED.upload
             "#,
-            r.user_id.raw(),
+            user_id,
             r.dx_entity,
             r.location,
             r.hasc,
@@ -171,8 +174,9 @@ impl POTAReferenceRepositryImpl {
     async fn update_hunter_log(
         &self,
         r: POTAHunterLogImpl,
-        db: &mut PgConnection,
+        db: &mut SqliteConnection,
     ) -> AppResult<()> {
+        let user_id = r.user_id.raw();
         sqlx::query!(
             r#"
                 INSERT INTO pota_hunter_log (user_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, qsos, upload)
@@ -187,7 +191,7 @@ impl POTAReferenceRepositryImpl {
                     qsos = EXCLUDED.qsos,
                     upload = EXCLUDED.upload
             "#,
-            r.user_id.raw(),
+            user_id,
             r.dx_entity,
             r.location,
             r.hasc,
@@ -203,7 +207,7 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn delete_log(&self, d: DeleteLog, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete_log(&self, d: DeleteLog, db: &mut SqliteConnection) -> AppResult<()> {
         tracing::info!("delete log before: {}", d.before);
         let before = d.before;
         sqlx::query!(
@@ -243,8 +247,8 @@ impl POTAReferenceRepositryImpl {
                 park_type,
                 park_inactive,
                 park_area,
-                ST_X(coordinates) AS longitude,
-                ST_Y(coordinates) AS latitude,
+                longitude,
+                latitude,
                 maidenhead,
                 update
             FROM pota_references AS p WHERE "#
@@ -265,7 +269,7 @@ impl POTAReferenceRepositryImpl {
             .fetch_one(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
-        let total: i64 = row.count.unwrap_or(0);
+        let total: i64 = row.count;
 
         let mut select = r#"
             SELECT
@@ -278,8 +282,8 @@ impl POTAReferenceRepositryImpl {
                 park_type,
                 park_inactive,
                 park_area,
-                ST_X(coordinates) AS longitude,
-                ST_Y(coordinates) AS latitude,
+                longitude,
+                latitude,
                 maidenhead,
                 update
             FROM pota_references AS p WHERE "#
@@ -314,8 +318,8 @@ impl POTAReferenceRepositryImpl {
                     park_type,
                     park_inactive,
                     park_area,
-                    ST_X(coordinates) AS longitude,
-                    ST_Y(coordinates) AS latitude,
+                    longitude,
+                    latitude,
                     maidenhead,
                     NULL as attempts,
                     NULL as activations,
@@ -337,8 +341,8 @@ impl POTAReferenceRepositryImpl {
                     p.park_type AS park_type,
                     p.park_inactive AS park_inactive,
                     p.park_area AS park_area,
-                    ST_X(p.coordinates) AS longitude,
-                    ST_Y(p.coordinates) AS latitude,
+                    p.longitude AS longitude,
+                    p.latitude AS latitude,
                     p.maidenhead AS maidenhead,
                     a.attempts as attempts,
                     a.activations AS activations,
@@ -363,7 +367,7 @@ impl POTAReferenceRepositryImpl {
 }
 
 #[async_trait]
-impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
+impl POTARepository for POTARepositoryImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<POTAReferenceWithLog>> {
         let user_id = event.user_id;
         let query = findref_query_builder(POTA, event);
