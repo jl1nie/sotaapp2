@@ -13,8 +13,8 @@ use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
 use domain::repository::{
-    healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::POTAReferenceRepositry,
-    sota::SOTAReferenceReposity,
+    healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::POTARepository,
+    sota::SOTARepository,
 };
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
@@ -28,9 +28,9 @@ use crate::services::AdminService;
 #[shaku(interface = AdminService)]
 pub struct AdminServiceImpl {
     #[shaku(inject)]
-    sota_repo: Arc<dyn SOTAReferenceReposity>,
+    sota_repo: Arc<dyn SOTARepository>,
     #[shaku(inject)]
-    pota_repo: Arc<dyn POTAReferenceRepositry>,
+    pota_repo: Arc<dyn POTARepository>,
     #[shaku(inject)]
     check_repo: Arc<dyn HealthCheckRepositry>,
     #[shaku(inject)]

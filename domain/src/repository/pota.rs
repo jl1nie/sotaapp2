@@ -8,7 +8,7 @@ use crate::model::pota::{
 };
 
 #[async_trait]
-pub trait POTAReferenceRepositry: Send + Sync + Interface {
+pub trait POTARepository: Send + Sync + Interface {
     async fn find_reference(&self, query: &FindRef) -> AppResult<Vec<POTAReferenceWithLog>>;
 
     async fn create_reference(&self, refernces: Vec<POTAReference>) -> AppResult<()>;

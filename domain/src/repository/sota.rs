@@ -6,7 +6,7 @@ use crate::model::common::event::{DeleteRef, FindRef, PagenatedResult};
 use crate::model::sota::{SOTAReference, SummitCode};
 
 #[async_trait]
-pub trait SOTAReferenceReposity: Send + Sync + Interface {
+pub trait SOTARepository: Send + Sync + Interface {
     async fn find_reference(&self, query: &FindRef) -> AppResult<Vec<SOTAReference>>;
 
     async fn create_reference(&self, references: Vec<SOTAReference>) -> AppResult<()>;
