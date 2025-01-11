@@ -12,6 +12,8 @@ pub enum AwardProgram {
     WWFF = 2,
 }
 
+pub type Maidenhead = String;
+
 impl AwardProgram {
     pub fn as_i32(&self) -> i32 {
         match self {

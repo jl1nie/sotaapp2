@@ -104,7 +104,10 @@ async fn show_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
 ) -> AppResult<Json<SOTARefResponse>> {
-    let query = FindRefBuilder::default().sota().ref_id(summit_code).build();
+    let query = FindRefBuilder::default()
+        .sota()
+        .sota_code(summit_code)
+        .build();
     let result = admin_service.show_sota_reference(query).await?;
     Ok(Json(result.into()))
 }

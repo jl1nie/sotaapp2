@@ -22,7 +22,9 @@ pub struct CenterRadius {
 #[derive(Default, Debug)]
 pub struct FindRef {
     pub program: Vec<AwardProgram>,
-    pub ref_id: Option<String>,
+    pub sota_code: Option<String>,
+    pub pota_code: Option<String>,
+    pub wwff_code: Option<String>,
     pub name: Option<String>,
     pub lon: Option<f64>,
     pub lat: Option<f64>,
@@ -89,8 +91,18 @@ impl FindRefBuilder {
         self
     }
 
-    pub fn ref_id(mut self, id: String) -> Self {
-        self.param.ref_id = Some(id.to_uppercase());
+    pub fn sota_code(mut self, code: String) -> Self {
+        self.param.sota_code = Some(code.to_uppercase());
+        self
+    }
+
+    pub fn pota_code(mut self, code: String) -> Self {
+        self.param.pota_code = Some(code.to_uppercase());
+        self
+    }
+
+    pub fn wwff_code(mut self, code: String) -> Self {
+        self.param.wwff_code = Some(code.to_uppercase());
         self
     }
 

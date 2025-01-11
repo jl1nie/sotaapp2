@@ -1,3 +1,4 @@
+use common::csv_reader::maidenhead;
 use domain::model::sota::SOTAReference;
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +59,7 @@ impl From<SOTACSVFile> for SOTAReference {
             grid_ref2,
             longitude,
             latitude,
+            maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
             points,
             bonus_points,
             valid_from,

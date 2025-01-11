@@ -1,7 +1,9 @@
 use chrono::{DateTime, NaiveDate, Utc};
+use serde::{Deserialize, Serialize};
+
+use common::csv_reader::maidenhead;
 use domain::model::common::{event::PagenatedResult, id::UserId};
 use domain::model::pota::{POTAReference, POTAReferenceWithLog};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,6 +49,7 @@ impl From<CreateRefRequest> for Vec<POTAReference> {
             park_area,
             longitude,
             latitude,
+            maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
             update,
         }]
     }
@@ -120,6 +123,7 @@ impl From<UpdateRefRequest> for Vec<POTAReference> {
             park_area,
             longitude,
             latitude,
+            maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
             update,
         }]
     }
@@ -167,6 +171,7 @@ pub struct POTARefResponse {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
+    pub maidenhead: String,
 }
 
 impl From<POTAReference> for POTARefResponse {
@@ -183,11 +188,12 @@ impl From<POTAReference> for POTARefResponse {
             park_area: pota.park_area,
             longitude: pota.longitude,
             latitude: pota.latitude,
+            maidenhead: pota.maidenhead,
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct POTARefResponseWithLog {
     pub pota_code: String,
@@ -201,6 +207,7 @@ pub struct POTARefResponseWithLog {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
+    pub maidenhead: String,
     pub attempts: Option<i32>,
     pub activations: Option<i32>,
     pub first_qso_date: Option<NaiveDate>,
@@ -221,6 +228,7 @@ impl From<POTAReferenceWithLog> for POTARefResponseWithLog {
             park_area: pota.park_area,
             longitude: pota.longitude,
             latitude: pota.latitude,
+            maidenhead: pota.maidenhead,
             attempts: pota.attempts,
             activations: pota.activations,
             first_qso_date: pota.first_qso_date,

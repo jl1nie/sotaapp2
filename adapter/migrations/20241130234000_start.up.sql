@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS sota_references (
     grid_ref1 VARCHAR(255) NOT NULL,
     grid_ref2 VARCHAR(255) NOT NULL,
     coordinates GEOMETRY(Point, 4326),
+    maidenhead VARCHAR(16),
     points INTEGER NOT NULL,
     bonus_points INTEGER NOT NULL,
     valid_from VARCHAR(255) NOT NULL,
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS pota_references (
     park_inactive BOOLEAN NOT NULL,
     park_area INTEGER,
     coordinates GEOMETRY(Point, 4326),
+    maidenhead VARCHAR(16),
     update TIMESTAMPTZ,
     PRIMARY KEY(pota_code, wwff_code)
 );
