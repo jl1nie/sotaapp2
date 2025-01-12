@@ -25,10 +25,14 @@ pub enum AppError {
     GetError(#[source] reqwest::Error),
     #[error("JSON変換に失敗しました。")]
     JsonError(#[source] serde_json::Error),
+    #[error("時刻変換に失敗しました。")]
+    ParseError(#[source] chrono::ParseError),
     // #[error("{0}")]
     // KeyValueStoreError(#[from] redis::RedisError),
     // #[error("{0}")]
     // BcryptError(#[from] bcrypt::BcryptError),
+    #[error("{0}")]
+    UuidError(uuid::Error),
     #[error("{0}")]
     ConvertToUuidError(#[from] uuid::Error),
     #[error("ログインに失敗しました")]
@@ -61,6 +65,8 @@ impl IntoResponse for AppError {
             | AppError::PostError(_)
             | AppError::GetError(_)
             | AppError::JsonError(_)
+            | AppError::ParseError(_)
+            | AppError::UuidError(_)
             /* 
             | AppError::KeyValueStoreError(_)
             | AppError::BcryptError(_)

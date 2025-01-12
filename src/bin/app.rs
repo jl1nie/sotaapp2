@@ -1,3 +1,4 @@
+use adapter::database::connect::connect_database_with;
 use anyhow::{Error, Result};
 use axum::{http::HeaderValue, Router};
 use common::config::AppConfig;
@@ -27,7 +28,9 @@ async fn bootstrap() -> Result<()> {
         .with_line_number(true)
         .init();
 
-    let module = AppRegistry::new(&config);
+    let pool = connect_database_with(&config).await?;
+
+    let module = AppRegistry::new(&config, pool);
     let app_state = AppState::new(module);
     let job_state = app_state.clone();
 
@@ -45,10 +48,11 @@ async fn bootstrap() -> Result<()> {
     let ip_addr: IpAddr = config.host.parse().expect("Invalid IP Address");
     let addr = SocketAddr::new(ip_addr, config.port);
     let listener = TcpListener::bind(&addr).await?;
-    tracing::info!("Listening on {}", addr);
-
     let http = async { axum::serve(listener, app).await.map_err(Error::from) };
     let job_monitor = async { api::aggregator::builder::build(&config, &job_state).await };
+
+    tracing::info!("DATABASE_URL = {}", config.database);
+    tracing::info!("Listening on {}", addr);
 
     let _res = tokio::join!(job_monitor, http);
 

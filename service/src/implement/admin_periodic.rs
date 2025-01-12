@@ -25,6 +25,8 @@ pub struct AdminPeriodicServiceImpl {
 #[async_trait]
 impl AdminPeriodicService for AdminPeriodicServiceImpl {
     async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()> {
+        tracing::info!("Update {} alerts", alerts.len());
+
         self.act_repo.update_alerts(alerts).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
@@ -35,6 +37,8 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
     }
 
     async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()> {
+        tracing::info!("Update {} spots", spots.len());
+
         self.act_repo.update_spots(spots).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
