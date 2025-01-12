@@ -22,13 +22,13 @@ pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
     } else {
         if let Some(name) = &r.name {
             if r.is_sota() && mode == SOTA {
-                let name = format!("'{}%'", name);
+                let name = format!("'%{}%'", name);
                 query.push_str(&format!(
                     "(summit_code ILIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND ",
                     name, name, name
                 ));
             } else {
-                let name = format!("'{}%'", name);
+                let name = format!("'%{}%'", name);
                 query.push_str(&format!(
                 "(p.pota_code ILIKE {} OR p.wwff_code ILIKE {} OR p.park_name LIKE {} OR p.park_name_j LIKE {}) AND ",
                 name, name, name, name

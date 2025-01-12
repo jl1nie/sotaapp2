@@ -58,7 +58,17 @@ impl From<FindResult> for SearchFullResponse {
 #[serde(rename_all = "camelCase")]
 pub struct SearchBriefResponse {
     pub count: u32,
-    pub candidates: Vec<(String, String, String)>,
+    pub candidates: Vec<SearchBriefData>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchBriefData {
+    pub code: String,
+    pub lon: f64,
+    pub lat: f64,
+    pub name: String,
+    pub name_j: String,
 }
 
 impl From<FindResult> for SearchBriefResponse {
@@ -67,24 +77,28 @@ impl From<FindResult> for SearchBriefResponse {
 
         if let Some(sota) = sota {
             sota.iter().for_each(|r| {
-                res.push((
-                    r.summit_code.clone(),
-                    r.summit_name.clone(),
-                    r.summit_name_j.clone().unwrap_or("".to_string()),
-                ))
-            });
+                res.push(SearchBriefData {
+                    code: r.summit_code.clone(),
+                    lon: r.longitude.unwrap_or_default(),
+                    lat: r.latitude.unwrap_or_default(),
+                    name: r.summit_name.clone(),
+                    name_j: r.summit_name_j.clone().unwrap_or_default(),
+                })
+            })
         };
 
         if let Some(pota) = pota {
             pota.into_iter().for_each(|r| {
-                res.push((
-                    r.pota_code.clone(),
-                    r.park_name.clone(),
-                    r.park_name_j.clone(),
-                ))
+                res.push(SearchBriefData {
+                    code: r.pota_code,
+                    lon: r.longitude.unwrap_or_default(),
+                    lat: r.latitude.unwrap_or_default(),
+                    name: r.park_name,
+                    name_j: r.park_name_j,
+                })
             });
         };
-
+        tracing::info!("List = {:?}", res);
         Self {
             count: res.len() as u32,
             candidates: res,

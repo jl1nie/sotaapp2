@@ -51,7 +51,7 @@ async fn search_reference_breif(
     let results = search(user_service, param).await?;
     let mut res: SearchBriefResponse = results.into();
 
-    if res.count > max_count.unwrap_or_default() {
+    if res.count > max_count.unwrap_or(100) {
         res.candidates = vec![];
     }
 

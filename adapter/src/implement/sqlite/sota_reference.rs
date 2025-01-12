@@ -348,6 +348,7 @@ impl SOTARepositoryImpl {
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::RowNotFound)?;
+
         Ok(rows)
     }
 }
