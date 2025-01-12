@@ -2,12 +2,17 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ${DOCKER_FILE}
       args:
         DATABASE_URL: ${DATABASE_URL}
       network: host
     ports:
       - 8080:${PORT}
+    volumes:
+      - type: bind
+        source: "./sotaapp-db"
+        target: "/app/data"
+
     environment:
       HOST: ${HOST}
       PORT: ${PORT}
@@ -17,6 +22,7 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_NAME: ${DATABASE_NAME}
       DATABASE_URL: ${DATABASE_URL}
+      MIGRATION_PATH: ${MIGRATION_PATH}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
       AUTH_TOKEN_TTL: ${AUTH_TOKEN_TTL}

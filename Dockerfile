@@ -4,12 +4,12 @@ WORKDIR /app
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
 
-RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config && apt install -y wget
+RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config 
 COPY . .
 RUN cargo build --release
 
 FROM debian:bookworm-slim
-RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config && apt install -y wget
+RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config 
 WORKDIR /app
 RUN adduser admin && chown -R admin /app
 USER admin

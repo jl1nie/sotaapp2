@@ -4,7 +4,7 @@ use shaku::module;
 use std::sync::{Arc, Mutex};
 
 use adapter::{
-    database::connect::connect_database_with,
+    database::connect::ConnectionPool,
     implement::geomag::{GeoMagRepositryImpl, GeoMagRepositryImplParameters},
 };
 
@@ -43,9 +43,7 @@ module! {
 }
 
 impl AppRegistry {
-    pub fn new(config: &AppConfig) -> Self {
-        let pool = connect_database_with(config)
-            .unwrap_or_else(|_| panic!("{}", format!("Unable to connect DB {}", config.database)));
+    pub fn new(config: &AppConfig, pool: ConnectionPool) -> Self {
         AppRegistry::builder()
             .with_component_parameters::<SOTARepositoryImpl>(SOTARepositoryImplParameters {
                 pool: pool.clone(),
