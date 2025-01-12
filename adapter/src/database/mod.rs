@@ -31,7 +31,7 @@ pub mod connect {
     use common::config::AppConfig;
     use sqlx::migrate::Migrator;
     use sqlx::sqlite::SqlitePool;
-    use std::{fs, fs::File, path::Path};
+    use std::{fs, path::Path};
 
     #[derive(Clone)]
     pub struct ConnectionPool(SqlitePool);
