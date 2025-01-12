@@ -35,15 +35,15 @@ pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
     } else {
         if let Some(name) = &r.name {
             if r.is_sota() && mode == SOTA {
-                let name = format!("'{}%'", name);
+                let name = format!("'%{}%'", name);
                 query.push_str(&format!(
-                    "(summit_code LIKE {} COLLATE NOCASE OR summit_name LIKE {} OR summit_name_j LIKE {}) AND ",
+                    "(summit_code LIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND ",
                     name, name, name
                 ));
             } else {
-                let name = format!("'{}%'", name);
+                let name = format!("'%{}%'", name);
                 query.push_str(&format!(
-                "(p.pota_code LIKE {} COLLATE NOCASE OR p.wwff_code LIKE {} COLLATE NOCASE OR p.park_name LIKE {} OR p.park_name_j LIKE {}) AND ",
+                "(p.pota_code LIKE {} OR p.wwff_code LIKE {} OR p.park_name LIKE {} OR p.park_name_j LIKE {}) AND ",
                 name, name, name, name
             ));
             }
