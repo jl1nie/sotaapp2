@@ -98,7 +98,7 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     if is_alert {
         if let Some(after) = r.after {
             query.push_str(&format!(
-                "start_time >= '{}' ORDER BY start_time DESC ",
+                "start_time >= '{}' ORDER BY start_time ASC ",
                 after
             ));
         }

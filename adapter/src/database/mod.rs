@@ -54,14 +54,13 @@ pub mod connect {
 
         if fs::metadata(database_path).is_err() {
             tracing::warn!(
-                "Database file {} not found. Running migrations...",
+                "Database file {} not found. Create it.",
                 database_path.display()
             );
             let _file = fs::File::create(database_path)?;
-            m.run(pool.inner_ref()).await?
-        } else {
-            tracing::info!("Database file {} found.", database_path.display());
-        }
+        };
+        tracing::info!("Running migrations...");
+        m.run(pool.inner_ref()).await?;
         Ok(pool)
     }
 }
