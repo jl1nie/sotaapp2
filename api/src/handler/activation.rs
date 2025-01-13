@@ -72,7 +72,7 @@ async fn show_alerts(
         query = query.group_by_callsign(None)
     }
 
-    let hours = param.after.unwrap_or(3);
+    let hours = param.after.unwrap_or(24);
     query = query.after(Utc::now() - Duration::hours(hours));
 
     let result = user_service.find_alerts(query.build()).await?;
