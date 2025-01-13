@@ -1,4 +1,5 @@
 use chrono::{DateTime, NaiveDate, Utc};
+use domain::model::common::Maidenhead;
 use serde::{Deserialize, Serialize};
 
 use common::csv_reader::maidenhead;
@@ -171,7 +172,7 @@ pub struct POTARefResponse {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
-    pub maidenhead: String,
+    pub maidenhead: Maidenhead,
 }
 
 impl From<POTAReference> for POTARefResponse {
@@ -207,7 +208,7 @@ pub struct POTARefResponseWithLog {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
-    pub maidenhead: String,
+    pub maidenhead: Maidenhead,
     pub attempts: Option<i32>,
     pub activations: Option<i32>,
     pub first_qso_date: Option<NaiveDate>,

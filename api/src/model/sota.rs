@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use common::csv_reader::maidenhead;
 use domain::model::common::event::PagenatedResult;
+use domain::model::common::Maidenhead;
 use domain::model::sota::SOTAReference;
-use domain::model::Maidenhead;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -169,7 +169,7 @@ pub struct SOTARefResponse {
     pub alt_m: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
-    pub maidenhead: String,
+    pub maidenhead: Maidenhead,
     pub points: i32,
     pub bonus_points: i32,
     pub activation_count: i32,

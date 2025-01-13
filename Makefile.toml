@@ -61,7 +61,7 @@ POTA_LOG_EXPIRE = "180"
 [tasks.set-env-local.env]
 DOCKER_FILE = "Dockerfile.sqlite"
 DATABASE_PORT = "${DATABASE_PORT_OUTER}"
-DATABASE_URL = "sqlite:/app/data/sotaapp2.db"
+DATABASE_URL = "sqlite:./sotaapp2.db"
 MIGRATION_PATH = "./migrations"
 #DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
 REDIS_HOST = "localhost"

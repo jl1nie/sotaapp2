@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
 
-use crate::model::common::id::UserId;
-use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference, AwardProgram};
+use crate::model::common::{id::UserId, AwardProgram};
+use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference};
 
 #[derive(new, Debug)]
 pub struct BoundingBox {
@@ -192,10 +192,17 @@ pub struct DeleteLog {
     pub before: DateTime<Utc>,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum GroupBy {
+    Callsign(Option<String>),
+    Reference(Option<String>),
+}
+
 #[derive(Default, Debug)]
 pub struct FindAct {
     pub program: Option<AwardProgram>,
     pub after: Option<DateTime<Utc>>,
+    pub group_by: Option<GroupBy>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -233,6 +240,16 @@ impl FindActBuilder {
 
     pub fn offset(mut self, offset: i32) -> Self {
         self.param.offset = Some(offset);
+        self
+    }
+
+    pub fn group_by_callsign(mut self, callsign: Option<String>) -> Self {
+        self.param.group_by = Some(GroupBy::Callsign(callsign));
+        self
+    }
+
+    pub fn group_by_reference(mut self, reference: Option<String>) -> Self {
+        self.param.group_by = Some(GroupBy::Reference(reference));
         self
     }
 

@@ -21,6 +21,7 @@ use service::services::{AdminService, UserService};
 
 use crate::model::{
     alerts::AlertResponse,
+    group::GroupByResponse,
     param::{build_findref_query, GetParam},
     pota::POTARefResponseWithLog,
     spots::SpotResponse,
@@ -156,29 +157,44 @@ async fn find_pota_reference(
 async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<SpotResponse>>> {
+) -> AppResult<Json<Vec<(GroupByResponse, Vec<SpotResponse>)>>> {
     let hours = param.after.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
         .after(Utc::now() - Duration::hours(hours))
         .build();
     let result = user_service.find_spots(query).await?;
-    let spots: Vec<_> = result.into_iter().map(SpotResponse::from).collect();
+    let spots: Vec<_> = result
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k.into(),
+                v.into_iter().map(SpotResponse::from).collect::<Vec<_>>(),
+            )
+        })
+        .collect();
     Ok(Json(spots))
 }
 
 async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<AlertResponse>>> {
+) -> AppResult<Json<Vec<(GroupByResponse, Vec<AlertResponse>)>>> {
     let hours = param.after.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
         .after(Utc::now() - Duration::hours(hours))
         .build();
-    tracing::info!("query: {:?}", query);
-    let alerts = user_service.find_alerts(query).await?;
-    let alerts: Vec<_> = alerts.into_iter().map(AlertResponse::from).collect();
+    let result = user_service.find_alerts(query).await?;
+    let alerts: Vec<_> = result
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k.into(),
+                v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
+            )
+        })
+        .collect();
     Ok(Json(alerts))
 }
 

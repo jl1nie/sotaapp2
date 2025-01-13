@@ -4,8 +4,8 @@ use sqlx::SqliteConnection;
 
 use common::error::{AppError, AppResult};
 use domain::model::common::event::{DeleteRef, FindRef, PagenatedResult};
+use domain::model::common::AwardProgram::SOTA;
 use domain::model::sota::{SOTAReference, SummitCode};
-use domain::model::AwardProgram::SOTA;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;

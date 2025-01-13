@@ -1,3 +1,5 @@
+use super::common::Maidenhead;
+
 pub struct SummitCode(String);
 impl SummitCode {
     pub fn new(code: String) -> Self {
@@ -23,7 +25,7 @@ pub struct SOTAReference {
     pub grid_ref2: String,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
-    pub maidenhead: String,
+    pub maidenhead: Maidenhead,
     pub points: i32,
     pub bonus_points: i32,
     pub valid_from: String,

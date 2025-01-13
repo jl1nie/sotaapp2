@@ -1,5 +1,5 @@
 use domain::model::common::event::{FindAct, FindRef};
-use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
+use domain::model::common::AwardProgram::{self, POTA, SOTA, WWFF};
 
 fn calculate_bounding_box(lat: f64, lon: f64, distance: f64) -> (f64, f64, f64, f64) {
     let earth_radius = 6371000.0;
@@ -112,15 +112,12 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     if is_alert {
         if let Some(after) = r.after {
             query.push_str(&format!(
-                "start_time >= '{}' ORDER BY start_time DESC ",
+                "start_time >= '{}' ORDER BY start_time ASC ",
                 after
             ));
         }
     } else if let Some(after) = r.after {
-        query.push_str(&format!(
-            "spot_time >= '{}' ORDER BY spot_time DESC ",
-            after
-        ));
+        query.push_str(&format!("spot_time >= '{}' ORDER BY spot_time ASC ", after));
     }
 
     if let Some(limit) = &r.limit {
