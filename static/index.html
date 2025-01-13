@@ -145,11 +145,6 @@
 
     <h4>Alerts</h4>
     <form id="alerts" method="get">
-        <label for="prog-alerts">Program:</label>
-        <select id="prog-alerts" name="prog-alerts">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
         <label for="after">Show alerts in :</label>
         <input type="text" id="alerts-after" name="after" value="1"><br><br>
         <input type="submit" value="送信">
@@ -157,11 +152,6 @@
 
     <h4>Spots</h4>
     <form id="spots" method="get">
-        <label for="prog-spots">Program:</label>
-        <select id="prog-spots" name="prog-spots">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
         <label for="after">Show spots in :</label>
         <input type="text" id="spots-after" name="after" value="1"><br><br>
 
@@ -202,16 +192,12 @@
         const uid = "538b548f-12db-4230-b48d-46d8842b2da9"
         const sotasearch = baseurl + '/sota/summits/search';
         const sotalist = baseurl + '/sota/summits';
-        const sotaalert = baseurl + '/sota/alerts';
-        const sotaspot = baseurl + '/sota/spots';
         const importsota = baseurl + '/sota/import';
         const importsotaja = baseurl + '/sota/import/ja';
         const importactivation = baseurl + '/sota/update';
 
         const potasearch = baseurl + '/pota/parks/search';
         const potalist = baseurl + '/pota/parks';
-        const potaalert = baseurl + '/pota/alerts';
-        const potaspot = baseurl + '/pota/spots';
         const importpota = baseurl + '/pota/import';
         const uploadactivator = baseurl + '/pota/upload/activator';
         const uploadhunter = baseurl + '/pota/upload/hunter';
@@ -222,6 +208,8 @@
         const geomag = baseurl + '/propagation/geomag';
         const searchurl = baseurl + '/search/full';
         const searchbreif = baseurl + '/search/brief';
+        const alertsurl = baseurl + '/activation/alerts';
+        const spotsurl = baseurl + '/activation/spots';
 
         function uploadFile(url, inputid, buttonid) {
             event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
@@ -407,15 +395,8 @@
                 event.preventDefault();
                 let after = document.getElementById('alerts-after').value;
                 let param = `after=${after}`;
-                let prog = document.getElementById('prog-alerts').value;
-                if (prog === 'SOTA') {
-                    let alertsurl = sotaalert;
-                    search(alertsurl, param);
-                } else if (prog === 'POTA') {
-                    let alertsurl = potaalert;
-                    search(alertsurl, param);
-                }
 
+                search(alertsurl, param);
             });
 
         document.getElementById('spots')
@@ -423,15 +404,7 @@
                 event.preventDefault();
                 let after = document.getElementById('spots-after').value;
                 let param = `after=${after}`;
-                let prog = document.getElementById('prog-spots').value;
-                if (prog === 'SOTA') {
-                    let spotsurl = sotaspot;
-                    search(spotsurl, param);
-                } else if (prog === 'POTA') {
-                    let spotsurl = potaspot;
-                    search(spotsurl, param);
-                }
-
+                search(spotsurl, param);
             });
 
     </script>
