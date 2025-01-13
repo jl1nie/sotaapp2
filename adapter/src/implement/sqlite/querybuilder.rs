@@ -117,7 +117,10 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
             ));
         }
     } else if let Some(after) = r.after {
-        query.push_str(&format!("spot_time >= '{}' ORDER BY spot_time ASC ", after));
+        query.push_str(&format!(
+            "spot_time >= '{}' ORDER BY spot_time DESC ",
+            after
+        ));
     }
 
     if let Some(limit) = &r.limit {
