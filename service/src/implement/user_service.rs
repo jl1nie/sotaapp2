@@ -5,6 +5,7 @@ use common::csv_reader::csv_reader;
 use common::error::AppResult;
 use domain::model::common::id::UserId;
 use shaku::Component;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::model::pota::{
@@ -13,7 +14,7 @@ use crate::model::pota::{
 use crate::services::UserService;
 
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteLog, FindAct, FindRef, FindResult};
+use domain::model::common::event::{DeleteLog, FindAct, FindRef, FindResult, GroupBy};
 use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
 
@@ -36,6 +37,28 @@ pub struct UserServiceImpl {
     #[shaku(inject)]
     geomag_repo: Arc<dyn GeoMagRepositry>,
     config: AppConfig,
+}
+
+fn get_alert_group(event: &FindAct, r: &Alert) -> GroupBy {
+    if let Some(g) = &event.group_by {
+        match g {
+            GroupBy::Callsign(_) => GroupBy::Callsign(Some(r.activator.clone())),
+            GroupBy::Reference(_) => GroupBy::Reference(Some(r.reference.clone())),
+        }
+    } else {
+        GroupBy::Callsign(None)
+    }
+}
+
+fn get_spot_group(event: &FindAct, r: &Spot) -> GroupBy {
+    if let Some(g) = &event.group_by {
+        match g {
+            GroupBy::Callsign(_) => GroupBy::Callsign(Some(r.activator.clone())),
+            GroupBy::Reference(_) => GroupBy::Reference(Some(r.reference.clone())),
+        }
+    } else {
+        GroupBy::Callsign(None)
+    }
 }
 
 #[async_trait]
@@ -62,12 +85,33 @@ impl UserService for UserServiceImpl {
         Ok(result)
     }
 
-    async fn find_alerts(&self, event: FindAct) -> AppResult<Vec<Alert>> {
-        Ok(self.act_repo.find_alerts(&event).await?)
+    async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>> {
+        let mut result = HashMap::new();
+        if event.group_by.is_some() {
+            let alerts = self.act_repo.find_alerts(&event).await?;
+
+            for alert in alerts {
+                result
+                    .entry(get_alert_group(&event, &alert))
+                    .or_insert(Vec::new())
+                    .push(alert);
+            }
+        }
+        Ok(result)
     }
 
-    async fn find_spots(&self, event: FindAct) -> AppResult<Vec<Spot>> {
-        Ok(self.act_repo.find_spots(&event).await?)
+    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>> {
+        let mut result = HashMap::new();
+        if event.group_by.is_some() {
+            let spots = self.act_repo.find_spots(&event).await?;
+            for spot in spots {
+                result
+                    .entry(get_spot_group(&event, &spot))
+                    .or_insert(Vec::new())
+                    .push(spot);
+            }
+        }
+        Ok(result)
     }
 
     async fn upload_activator_csv(

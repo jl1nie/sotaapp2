@@ -28,6 +28,8 @@ pub struct GetParam {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
     pub muni_code: Option<i32>,
+    pub by_call: Option<String>,
+    pub by_ref: Option<String>,
 }
 
 pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppResult<FindRef> {

@@ -1,4 +1,4 @@
-use super::common::id::UserId;
+use super::common::{id::UserId, Maidenhead};
 use chrono::{DateTime, NaiveDate, Utc};
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub struct POTAReference {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
-    pub maidenhead: String,
+    pub maidenhead: Maidenhead,
     pub update: DateTime<Utc>,
 }
 
@@ -42,7 +42,7 @@ pub struct POTAReferenceWithLog {
     pub park_area: i32,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
-    pub maidenhead: String,
+    pub maidenhead: Maidenhead,
     pub attempts: Option<i32>,
     pub activations: Option<i32>,
     pub first_qso_date: Option<NaiveDate>,

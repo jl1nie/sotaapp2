@@ -1,3 +1,4 @@
+pub mod activation;
 pub mod health;
 pub mod locator;
 pub mod pota;

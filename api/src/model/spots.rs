@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use common::error::{AppError, AppResult};
 use domain::model::common::activation::Spot;
-use domain::model::AwardProgram;
+use domain::model::common::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

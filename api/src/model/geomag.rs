@@ -8,7 +8,7 @@ use domain::model::geomag::GeomagIndex;
 pub struct GeomagResponse {
     pub date: NaiveDate,
     pub a_index: i32,
-    pub k_index: Vec<f32>,
+    pub k_index: Vec<i32>,
 }
 
 impl From<GeomagIndex> for GeomagResponse {
@@ -21,7 +21,7 @@ impl From<GeomagIndex> for GeomagResponse {
         GeomagResponse {
             date,
             a_index,
-            k_index,
+            k_index: k_index.into_iter().map(|v| v as i32).collect(),
         }
     }
 }

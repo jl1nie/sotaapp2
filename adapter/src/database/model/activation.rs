@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::AwardProgram;
+use domain::model::common::AwardProgram;
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]

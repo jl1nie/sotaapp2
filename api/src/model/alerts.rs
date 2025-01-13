@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use common::error::{AppError, AppResult};
 use domain::model::common::activation::Alert;
-use domain::model::AwardProgram;
+use domain::model::common::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -113,6 +113,7 @@ pub struct AlertResponse {
     pub comment: Option<String>,
     pub poster: Option<String>,
 }
+
 impl From<Alert> for AlertResponse {
     fn from(a: Alert) -> Self {
         Self {

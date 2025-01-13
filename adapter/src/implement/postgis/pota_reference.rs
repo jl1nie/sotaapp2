@@ -6,10 +6,10 @@ use sqlx::PgConnection;
 use common::error::{AppError, AppResult};
 
 use domain::model::common::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
+use domain::model::common::AwardProgram::POTA;
 use domain::model::pota::{
     POTAActivatorLog, POTAHunterLog, POTAReference, POTAReferenceWithLog, ParkCode,
 };
-use domain::model::AwardProgram::POTA;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;

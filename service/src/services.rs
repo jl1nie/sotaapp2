@@ -1,9 +1,12 @@
 use async_trait::async_trait;
 use shaku::Interface;
+use std::collections::HashMap;
 
 use common::error::AppResult;
 use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteRef, FindAct, FindRef, FindResult, PagenatedResult};
+use domain::model::common::event::{
+    DeleteRef, FindAct, FindRef, FindResult, GroupBy, PagenatedResult,
+};
 use domain::model::common::id::UserId;
 use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
@@ -17,8 +20,10 @@ use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
     async fn find_references(&self, event: FindRef) -> AppResult<FindResult>;
-    async fn find_alerts(&self, event: FindAct) -> AppResult<Vec<Alert>>;
-    async fn find_spots(&self, event: FindAct) -> AppResult<Vec<Spot>>;
+
+    async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
+    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>>;
+
     async fn upload_activator_csv(
         &self,
         user_id: UserId,

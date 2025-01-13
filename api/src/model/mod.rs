@@ -1,5 +1,6 @@
 pub mod alerts;
 pub mod geomag;
+pub mod group;
 pub mod locator;
 pub mod param;
 pub mod pota;
