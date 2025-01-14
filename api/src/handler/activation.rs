@@ -11,14 +11,14 @@ use registry::{AppRegistry, AppState};
 use service::services::UserService;
 
 use crate::model::{
-    alerts::AlertResponse, group::GroupByResponse, param::GetParam, spots::SpotResponse,
+    activation::ActivationResponse, alerts::AlertResponse, param::GetParam, spots::SpotResponse,
 };
 
 async fn show_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     param: GetParam,
     mut query: FindActBuilder,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<SpotResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
     if let Some(callsign) = param.by_call {
         if callsign.starts_with("null") {
             query = query.group_by_callsign(None)
@@ -46,10 +46,10 @@ async fn show_spots(
     let spots: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            (
+            ActivationResponse::from((
                 k.into(),
                 v.into_iter().map(SpotResponse::from).collect::<Vec<_>>(),
-            )
+            ))
         })
         .collect();
     Ok(Json(spots))
@@ -59,7 +59,7 @@ async fn show_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     param: GetParam,
     mut query: FindActBuilder,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<AlertResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
     if let Some(callsign) = param.by_call {
         if callsign.starts_with("null") {
             query = query.group_by_callsign(None)
@@ -87,10 +87,10 @@ async fn show_alerts(
     let alerts: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            (
+            ActivationResponse::from((
                 k.into(),
                 v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
-            )
+            ))
         })
         .collect();
     Ok(Json(alerts))
@@ -99,7 +99,7 @@ async fn show_alerts(
 async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<SpotResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
     let query = FindActBuilder::default().sota();
     show_spots(user_service, param, query).await
 }
@@ -107,7 +107,7 @@ async fn show_sota_spots(
 async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<SpotResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
     let query = FindActBuilder::default().pota();
     show_spots(user_service, param, query).await
 }
@@ -115,7 +115,7 @@ async fn show_pota_spots(
 async fn show_all_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<SpotResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
     let query = FindActBuilder::default();
     show_spots(user_service, param, query).await
 }
@@ -123,7 +123,7 @@ async fn show_all_spots(
 async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<AlertResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
     let query = FindActBuilder::default().sota();
     show_alerts(user_service, param, query).await
 }
@@ -131,7 +131,7 @@ async fn show_sota_alerts(
 async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<AlertResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
     let query = FindActBuilder::default().pota();
     show_alerts(user_service, param, query).await
 }
@@ -139,7 +139,7 @@ async fn show_pota_alerts(
 async fn show_all_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<AlertResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
     let query = FindActBuilder::default();
     show_alerts(user_service, param, query).await
 }
