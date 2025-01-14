@@ -18,8 +18,8 @@ use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
 use service::services::{AdminService, UserService};
 
 use crate::model::{
+    activation::ActivationResponse,
     alerts::AlertResponse,
-    group::GroupByResponse,
     param::{build_findref_query, GetParam},
     spots::SpotResponse,
 };
@@ -151,7 +151,7 @@ async fn search_sota_reference(
 async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<SpotResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
     let hours = param.after.unwrap_or(3);
     let query = FindActBuilder::default()
         .sota()
@@ -161,10 +161,10 @@ async fn show_sota_spots(
     let spots: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            (
+            ActivationResponse::from((
                 k.into(),
                 v.into_iter().map(SpotResponse::from).collect::<Vec<_>>(),
-            )
+            ))
         })
         .collect();
     Ok(Json(spots))
@@ -173,7 +173,7 @@ async fn show_sota_spots(
 async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<(GroupByResponse, Vec<AlertResponse>)>>> {
+) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
     let hours = param.after.unwrap_or(3);
     let query = FindActBuilder::default()
         .sota()
@@ -183,10 +183,10 @@ async fn show_sota_alerts(
     let alerts: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            (
+            ActivationResponse::from((
                 k.into(),
                 v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
-            )
+            ))
         })
         .collect();
     Ok(Json(alerts))
