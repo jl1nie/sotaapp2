@@ -4,6 +4,7 @@ use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 use domain::model::common::id::UserId;
+use regex::Regex;
 use shaku::Component;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -88,8 +89,16 @@ impl UserService for UserServiceImpl {
     async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>> {
         let mut result = HashMap::new();
         if event.group_by.is_some() {
-            let alerts = self.act_repo.find_alerts(&event).await?;
-
+            let mut alerts = self.act_repo.find_alerts(&event).await?;
+            if let Some(loc_regex) = &event.pattern {
+                let pat = Regex::new(loc_regex);
+                if let Ok(pat) = pat {
+                    alerts = alerts
+                        .into_iter()
+                        .filter(|r| pat.is_match(&r.location))
+                        .collect();
+                }
+            }
             for alert in alerts {
                 result
                     .entry(get_alert_group(&event, &alert))
@@ -103,7 +112,16 @@ impl UserService for UserServiceImpl {
     async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>> {
         let mut result = HashMap::new();
         if event.group_by.is_some() {
-            let spots = self.act_repo.find_spots(&event).await?;
+            let mut spots = self.act_repo.find_spots(&event).await?;
+            if let Some(loc_regex) = &event.pattern {
+                let pat = Regex::new(&loc_regex);
+                if let Ok(pat) = pat {
+                    spots = spots
+                        .into_iter()
+                        .filter(|r| pat.is_match(&r.reference))
+                        .collect();
+                }
+            }
             for spot in spots {
                 result
                     .entry(get_spot_group(&event, &spot))

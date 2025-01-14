@@ -38,6 +38,10 @@ async fn show_spots(
     let hours = param.after.unwrap_or(3);
     query = query.after(Utc::now() - Duration::hours(hours));
 
+    if let Some(pat) = param.refpat {
+        query = query.pattern(pat);
+    }
+
     let result = user_service.find_spots(query.build()).await?;
     let spots: Vec<_> = result
         .into_iter()
@@ -74,6 +78,10 @@ async fn show_alerts(
 
     let hours = param.after.unwrap_or(24);
     query = query.after(Utc::now() - Duration::hours(hours));
+
+    if let Some(pat) = param.refpat {
+        query = query.pattern(pat);
+    }
 
     let result = user_service.find_alerts(query.build()).await?;
     let alerts: Vec<_> = result

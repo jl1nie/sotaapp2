@@ -202,6 +202,7 @@ pub enum GroupBy {
 pub struct FindAct {
     pub program: Option<AwardProgram>,
     pub after: Option<DateTime<Utc>>,
+    pub pattern: Option<String>,
     pub group_by: Option<GroupBy>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
@@ -253,6 +254,10 @@ impl FindActBuilder {
         self
     }
 
+    pub fn pattern(mut self, pattern: String) -> Self {
+        self.param.pattern = Some(pattern);
+        self
+    }
     pub fn build(self) -> FindAct {
         self.param
     }
