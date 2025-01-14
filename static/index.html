@@ -368,8 +368,9 @@
         document.getElementById('alerts')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
+                let pat = encodeURIComponent("^(JA|JP-)");
                 let after = document.getElementById('alerts-after').value;
-                let param = `after=${after}`;
+                let param = `after=${after}&refpat=${pat}`;
 
                 search(alertsurl, param);
             });
@@ -377,8 +378,9 @@
         document.getElementById('spots')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
+                let pat = encodeURIComponent("^(JA|JP-)");
                 let after = document.getElementById('spots-after').value;
-                let param = `after=${after}`;
+                let param = `after=${after}&refpat=${pat}`;
                 search(spotsurl, param);
             });
 
