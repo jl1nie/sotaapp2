@@ -370,7 +370,7 @@
                 event.preventDefault();
                 let pat = encodeURIComponent("^(JA|JP-)");
                 let after = document.getElementById('alerts-after').value;
-                let param = `after=${after}&refpat=${pat}`;
+                let param = `hours_ago=${after}&pat_ref=${pat}`;
 
                 search(alertsurl, param);
             });
@@ -380,7 +380,7 @@
                 event.preventDefault();
                 let pat = encodeURIComponent("^(JA|JP-)");
                 let after = document.getElementById('spots-after').value;
-                let param = `after=${after}&refpat=${pat}`;
+                let param = `hours_ago=${after}&pat_ref=${pat}`;
                 search(spotsurl, param);
             });
 
