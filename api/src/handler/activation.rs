@@ -46,10 +46,7 @@ async fn show_spots(
     let spots: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            ActivationResponse::from((
-                k.into(),
-                v.into_iter().map(SpotResponse::from).collect::<Vec<_>>(),
-            ))
+            ActivationResponse::from((k, v.into_iter().map(SpotResponse::from).collect::<Vec<_>>()))
         })
         .collect();
     Ok(Json(spots))
@@ -88,7 +85,7 @@ async fn show_alerts(
         .into_iter()
         .map(|(k, v)| {
             ActivationResponse::from((
-                k.into(),
+                k,
                 v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
             ))
         })

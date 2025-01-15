@@ -93,10 +93,7 @@ impl UserService for UserServiceImpl {
             if let Some(loc_regex) = &event.pattern {
                 let pat = Regex::new(loc_regex);
                 if let Ok(pat) = pat {
-                    alerts = alerts
-                        .into_iter()
-                        .filter(|r| pat.is_match(&r.location))
-                        .collect();
+                    alerts.retain(|r| pat.is_match(&r.location));
                 }
             }
             for alert in alerts {
@@ -114,12 +111,9 @@ impl UserService for UserServiceImpl {
         if event.group_by.is_some() {
             let mut spots = self.act_repo.find_spots(&event).await?;
             if let Some(loc_regex) = &event.pattern {
-                let pat = Regex::new(&loc_regex);
+                let pat = Regex::new(loc_regex);
                 if let Ok(pat) = pat {
-                    spots = spots
-                        .into_iter()
-                        .filter(|r| pat.is_match(&r.reference))
-                        .collect();
+                    spots.retain(|r| pat.is_match(&r.reference));
                 }
             }
             for spot in spots {
