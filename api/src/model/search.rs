@@ -98,7 +98,6 @@ impl From<FindResult> for SearchBriefResponse {
                 })
             });
         };
-        tracing::info!("List = {:?}", res);
         Self {
             count: res.len() as u32,
             candidates: res,
