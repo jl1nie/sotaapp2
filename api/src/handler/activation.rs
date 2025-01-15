@@ -35,10 +35,10 @@ async fn show_spots(
         query = query.group_by_callsign(None)
     }
 
-    let hours = param.after.unwrap_or(3);
+    let hours = param.hours_ago.unwrap_or(3);
     query = query.after(Utc::now() - Duration::hours(hours));
 
-    if let Some(pat) = param.refpat {
+    if let Some(pat) = param.pat_ref {
         query = query.pattern(pat);
     }
 
@@ -76,10 +76,10 @@ async fn show_alerts(
         query = query.group_by_callsign(None)
     }
 
-    let hours = param.after.unwrap_or(24);
+    let hours = param.hours_ago.unwrap_or(24);
     query = query.after(Utc::now() - Duration::hours(hours));
 
-    if let Some(pat) = param.refpat {
+    if let Some(pat) = param.pat_ref {
         query = query.pattern(pat);
     }
 

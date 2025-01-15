@@ -24,13 +24,13 @@ pub struct GetParam {
     pub wwff_code: Option<String>,
     pub user_id: Option<String>,
     pub name: Option<String>,
-    pub after: Option<i64>,
+    pub hours_ago: Option<i64>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
     pub muni_code: Option<i32>,
     pub by_call: Option<String>,
     pub by_ref: Option<String>,
-    pub refpat: Option<String>,
+    pub pat_ref: Option<String>,
 }
 
 pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppResult<FindRef> {

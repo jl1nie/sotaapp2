@@ -51,7 +51,7 @@ pub mod connect {
         let dbname = cfg.database.replace("sqlite:", "");
         let database_path = Path::new(&dbname);
         let pool = ConnectionPool(SqlitePool::connect_lazy(&cfg.database)?);
-
+        //fs::remove_file(&database_path).unwrap();
         if fs::metadata(database_path).is_err() {
             tracing::warn!(
                 "Database file {} not found. Create it.",

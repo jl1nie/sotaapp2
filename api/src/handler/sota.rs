@@ -152,7 +152,7 @@ async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
-    let hours = param.after.unwrap_or(3);
+    let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .sota()
         .after(Utc::now() - Duration::hours(hours))
@@ -174,7 +174,7 @@ async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
-    let hours = param.after.unwrap_or(3);
+    let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .sota()
         .after(Utc::now() - Duration::hours(hours))
