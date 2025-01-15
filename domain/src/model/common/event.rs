@@ -201,7 +201,7 @@ pub enum GroupBy {
 #[derive(Default, Debug)]
 pub struct FindAct {
     pub program: Option<AwardProgram>,
-    pub after: Option<DateTime<Utc>>,
+    pub issued_after: Option<DateTime<Utc>>,
     pub pattern: Option<String>,
     pub group_by: Option<GroupBy>,
     pub limit: Option<i32>,
@@ -229,8 +229,8 @@ impl FindActBuilder {
         self
     }
 
-    pub fn after(mut self, aft: DateTime<Utc>) -> Self {
-        self.param.after = Some(aft);
+    pub fn issued_after(mut self, aft: DateTime<Utc>) -> Self {
+        self.param.issued_after = Some(aft);
         self
     }
 

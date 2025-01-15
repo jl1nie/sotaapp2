@@ -36,7 +36,7 @@ async fn show_spots(
     }
 
     let hours = param.hours_ago.unwrap_or(3);
-    query = query.after(Utc::now() - Duration::hours(hours));
+    query = query.issued_after(Utc::now() - Duration::hours(hours));
 
     if let Some(pat) = param.pat_ref {
         query = query.pattern(pat);
@@ -77,7 +77,7 @@ async fn show_alerts(
     }
 
     let hours = param.hours_ago.unwrap_or(24);
-    query = query.after(Utc::now() - Duration::hours(hours));
+    query = query.issued_after(Utc::now() - Duration::hours(hours));
 
     if let Some(pat) = param.pat_ref {
         query = query.pattern(pat);
