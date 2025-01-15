@@ -161,7 +161,7 @@ async fn show_pota_spots(
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
-        .after(Utc::now() - Duration::hours(hours))
+        .issued_after(Utc::now() - Duration::hours(hours))
         .build();
     let result = user_service.find_spots(query).await?;
     let spots: Vec<_> = result
@@ -183,7 +183,7 @@ async fn show_pota_alerts(
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
-        .after(Utc::now() - Duration::hours(hours))
+        .issued_after(Utc::now() - Duration::hours(hours))
         .build();
     let result = user_service.find_alerts(query).await?;
     let alerts: Vec<_> = result
