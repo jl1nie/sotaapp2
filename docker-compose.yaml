@@ -2,12 +2,17 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ${DOCKER_FILE}
       args:
         DATABASE_URL: ${DATABASE_URL}
       network: host
     ports:
       - 8080:${PORT}
+    volumes:
+      - type: bind
+        source: "./sotaapp-db"
+        target: "/app/data"
+
     environment:
       HOST: ${HOST}
       PORT: ${PORT}
@@ -16,11 +21,30 @@ services:
       DATABASE_USERNAME: ${DATABASE_USERNAME}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_URL: ${DATABASE_URL}
+      MIGRATION_PATH: ${MIGRATION_PATH}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
       AUTH_TOKEN_TTL: ${AUTH_TOKEN_TTL}
       JAEGER_HOST: ${JAEGER_HOST}
       JAEGER_PORT: ${JAEGER_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      SOTA_ALERT_ENDPOINT: ${SOTA_ALERT_ENDPOINT}
+      SOTA_SPOT_ENDPOINT: ${SOTA_SPOT_ENDPOINT}
+      SOTA_SUMMITLIST_ENDPOINT: ${SOTA_SUMMITLIST_ENDPOINT}
+      SUMMITLIST_SCHEDULE: ${SUMMITLIST_SCHEDULE}
+      IMPORT_STARTUP: ${IMPORT_STARTUP}
+      POTA_ALERT_ENDPOINT: ${POTA_ALERT_ENDPOINT}
+      POTA_SPOT_ENDPOINT: ${POTA_SPOT_ENDPOINT}
+      GEOMAG_ENDPOINT: ${GEOMAG_ENDPOINT}
+      GEOMAG_SCHEDULE: ${GEOMAG_SCHEDULE}
+      MAPCODE_ENDPOINT: ${MAPCODE_ENDPOINT}
+      ALERT_SCHEDULE: ${ALERT_SCHEDULE}
+      SPOT_SCHEDULE: ${SPOT_SCHEDULE}
+      ALERT_EXPIRE: ${ALERT_EXPIRE}
+      SPOT_EXPIRE: ${SPOT_EXPIRE}
+      POTA_LOG_EXPIRE: ${POTA_LOG_EXPIRE}
+
     depends_on:
       - redis
       - postgres

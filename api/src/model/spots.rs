@@ -1,9 +1,9 @@
-use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
+use common::error::{AppError, AppResult};
 use domain::model::common::activation::Spot;
-use domain::model::AwardProgram;
+use domain::model::common::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,9 +24,10 @@ pub struct SOTASpot {
     pub highlight_color: Option<String>,
 }
 
-impl From<SOTASpot> for Result<Spot> {
+impl From<SOTASpot> for AppResult<Spot> {
     fn from(s: SOTASpot) -> Self {
-        let naive = NaiveDateTime::parse_from_str(&s.time_stamp, "%Y-%m-%dT%H:%M:%S")?;
+        let naive = NaiveDateTime::parse_from_str(&s.time_stamp, "%Y-%m-%dT%H:%M:%S")
+            .map_err(AppError::ParseError)?;
         let spot_time = Utc.from_local_datetime(&naive).unwrap();
         Ok(Spot {
             program: AwardProgram::SOTA,
@@ -68,9 +69,10 @@ pub struct POTASpot {
     pub expire: i32,
 }
 
-impl From<POTASpot> for Result<Spot> {
+impl From<POTASpot> for AppResult<Spot> {
     fn from(s: POTASpot) -> Self {
-        let naive = NaiveDateTime::parse_from_str(&s.spot_time, "%Y-%m-%dT%H:%M:%S")?;
+        let naive = NaiveDateTime::parse_from_str(&s.spot_time, "%Y-%m-%dT%H:%M:%S")
+            .map_err(AppError::ParseError)?;
         let spot_time = Utc.from_local_datetime(&naive).unwrap();
         Ok(Spot {
             program: AwardProgram::POTA,

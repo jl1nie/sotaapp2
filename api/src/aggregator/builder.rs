@@ -1,4 +1,3 @@
-use anyhow::Result;
 use apalis::prelude::*;
 use apalis_cron::CronStream;
 use apalis_cron::Schedule;
@@ -10,6 +9,7 @@ use crate::aggregator::alerts_spots::{UpdateAlerts, UpdateSpots};
 use crate::aggregator::geomag::UpdateGeoMag;
 
 use common::config::AppConfig;
+use common::error::AppResult;
 
 use super::summitlist::UpdateSummitList;
 
@@ -33,7 +33,7 @@ async fn summitlist_executer(job: DateTime<Utc>, svc: Data<UpdateSummitList>) {
     let _ = svc.update(false).await;
 }
 
-pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
+pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
     let alert_schedule =
         Schedule::from_str(&config.alert_update_schedule.clone()).expect("bad cron format");
 
@@ -62,7 +62,9 @@ pub async fn build(config: &AppConfig, state: &AppState) -> Result<()> {
         .build_fn(geomag_executer);
 
     let summitlist = UpdateSummitList::new(config, state);
-    summitlist.update(config.import_all_at_startup).await?;
+    if config.import_all_at_startup {
+        summitlist.update(config.import_all_at_startup).await?;
+    }
     let summitlist_schedule =
         Schedule::from_str(&config.sota_summitlist_update_schedule).expect("bad cron format");
     let summit_job = WorkerBuilder::new("update-spots")

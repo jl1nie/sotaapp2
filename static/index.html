@@ -78,30 +78,8 @@
         <input type="submit" value="送信">
     </form>
 
-    <h4>Search Name</h4>
-    <form id="search-name" method="get">
-        <label for="prog-name">Program:</label>
-        <select id="prog-name" name="prog-name">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" value="JA"><br><br>
-
-        <label for="limit">Limit:</label>
-        <input type="text" id="limit" name="limit" value="10"><br><br>
-
-        <input type="submit" value="送信">
-    </form>
-
     <h4>Search Location</h4>
     <form id="search-location" method="get">
-        <label for="prog-location">Program:</label>
-        <select id="prog-location" name="prog-location">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
-
         <label for="min_lon">Min Lon:</label>
         <input type="text" id="min_lon" name="min_lon" value="138.860"><br><br>
 
@@ -114,8 +92,11 @@
         <label for="max_lat">Max Lat:</label>
         <input type="text" id="max_lat" name="max_lat" value="35.7480"><br><br>
 
-        <label for="min_elev">Min Elev:</label>
+        <label for="min_elev">Min elev:</label>
         <input type="text" id="min_elev" name="min_elev" value="1500"><br><br>
+
+        <label for="min_area">Min area:</label>
+        <input type="text" id="min_area" name="min_area" value="0"><br><br>
 
         <label for="max_results">Max Results:</label>
         <input type="text" id="max_results" name="max_results" value="500"><br><br>
@@ -123,13 +104,22 @@
         <input type="submit" value="送信">
     </form>
 
+    <h4>Search Location by distance</h4>
+    <form id="search-location-dist" method="get">
+        <label for="lon">Lon:</label>
+        <input type="text" id="lon" name="lon" value="138.7277"><br><br>
+
+        <label for="lat">Lat:</label>
+        <input type="text" id="lat" name="lat" value="35.9176"><br><br>
+
+        <label for="range">Distance:</label>
+        <input type="text" id="dist" name="dist" value="200"><br><br>
+
+        <input type="submit" value="送信">
+    </form>
+
     <h4>Alerts</h4>
     <form id="alerts" method="get">
-        <label for="prog-alerts">Program:</label>
-        <select id="prog-alerts" name="prog-alerts">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
         <label for="after">Show alerts in :</label>
         <input type="text" id="alerts-after" name="after" value="1"><br><br>
         <input type="submit" value="送信">
@@ -137,11 +127,6 @@
 
     <h4>Spots</h4>
     <form id="spots" method="get">
-        <label for="prog-spots">Program:</label>
-        <select id="prog-spots" name="prog-spots">
-            <option value="SOTA">SOTA</option>
-            <option value="POTA">POTA</option>
-        </select><br><br>
         <label for="after">Show spots in :</label>
         <input type="text" id="spots-after" name="after" value="1"><br><br>
 
@@ -150,17 +135,12 @@
 
     <h4>Search JCC/JCG by MuniCd</h4>
     <form id="search-jcc" method="get">
+        <label for="lon">Lon:</label>
+        <input type="text" id="lon" name="lon" value="138.9439"><br><br>
+        <label for="lat">Lat:</label>
+        <input type="text" id="lat" name="lat" value="35.8555"><br><br>
         <label for="ref_id">MuniCd:</label>
-        <input type="text" id="municd" name="municd"><br><br>
-        <input type="submit" value="送信">
-    </form>
-
-    <h4>Search Mapcode by Lon/Lat</h4>
-    <form id="search-mapcode" method="get">
-        <label for="lon">Min Lon:</label>
-        <input type="text" id="lon" name="lon" value="138.860"><br><br>
-        <label for="lat">Min Lat:</label>
-        <input type="text" id="lat" name="lat" value="35.3726"><br><br>
+        <input type="text" id="municd" name="municd" value="13308"><br><br>
         <input type="submit" value="送信">
     </form>
 
@@ -169,31 +149,42 @@
         <input type="submit" value="送信">
     </form>
 
+    <h4>Search Name</h4>
+    <form id="search-name" method="get">
+        <label for="name">Name:</label>
+        <input type="text" id="name-field" name="name"><br><br>
+
+        <label for="limit">Limit:</label>
+        <input type="text" id="limit" name="limit" value="10"><br><br>
+    </form>
+
     <h4>JSON Result</h4>
     <div id="result"></div>
 
     <script>
-        const baseurl = 'http://localhost:8000/api/v2';
+        const url = new URL(document.documentURI);
+        const baseurl = `${url.protocol}//${url.host}/api/v2`;
         const uid = "538b548f-12db-4230-b48d-46d8842b2da9"
-        const sotasearch = baseurl + '/sota/summit';
-        const sotalist = baseurl + '/sota/summit-list';
-        const sotaalert = baseurl + '/sota/alerts';
-        const sotaspot = baseurl + '/sota/spots';
+        const sotasearch = baseurl + '/sota/summits/search';
+        const sotalist = baseurl + '/sota/summits';
         const importsota = baseurl + '/sota/import';
-        const importactivation = baseurl + '/sota/update';
         const importsotaja = baseurl + '/sota/import/ja';
+        const importactivation = baseurl + '/sota/update';
 
-        const potasearch = baseurl + '/pota/park';
-        const potalist = baseurl + '/pota/park-list';
-        const potaalert = baseurl + '/pota/alerts';
-        const potaspot = baseurl + '/pota/spots';
+        const potasearch = baseurl + '/pota/parks/search';
+        const potalist = baseurl + '/pota/parks';
         const importpota = baseurl + '/pota/import';
         const uploadactivator = baseurl + '/pota/upload/activator';
         const uploadhunter = baseurl + '/pota/upload/hunter';
-        const locatejcc = baseurl + '/locators/jcc-jcg';
-        const importjcc = baseurl + '/locators/jcc-jcg/import';
-        const mapcode = baseurl + '/locators/mapcode';
-        const geomag = baseurl + '/geomag';
+
+        const locatejcc = baseurl + '/locator/jcc-jcg';
+        const importjcc = baseurl + '/locator/jcc-jcg/import';
+        const mapcode = baseurl + '/locator/mapcode';
+        const geomag = baseurl + '/propagation/geomag';
+        const searchurl = baseurl + '/search/full';
+        const searchbreif = baseurl + '/search/brief';
+        const alertsurl = baseurl + '/activation/alerts';
+        const spotsurl = baseurl + '/activation/spots';
 
         function uploadFile(url, inputid, buttonid) {
             event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
@@ -314,10 +305,10 @@
                 let eid = encodeURIComponent(id);
                 let prog = document.getElementById('prog-refid').value;
                 if (prog === 'SOTA') {
-                    let url = sotasearch + `/${eid}`;
+                    let url = sotalist + `/${eid}`;
                     search(url, '');
                 } else if (prog === 'POTA') {
-                    let url = potasearch + `/${eid}`;
+                    let url = potalist + `/${eid}`;
                     search(url, '');
                 }
             });
@@ -325,19 +316,11 @@
         document.getElementById('search-jcc')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                let id = document.getElementById('municd').value;
-                let eid = encodeURIComponent(id);
-                let url = locatejcc + `/${eid}`;
-                search(url, '');
-            });
-
-        document.getElementById('search-mapcode')
-            .addEventListener('submit', function (event) {
-                event.preventDefault();
+                let muni = document.getElementById('municd').value;
                 let lon = document.getElementById('lon').value;
                 let lat = document.getElementById('lat').value;
-                let param = `lon=${lon}&lat=${lat}`;
-                search(mapcode, param);
+                let param = `lon=${lon}&lat=${lat}&muni_code=${muni}`;
+                search(locatejcc, param);
             });
 
         document.getElementById('geomag')
@@ -346,19 +329,14 @@
                 search(geomag, '');
             });
 
-        document.getElementById('search-name')
-            .addEventListener('submit', function (event) {
+        document.getElementById('name-field')
+            .addEventListener('input', function (event) {
                 event.preventDefault();
-                let name = document.getElementById('name').value;
+                let name = document.getElementById('name-field').value;
                 let limit = document.getElementById('limit').value;
-                let prog = document.getElementById('prog-name').value;
-                let param = `name=${name}&limit=${limit}`;
-                if (prog === 'SOTA') {
-                    let url = sotasearch;
-                    search(url, param);
-                } else if (prog === 'POTA') {
-                    let url = potasearch;
-                    search(url, param);
+                let param = `name=${name}&max_count=${limit}`;
+                if (name.length > 2) {
+                    search(searchbreif, param)
                 }
             });
 
@@ -370,49 +348,40 @@
                 let max_lon = document.getElementById('max_lon').value;
                 let max_lat = document.getElementById('max_lat').value;
                 let min_elev = document.getElementById('min_elev').value;
+                let min_area = document.getElementById('min_area').value;
                 let max_results = document.getElementById('max_results').value;
                 let eid = encodeURIComponent(uid);
-                let param = `user_id=${eid}&min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&max_lat=${max_lat}&min_elev=${min_elev}&max_results=${max_results}`;
-                let prog = document.getElementById('prog-location').value;
-                if (prog === 'SOTA') {
-                    let url = sotasearch;
-                    search(url, param);
-                } else if (prog === 'POTA') {
-                    let url = potasearch;
-                    search(url, param);
-                }
+                let param = `user_id=${eid}&min_lon=${min_lon}&min_lat=${min_lat}&max_lon=${max_lon}&max_lat=${max_lat}&min_elev=${min_elev}&min_area=${min_area}&max_results=${max_results}`;
+                search(searchurl, param);
+            });
+
+        document.getElementById('search-location-dist')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let lon = document.getElementById('lon').value;
+                let lat = document.getElementById('lat').value;
+                let dist = document.getElementById('dist').value;
+                let param = `lon=${lon}&lat=${lat}&dist=${dist}`;
+                search(searchurl, param);
             });
 
         document.getElementById('alerts')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
+                let pat = encodeURIComponent("^(JA|JP-)");
                 let after = document.getElementById('alerts-after').value;
-                let param = `after=${after}`;
-                let prog = document.getElementById('prog-alerts').value;
-                if (prog === 'SOTA') {
-                    let alertsurl = sotaalert;
-                    search(alertsurl, param);
-                } else if (prog === 'POTA') {
-                    let alertsurl = potaalert;
-                    search(alertsurl, param);
-                }
+                let param = `hours_ago=${after}&pat_ref=${pat}`;
 
+                search(alertsurl, param);
             });
 
         document.getElementById('spots')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
+                let pat = encodeURIComponent("^(JA|JP-)");
                 let after = document.getElementById('spots-after').value;
-                let param = `after=${after}`;
-                let prog = document.getElementById('prog-spots').value;
-                if (prog === 'SOTA') {
-                    let spotsurl = sotaspot;
-                    search(spotsurl, param);
-                } else if (prog === 'POTA') {
-                    let spotsurl = potaspot;
-                    search(spotsurl, param);
-                }
-
+                let param = `hours_ago=${after}&pat_ref=${pat}`;
+                search(spotsurl, param);
             });
 
     </script>

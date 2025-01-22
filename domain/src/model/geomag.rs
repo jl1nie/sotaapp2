@@ -3,5 +3,5 @@ use chrono::NaiveDate;
 pub struct GeomagIndex {
     pub date: NaiveDate,
     pub a_index: i32,
-    pub k_index: f32,
+    pub k_index: Vec<f32>,
 }

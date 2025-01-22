@@ -4,36 +4,86 @@ default_to_workspace = false
 [env]
 HOST = "0.0.0.0"
 PORT = 8080
-DATABASE_USERNAME = "app"
+DATABASE_USERNAME = "sotaapp2"
 DATABASE_PASSWORD = "passwd"
-DATABASE_NAME = "app"
+DATABASE_NAME = "sotaapp2"
 DATABASE_PORT_OUTER = 5432
 DATABASE_PORT_INNER = 5432
 REDIS_PORT_OUTER = 6379
 REDIS_PORT_INNER = 6379
 AUTH_TOKEN_TTL = 86400
+LOG_LEVEL = "info"
+SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
+SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
+SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
+SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
+IMPORT_STARTUP = "false"
+POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
+POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
+GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
+GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
+ALERT_SCHEDULE = "30 */10 * * * *"
+SPOT_SCHEDULE = "0 */2 * * * *"
+ALERT_EXPIRE = "24"
+SPOT_EXPIRE = "48"
+POTA_LOG_EXPIRE = "180"
 
 # Docker Composeのネットワーク内でのDB等への接続情報
 [tasks.set-env-docker.env]
+DOCKER_FILE = "Dockerfile.sqlite"
+MIGRATION_PATH = "./migrations"
 DATABASE_HOST = "postgres"
 DATABASE_PORT = "${DATABASE_PORT_INNER}"
-DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
+DATABASE_URL = "sqlite:/app/data/sotaapp2.db"
+#DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
 REDIS_HOST = "redis"
 REDIS_PORT = "${REDIS_PORT_INNER}"
 JAEGER_HOST = "jaeger"
 JAEGER_PORT = 6831
-
+LOG_LEVEL = "info"
+SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
+SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
+SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
+SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
+IMPORT_STARTUP = "false"
+POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
+POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
+GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
+GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
+ALERT_SCHEDULE = "30 */10 * * * *"
+SPOT_SCHEDULE = "0 */2 * * * *"
+ALERT_EXPIRE = "24"
+SPOT_EXPIRE = "48"
+POTA_LOG_EXPIRE = "180"
 # Docker Compose外からDB等にアクセスする際の接続情報
 [tasks.set-env-local.env]
-DATABASE_HOST = "localhost"
+DOCKER_FILE = "Dockerfile.sqlite"
 DATABASE_PORT = "${DATABASE_PORT_OUTER}"
-DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
+DATABASE_URL = "sqlite:./sotaapp2.db"
+MIGRATION_PATH = "./migrations"
+#DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
 REDIS_HOST = "localhost"
 REDIS_PORT = "${REDIS_PORT_OUTER}"
 JAEGER_HOST = "localhost"
 JAEGER_PORT = 6831
-
-
+LOG_LEVEL = "info"
+SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
+SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
+SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
+SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
+IMPORT_STARTUP = "false"
+POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
+POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
+GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
+GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
+ALERT_SCHEDULE = "30 */10 * * * *"
+SPOT_SCHEDULE = "0 */2 * * * *"
+ALERT_EXPIRE = "24"
+SPOT_EXPIRE = "48"
+POTA_LOG_EXPIRE = "180"
 [tasks.before-build]
 run_task = [{ name = ["compose-up-db", "compose-up-redis"] }]
 
@@ -132,7 +182,7 @@ extend = "set-env-local"
 install_crate = { crate_name = "sqlx-cli", binary = "sqlx", test_arg = "--help", version = "0.8.2" }
 script = '''
 #!/bin/bash
-until sqlx migrate run --source adapter/migrations; do
+until sqlx migrate run --source adapter/migrations/postgis; do
     sleep 1
 done
 '''
@@ -141,7 +191,7 @@ done
 extend = "set-env-local"
 install_crate = { crate_name = "sqlx-cli", binary = "sqlx", test_arg = "--help", version = "0.8.2" }
 command = "sqlx"
-args = ["${@}", "--source", "adapter/migrations"]
+args = ["${@}", "--source", "adapter/migrations/postgis"]
 
 [tasks.psql]
 extend = "set-env-local"
