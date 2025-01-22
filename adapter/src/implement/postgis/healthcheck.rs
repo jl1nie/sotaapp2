@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use common::error::AppResult;
 use shaku::Component;
 
-use crate::database::ConnectionPool;
+use crate::database::connect::ConnectionPool;
 use domain::repository::healthcheck::HealthCheckRepositry;
 
 #[derive(Component)]

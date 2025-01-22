@@ -6,25 +6,26 @@ use sqlx::PgConnection;
 use common::error::{AppError, AppResult};
 
 use domain::model::common::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
+use domain::model::common::AwardProgram::POTA;
 use domain::model::pota::{
     POTAActivatorLog, POTAHunterLog, POTAReference, POTAReferenceWithLog, ParkCode,
 };
 
+use super::querybuilder::findref_query_builder;
+use crate::database::connect::ConnectionPool;
 use crate::database::model::pota::{
     POTAActivatorLogImpl, POTAHunterLogImpl, POTAReferenceImpl, POTAReferenceWithLogImpl,
 };
-use crate::database::ConnectionPool;
-use crate::implement::querybuilder::findref_query_builder;
 
-use domain::repository::pota::POTAReferenceRepositry;
+use domain::repository::pota::POTARepository;
 
 #[derive(Component)]
-#[shaku(interface = POTAReferenceRepositry)]
-pub struct POTAReferenceRepositryImpl {
+#[shaku(interface = POTARepository)]
+pub struct POTARepositoryImpl {
     pool: ConnectionPool,
 }
 
-impl POTAReferenceRepositryImpl {
+impl POTARepositoryImpl {
     async fn create(&self, r: POTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
@@ -39,10 +40,11 @@ impl POTAReferenceRepositryImpl {
                     park_inactive,
                     park_area,
                     coordinates,
+                    maidenhead,
                     update
                 )
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,ST_SetSRID(ST_MakePoint($10, $11), 4326), 
-                $12)
+                $12,$13)
             "#,
             r.pota_code,
             r.wwff_code,
@@ -52,9 +54,10 @@ impl POTAReferenceRepositryImpl {
             r.park_locid,
             r.park_type,
             r.park_inactive,
-            r.park_area,
+            r.park_area as i32,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.update
         )
         .execute(db)
@@ -76,7 +79,8 @@ impl POTAReferenceRepositryImpl {
                     park_inactive = $8,
                     park_area = $9,
                     coordinates = ST_SetSRID(ST_MakePoint($10, $11), 4326),
-                    update = $12
+                    maidenhead = $12,
+                    update = $13
                 WHERE pota_code = $1
             "#,
             r.pota_code,
@@ -87,9 +91,10 @@ impl POTAReferenceRepositryImpl {
             r.park_locid,
             r.park_type,
             r.park_inactive,
-            r.park_area,
+            r.park_area as i32,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.update
         )
         .execute(db)
@@ -226,6 +231,35 @@ impl POTAReferenceRepositryImpl {
         Ok(())
     }
 
+    async fn select(&self, query: &str) -> AppResult<POTAReferenceImpl> {
+        let mut select = r#"
+            SELECT
+                pota_code,
+                wwff_code,
+                park_name,
+                park_name_j,
+                park_location,
+                park_locid,
+                park_type,
+                park_inactive,
+                park_area,
+                ST_X(coordinates) AS longitude,
+                ST_Y(coordinates) AS latitude,
+                maidenhead,
+                update
+            FROM pota_references AS p WHERE "#
+            .to_string();
+
+        select.push_str(query);
+
+        let sql_query = sqlx::query_as::<_, POTAReferenceImpl>(&select);
+        let row: POTAReferenceImpl = sql_query
+            .fetch_one(self.pool.inner_ref())
+            .await
+            .map_err(AppError::RowNotFound)?;
+        Ok(row)
+    }
+
     async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<POTAReferenceImpl>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM pota_references")
             .fetch_one(self.pool.inner_ref())
@@ -246,6 +280,7 @@ impl POTAReferenceRepositryImpl {
                 park_area,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 update
             FROM pota_references AS p WHERE "#
             .to_string();
@@ -256,7 +291,7 @@ impl POTAReferenceRepositryImpl {
         let rows: Vec<POTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok((total, rows))
     }
 
@@ -281,6 +316,7 @@ impl POTAReferenceRepositryImpl {
                     park_area,
                     ST_X(coordinates) AS longitude,
                     ST_Y(coordinates) AS latitude,
+                    maidenhead,
                     NULL as attempts,
                     NULL as activations,
                     NULL as first_qso_date,
@@ -303,6 +339,7 @@ impl POTAReferenceRepositryImpl {
                     p.park_area AS park_area,
                     ST_X(p.coordinates) AS longitude,
                     ST_Y(p.coordinates) AS latitude,
+                    p.maidenhead AS maidenhead,
                     a.attempts as attempts,
                     a.activations AS activations,
                     h.first_qso_date AS first_qso_date,
@@ -320,16 +357,16 @@ impl POTAReferenceRepositryImpl {
         let rows: Vec<POTAReferenceWithLogImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok(rows)
     }
 }
 
 #[async_trait]
-impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
+impl POTARepository for POTARepositoryImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<POTAReferenceWithLog>> {
         let user_id = event.user_id;
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(POTA, event);
         let results = self.select_by_condition(user_id, &query).await?;
         let results = results
             .into_iter()
@@ -356,10 +393,19 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
         Ok(())
     }
 
-    async fn show_reference(&self, event: &FindRef) -> AppResult<PagenatedResult<POTAReference>> {
+    async fn show_reference(&self, event: &FindRef) -> AppResult<POTAReference> {
+        let query = findref_query_builder(POTA, event);
+        let result = self.select(&query).await?;
+        Ok(result.into())
+    }
+
+    async fn show_all_references(
+        &self,
+        event: &FindRef,
+    ) -> AppResult<PagenatedResult<POTAReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(POTA, event);
         let (total, results) = self.select_pagenated(&query).await?;
         Ok(PagenatedResult {
             total,
@@ -405,7 +451,9 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
+
         tracing::info!("upload activator log {} rescords", logs.len());
+
         for r in logs.into_iter() {
             self.update_activator_log(POTAActivatorLogImpl::from(r), &mut tx)
                 .await?;
@@ -421,7 +469,9 @@ impl POTAReferenceRepositry for POTAReferenceRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
+
         tracing::info!("upload hunter log {} rescords", logs.len());
+
         for r in logs.into_iter() {
             self.update_hunter_log(POTAHunterLogImpl::from(r), &mut tx)
                 .await?;

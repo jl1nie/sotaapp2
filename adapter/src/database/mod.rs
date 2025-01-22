@@ -1,23 +1,66 @@
-use anyhow::Result;
-use common::config::AppConfig;
-use sqlx::postgres::PgPool;
-
 pub mod model;
 
-#[derive(Clone)]
-pub struct ConnectionPool(PgPool);
+#[cfg(not(feature = "sqlite"))]
+pub mod connect {
+    use anyhow::Result;
+    use common::config::AppConfig;
+    use sqlx::postgres::PgPool;
 
-impl ConnectionPool {
-    pub fn new(pool: PgPool) -> Self {
-        Self(pool)
+    #[derive(Clone)]
+    pub struct ConnectionPool(PgPool);
+    #[cfg(not(feature = "sqlite"))]
+    impl ConnectionPool {
+        pub fn new(pool: PgPool) -> Self {
+            Self(pool)
+        }
+
+        pub fn inner_ref(&self) -> &PgPool {
+            &self.0
+        }
     }
 
-    pub fn inner_ref(&self) -> &PgPool {
-        &self.0
+    #[cfg(not(feature = "sqlite"))]
+    pub async fn connect_database_with(cfg: &AppConfig) -> Result<ConnectionPool> {
+        let pool = ConnectionPool(PgPool::connect_lazy(&cfg.database)?);
+        Ok(pool)
     }
 }
+#[cfg(feature = "sqlite")]
+pub mod connect {
+    use anyhow::Result;
+    use common::config::AppConfig;
+    use sqlx::migrate::Migrator;
+    use sqlx::sqlite::SqlitePool;
+    use std::{fs, path::Path};
 
-pub fn connect_database_with(cfg: &AppConfig) -> Result<ConnectionPool> {
-    let pool = ConnectionPool(PgPool::connect_lazy(&cfg.database)?);
-    Ok(pool)
+    #[derive(Clone)]
+    pub struct ConnectionPool(SqlitePool);
+
+    impl ConnectionPool {
+        pub fn new(pool: SqlitePool) -> Self {
+            Self(pool)
+        }
+
+        pub fn inner_ref(&self) -> &SqlitePool {
+            &self.0
+        }
+    }
+
+    pub async fn connect_database_with(cfg: &AppConfig) -> Result<ConnectionPool> {
+        let m = Migrator::new(std::path::Path::new(&cfg.migration_path)).await?;
+        let dbname = cfg.database.replace("sqlite:", "");
+        let database_path = Path::new(&dbname);
+        let pool = ConnectionPool(SqlitePool::connect_lazy(&cfg.database)?);
+        //fs::remove_file(&database_path).unwrap();
+        if fs::metadata(database_path).is_err() {
+            tracing::warn!(
+                "Database file {} not found. Create it.",
+                database_path.display()
+            );
+            let _file = fs::File::create(database_path)?;
+        };
+        tracing::info!("Running migrations...");
+        m.run(pool.inner_ref()).await?;
+        Ok(pool)
+    }
 }

@@ -13,6 +13,8 @@ pub enum AppError {
     TransactionError(#[source] sqlx::Error),
     #[error("データベース処理実行中にエラーが発生しました。")]
     SpecificOperationError(#[source] sqlx::Error),
+    #[error("指定さえた行が見つかりません。")]
+    RowNotFound(#[source] sqlx::Error),
     #[error("No rows affected: {0}")]
     NoRowsAffectedError(String),
     #[error("CSVの読み込みに失敗しました。")]
@@ -23,10 +25,14 @@ pub enum AppError {
     GetError(#[source] reqwest::Error),
     #[error("JSON変換に失敗しました。")]
     JsonError(#[source] serde_json::Error),
+    #[error("時刻変換に失敗しました。")]
+    ParseError(#[source] chrono::ParseError),
     // #[error("{0}")]
     // KeyValueStoreError(#[from] redis::RedisError),
     // #[error("{0}")]
     // BcryptError(#[from] bcrypt::BcryptError),
+    #[error("{0}")]
+    UuidError(uuid::Error),
     #[error("{0}")]
     ConvertToUuidError(#[from] uuid::Error),
     #[error("ログインに失敗しました")]
@@ -45,6 +51,7 @@ impl IntoResponse for AppError {
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::CSVReadError(e) =>{tracing::error!("CSV Error {:?}",e); StatusCode::UNPROCESSABLE_ENTITY},
             AppError::EntityNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
+            | AppError::RowNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
             /* AppError::ValidationError(_) |*/
                  AppError::ConvertToUuidError(_) => {
                     StatusCode::BAD_REQUEST
@@ -53,10 +60,13 @@ impl IntoResponse for AppError {
             AppError::UnauthorizedError => StatusCode::UNAUTHORIZED,
             e @ (AppError::TransactionError(_)
             | AppError::SpecificOperationError(_)
+   
             | AppError::NoRowsAffectedError(_)
             | AppError::PostError(_)
             | AppError::GetError(_)
             | AppError::JsonError(_)
+            | AppError::ParseError(_)
+            | AppError::UuidError(_)
             /* 
             | AppError::KeyValueStoreError(_)
             | AppError::BcryptError(_)

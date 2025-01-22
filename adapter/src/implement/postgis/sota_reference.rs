@@ -4,20 +4,21 @@ use sqlx::PgConnection;
 
 use common::error::{AppError, AppResult};
 use domain::model::common::event::{DeleteRef, FindRef, PagenatedResult};
+use domain::model::common::AwardProgram::SOTA;
 use domain::model::sota::{SOTAReference, SummitCode};
 
+use super::querybuilder::findref_query_builder;
+use crate::database::connect::ConnectionPool;
 use crate::database::model::sota::SOTAReferenceImpl;
-use crate::database::ConnectionPool;
-use crate::implement::querybuilder::findref_query_builder;
-use domain::repository::sota::SOTAReferenceReposity;
+use domain::repository::sota::SOTARepository;
 
 #[derive(Component)]
-#[shaku(interface = SOTAReferenceReposity)]
-pub struct SOTAReferenceReposityImpl {
+#[shaku(interface = SOTARepository)]
+pub struct SOTARepositoryImpl {
     pool: ConnectionPool,
 }
 
-impl SOTAReferenceReposityImpl {
+impl SOTARepositoryImpl {
     async fn create(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
@@ -34,6 +35,7 @@ impl SOTAReferenceReposityImpl {
                     grid_ref1,
                     grid_ref2,
                     coordinates,
+                    maidenhead,
                     points,
                     bonus_points,
                     valid_from,
@@ -43,7 +45,7 @@ impl SOTAReferenceReposityImpl {
                     activation_call
                 )
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ST_SetSRID(ST_MakePoint($12, $13), 4326), 
-                $14, $15, $16, $17, $18, $19, $20)
+                $14, $15, $16, $17, $18, $19, $20, $21)
             "#,
             r.summit_code,
             r.association_name,
@@ -58,6 +60,7 @@ impl SOTAReferenceReposityImpl {
             r.grid_ref2,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.points,
             r.bonus_points,
             r.valid_from,
@@ -86,13 +89,14 @@ impl SOTAReferenceReposityImpl {
                     grid_ref1 = $10,
                     grid_ref2 = $11,
                     coordinates = ST_SetSRID(ST_MakePoint($12, $13), 4326),
-                    points = $14,
-                    bonus_points = $15,
-                    valid_from = $16,
-                    valid_to = $17,
-                    activation_count = $18,
-                    activation_date = $19,
-                    activation_call = $20
+                    maidenhead = $14,
+                    points = $15,
+                    bonus_points = $16,
+                    valid_from = $17,
+                    valid_to = $18,
+                    activation_count = $19,
+                    activation_date = $20,
+                    activation_call = $21
                 WHERE summit_code = $1
             "#,
             r.summit_code,
@@ -108,6 +112,7 @@ impl SOTAReferenceReposityImpl {
             r.grid_ref2,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.points,
             r.bonus_points,
             r.valid_from,
@@ -138,6 +143,7 @@ impl SOTAReferenceReposityImpl {
                     grid_ref1,
                     grid_ref2,
                     coordinates,
+                    maidenhead,
                     points,
                     bonus_points,
                     valid_from,
@@ -146,7 +152,7 @@ impl SOTAReferenceReposityImpl {
                     activation_date,
                     activation_call
                 ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ST_SetSRID(ST_MakePoint($12, $13), 4326), 
-                $14, $15, $16, $17, $18, $19, $20)
+                $14, $15, $16, $17, $18, $19, $20, $21)
                 ON CONFLICT (summit_code) DO UPDATE SET
                     association_name = EXCLUDED.association_name,
                     region_name = EXCLUDED.region_name,
@@ -180,6 +186,7 @@ impl SOTAReferenceReposityImpl {
             r.grid_ref2,
             r.longitude,
             r.latitude,
+            r.maidenhead,
             r.points,
             r.bonus_points,
             r.valid_from,
@@ -220,11 +227,48 @@ impl SOTAReferenceReposityImpl {
         Ok(())
     }
 
+    async fn select(&self, query: &str) -> AppResult<SOTAReferenceImpl> {
+        let mut select = r#"
+            SELECT
+                summit_code,
+                association_name,
+                region_name,
+                summit_name,
+                summit_name_j,
+                city,
+                city_j,
+                alt_m,
+                alt_ft,
+                grid_ref1,
+                grid_ref2,
+                ST_X(coordinates) AS longitude,
+                ST_Y(coordinates) AS latitude,
+                maidenhead,
+                points,
+                bonus_points,
+                valid_from,
+                valid_to,
+                activation_count,
+                activation_date,
+                activation_call
+            FROM sota_references WHERE "#
+            .to_string();
+
+        select.push_str(query);
+
+        let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
+        let row: SOTAReferenceImpl = sql_query
+            .fetch_one(self.pool.inner_ref())
+            .await
+            .map_err(AppError::RowNotFound)?;
+        Ok(row)
+    }
+
     async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<SOTAReferenceImpl>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         let total: i64 = row.count.unwrap_or(0);
 
         let mut select = r#"
@@ -242,6 +286,7 @@ impl SOTAReferenceReposityImpl {
                 grid_ref2,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 points,
                 bonus_points,
                 valid_from,
@@ -258,7 +303,7 @@ impl SOTAReferenceReposityImpl {
         let rows: Vec<SOTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok((total, rows))
     }
 
@@ -278,6 +323,7 @@ impl SOTAReferenceReposityImpl {
                 grid_ref2,
                 ST_X(coordinates) AS longitude,
                 ST_Y(coordinates) AS latitude,
+                maidenhead,
                 points,
                 bonus_points,
                 valid_from,
@@ -294,13 +340,13 @@ impl SOTAReferenceReposityImpl {
         let rows: Vec<SOTAReferenceImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
         Ok(rows)
     }
 }
 
 #[async_trait]
-impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
+impl SOTARepository for SOTARepositoryImpl {
     async fn create_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
         let mut tx = self
             .pool
@@ -319,10 +365,19 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
         Ok(())
     }
 
-    async fn show_reference(&self, event: &FindRef) -> AppResult<PagenatedResult<SOTAReference>> {
+    async fn show_reference(&self, event: &FindRef) -> AppResult<SOTAReference> {
+        let query = findref_query_builder(SOTA, event);
+        let result = self.select(&query).await?;
+        Ok(result.into())
+    }
+
+    async fn show_all_references(
+        &self,
+        event: &FindRef,
+    ) -> AppResult<PagenatedResult<SOTAReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(SOTA, event);
         let (total, results) = self.select_pagenated(&query).await?;
         Ok(PagenatedResult {
             total,
@@ -384,7 +439,7 @@ impl SOTAReferenceReposity for SOTAReferenceReposityImpl {
     }
 
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SOTAReference>> {
-        let query = findref_query_builder(event);
+        let query = findref_query_builder(SOTA, event);
         let results = self.select_by_condition(&query).await?;
         let results = results.into_iter().map(SOTAReference::from).collect();
         Ok(results)

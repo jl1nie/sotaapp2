@@ -3,9 +3,13 @@ name = "registry"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+sqlite = []
+
 [dependencies]
 axum.workspace = true
 shaku.workspace = true
 adapter.workspace = true
 service.workspace = true
 common.workspace = true
+tracing.workspace = true

@@ -4,27 +4,30 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
-
 use chrono::{Duration, Utc};
+use common::error::{AppError, AppResult};
 use shaku_axum::Inject;
 use std::str::FromStr;
 
-use crate::model::pota::{
-    POTARefResponse, POTARefSearchResponse, POTASearchResult, PagenatedResponse, UpdateRefRequest,
-};
-use crate::model::{alerts::AlertResponse, param::GetParam, spots::SpotResponse};
-use common::error::{AppError, AppResult};
-
 use domain::model::common::{
-    event::{DeleteRef, FindActBuilder, FindRefBuilder, FindResult, ResultKind},
+    event::{DeleteRef, FindActBuilder, FindRefBuilder},
     id::UserId,
 };
 use domain::model::pota::ParkCode;
 
 use registry::{AppRegistry, AppState};
-
 use service::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
 use service::services::{AdminService, UserService};
+
+use crate::model::{
+    activation::ActivationResponse,
+    alerts::AlertResponse,
+    param::{build_findref_query, GetParam},
+    pota::POTARefResponseWithLog,
+    spots::SpotResponse,
+};
+
+use crate::model::pota::{POTARefResponse, PagenatedResponse, UpdateRefRequest};
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -106,13 +109,16 @@ async fn delete_pota_reference(
 async fn show_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(park_code): Path<String>,
-) -> AppResult<Json<PagenatedResponse<POTARefResponse>>> {
-    let query = FindRefBuilder::default().pota().ref_id(park_code).build();
+) -> AppResult<Json<POTARefResponse>> {
+    let query = FindRefBuilder::default()
+        .pota()
+        .pota_code(park_code)
+        .build();
     let result = admin_service.show_pota_reference(query).await?;
     Ok(Json(result.into()))
 }
 
-async fn show_all_reference(
+async fn show_all_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<POTARefResponse>>> {
@@ -124,98 +130,68 @@ async fn show_all_reference(
     if param.offset.is_some() {
         query = query.offset(param.offset.unwrap());
     }
-    let result = admin_service.show_pota_reference(query.build()).await?;
+    let result = admin_service
+        .show_all_pota_references(query.build())
+        .await?;
     Ok(Json(result.into()))
 }
 
-async fn show_pota_reference_list(
+async fn find_pota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<POTARefSearchResponse>> {
-    let mut query = FindRefBuilder::default().pota();
+) -> AppResult<Json<Vec<POTARefResponseWithLog>>> {
+    let query = FindRefBuilder::default().pota();
+    let query = build_findref_query(param, query)?;
 
-    if param.limit.is_some() {
-        query = query.limit(param.limit.unwrap());
-    }
+    let results = user_service.find_references(query).await?;
 
-    if param.offset.is_some() {
-        query = query.offset(param.offset.unwrap());
-    }
-
-    if param.name.is_some() {
-        query = query.name(param.name.unwrap());
-    }
-
-    if param.ref_id.is_some() {
-        query = query.ref_id(param.ref_id.unwrap());
-    }
-
-    if param.user_id.is_some() {
-        query = query.user_id(UserId::from_str(&param.user_id.unwrap())?);
-    }
-
-    if param.min_elev.is_some() {
-        query = query.min_elev(param.min_elev.unwrap());
-    }
-
-    if param.max_lat.is_some()
-        && param.min_lat.is_some()
-        && param.max_lon.is_some()
-        && param.min_lon.is_some()
-    {
-        query = query.bbox(
-            param.min_lon.unwrap(),
-            param.min_lat.unwrap(),
-            param.max_lon.unwrap(),
-            param.max_lat.unwrap(),
-        );
-    }
-    let query = query.build();
-    tracing::info!("query: {:?}", query);
-
-    let FindResult { results } = user_service.find_references(query).await?;
-    let mut res = POTARefSearchResponse::default();
-    let results: Vec<_> = results
+    let res = results
+        .pota
+        .unwrap_or(vec![])
         .into_iter()
-        .flat_map(|r| match r {
-            ResultKind::POTA(s) => s.into_iter(),
-            _ => vec![].into_iter(),
-        })
+        .map(POTARefResponseWithLog::from)
         .collect();
-    res.results = results.into_iter().map(POTASearchResult::from).collect();
-    res.count = res.results.len() as i32;
-    if param.max_results.is_some() && res.count > param.max_results.unwrap() {
-        res.results = vec![];
-    }
     Ok(Json(res))
 }
 
 async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<SpotResponse>>> {
-    let hours = param.after.unwrap_or(3);
+) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
+    let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
-        .after(Utc::now() - Duration::hours(hours))
+        .issued_after(Utc::now() - Duration::hours(hours))
         .build();
     let result = user_service.find_spots(query).await?;
-    let spots: Vec<_> = result.into_iter().map(SpotResponse::from).collect();
+    let spots: Vec<_> = result
+        .into_iter()
+        .map(|(k, v)| {
+            ActivationResponse::from((k, v.into_iter().map(SpotResponse::from).collect::<Vec<_>>()))
+        })
+        .collect();
     Ok(Json(spots))
 }
 
 async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<AlertResponse>>> {
-    let hours = param.after.unwrap_or(3);
+) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
+    let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
-        .after(Utc::now() - Duration::hours(hours))
+        .issued_after(Utc::now() - Duration::hours(hours))
         .build();
-    tracing::info!("query: {:?}", query);
-    let alerts = user_service.find_alerts(query).await?;
-    let alerts: Vec<_> = alerts.into_iter().map(AlertResponse::from).collect();
+    let result = user_service.find_alerts(query).await?;
+    let alerts: Vec<_> = result
+        .into_iter()
+        .map(|(k, v)| {
+            ActivationResponse::from((
+                k,
+                v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
+            ))
+        })
+        .collect();
     Ok(Json(alerts))
 }
 
@@ -229,11 +205,11 @@ pub fn build_pota_routers() -> Router<AppState> {
         .route("/upload/hunter/:user_id", post(upload_pota_hunter_log))
         .route("/spots", get(show_pota_spots))
         .route("/alerts", get(show_pota_alerts))
-        .route("/park-list", get(show_all_reference))
-        .route("/park", get(show_pota_reference_list))
-        .route("/park/:park_code", get(show_pota_reference))
-        .route("/park/:park_code", put(update_pota_reference))
-        .route("/park/:park_code", delete(delete_pota_reference));
+        .route("/parks", get(show_all_pota_reference))
+        .route("/parks/search", get(find_pota_reference))
+        .route("/parks/:park_code", get(show_pota_reference))
+        .route("/parks/:park_code", put(update_pota_reference))
+        .route("/parks/:park_code", delete(delete_pota_reference));
 
     Router::new().nest("/pota", routers)
 }

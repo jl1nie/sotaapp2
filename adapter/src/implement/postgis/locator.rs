@@ -9,8 +9,8 @@ use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 use domain::model::locator::MunicipalityCenturyCode;
 
+use crate::database::connect::ConnectionPool;
 use crate::database::model::locator::MunicipalityCenturyCodeImpl;
-use crate::database::ConnectionPool;
 use domain::repository::locator::LocatorRepositry;
 
 #[derive(Component)]
@@ -37,7 +37,7 @@ impl LocatorRepositryImpl {
                     jcg_text = EXCLUDED.jcg_text,
                     hamlog_code = EXCLUDED.hamlog_code
             "#,
-            m.muni_code,
+            m.muni_code as i32,
             m.prefecture,
             m.municipality,
             m.jcc_code,

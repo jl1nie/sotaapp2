@@ -1,5 +1,5 @@
-use anyhow::Result;
 use common::config::AppConfig;
+use common::error::{AppError, AppResult};
 use reqwest;
 
 use crate::model::alerts::{POTAAlert, SOTAAlert};
@@ -26,31 +26,36 @@ impl UpdateAlerts {
         }
     }
 
-    pub async fn update(&self) -> Result<()> {
+    pub async fn update(&self) -> AppResult<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
 
         let endpoint = self.config.sota_alert_endpoint.clone();
+
         let response = reqwest::get(&endpoint)
-            .await?
+            .await
+            .map_err(AppError::GetError)?
             .json::<Vec<SOTAAlert>>()
-            .await?;
+            .await
+            .map_err(AppError::GetError)?;
 
         let requests: Vec<Alert> = response
             .into_iter()
-            .filter_map(|sa| Result::<Alert>::from(sa).ok())
+            .filter_map(|sa| AppResult::<Alert>::from(sa).ok())
             .collect();
 
         service.update_alerts(requests).await?;
 
         let endpoint = self.config.pota_alert_endpoint.clone();
         let response = reqwest::get(&endpoint)
-            .await?
+            .await
+            .map_err(AppError::GetError)?
             .json::<Vec<POTAAlert>>()
-            .await?;
+            .await
+            .map_err(AppError::GetError)?;
 
         let requests: Vec<Alert> = response
             .into_iter()
-            .filter_map(|pa| Result::<Alert>::from(pa).ok())
+            .filter_map(|pa| AppResult::<Alert>::from(pa).ok())
             .collect();
 
         service.update_alerts(requests).await?;
@@ -72,30 +77,34 @@ impl UpdateSpots {
         }
     }
 
-    pub async fn update(&self) -> Result<()> {
+    pub async fn update(&self) -> AppResult<()> {
         let service: &dyn AdminPeriodicService = self.registry.resolve_ref();
         let endpoint = self.config.sota_spot_endpoint.clone();
         let response = reqwest::get(&endpoint)
-            .await?
+            .await
+            .map_err(AppError::GetError)?
             .json::<Vec<SOTASpot>>()
-            .await?;
+            .await
+            .map_err(AppError::GetError)?;
 
         let requests: Vec<Spot> = response
             .into_iter()
-            .filter_map(|ss| Result::<Spot>::from(ss).ok())
+            .filter_map(|ss| AppResult::<Spot>::from(ss).ok())
             .collect();
 
         service.update_spots(requests).await?;
 
         let endpoint = self.config.pota_spot_endpoint.clone();
         let response = reqwest::get(&endpoint)
-            .await?
+            .await
+            .map_err(AppError::GetError)?
             .json::<Vec<POTASpot>>()
-            .await?;
+            .await
+            .map_err(AppError::GetError)?;
 
         let requests: Vec<Spot> = response
             .into_iter()
-            .filter_map(|ss| Result::<Spot>::from(ss).ok())
+            .filter_map(|ss| AppResult::<Spot>::from(ss).ok())
             .collect();
 
         service.update_spots(requests).await?;

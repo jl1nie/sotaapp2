@@ -1,9 +1,9 @@
-use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
+use common::error::{AppError, AppResult};
 use domain::model::common::activation::Alert;
-use domain::model::AwardProgram;
+use domain::model::common::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,9 +24,10 @@ pub struct SOTAAlert {
     pub epoch: String,
 }
 
-impl From<SOTAAlert> for Result<Alert> {
+impl From<SOTAAlert> for AppResult<Alert> {
     fn from(a: SOTAAlert) -> Self {
-        let date_activated = DateTime::parse_from_rfc3339(&a.date_activated)?;
+        let date_activated =
+            DateTime::parse_from_rfc3339(&a.date_activated).map_err(AppError::ParseError)?;
         let date_activated = date_activated.with_timezone(&Utc);
         Ok(Alert {
             program: AwardProgram::SOTA,
@@ -65,16 +66,17 @@ pub struct POTAAlert {
     pub comments: String,
 }
 
-impl From<POTAAlert> for Result<Alert> {
+impl From<POTAAlert> for AppResult<Alert> {
     fn from(a: POTAAlert) -> Self {
         let tmformat = "%Y-%m-%d %H:%M";
 
         let start = a.start_date + " " + &a.start_time;
-        let start = NaiveDateTime::parse_from_str(&start, tmformat)?;
+        let start =
+            NaiveDateTime::parse_from_str(&start, tmformat).map_err(AppError::ParseError)?;
         let start_time = Utc.from_local_datetime(&start).unwrap();
 
         let end = a.end_date + " " + &a.end_time;
-        let end = NaiveDateTime::parse_from_str(&end, tmformat)?;
+        let end = NaiveDateTime::parse_from_str(&end, tmformat).map_err(AppError::ParseError)?;
         let end_time = Utc.from_local_datetime(&end).unwrap();
 
         Ok(Alert {
@@ -111,6 +113,7 @@ pub struct AlertResponse {
     pub comment: Option<String>,
     pub poster: Option<String>,
 }
+
 impl From<Alert> for AlertResponse {
     fn from(a: Alert) -> Self {
         Self {

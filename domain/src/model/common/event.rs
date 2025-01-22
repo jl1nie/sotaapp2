@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
 
-use crate::model::common::id::UserId;
-use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference, AwardProgram};
+use crate::model::common::{id::UserId, AwardProgram};
+use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference};
 
 #[derive(new, Debug)]
 pub struct BoundingBox {
@@ -22,8 +22,13 @@ pub struct CenterRadius {
 #[derive(Default, Debug)]
 pub struct FindRef {
     pub program: Vec<AwardProgram>,
-    pub ref_id: Option<String>,
+    pub sota_code: Option<String>,
+    pub pota_code: Option<String>,
+    pub wwff_code: Option<String>,
     pub name: Option<String>,
+    pub lon: Option<f64>,
+    pub lat: Option<f64>,
+    pub dist: Option<f64>,
     pub bbox: Option<BoundingBox>,
     pub center: Option<CenterRadius>,
     pub min_elev: Option<i32>,
@@ -86,13 +91,38 @@ impl FindRefBuilder {
         self
     }
 
-    pub fn ref_id(mut self, id: String) -> Self {
-        self.param.ref_id = Some(id.to_uppercase());
+    pub fn sota_code(mut self, code: String) -> Self {
+        self.param.sota_code = Some(code.to_uppercase());
+        self
+    }
+
+    pub fn pota_code(mut self, code: String) -> Self {
+        self.param.pota_code = Some(code.to_uppercase());
+        self
+    }
+
+    pub fn wwff_code(mut self, code: String) -> Self {
+        self.param.wwff_code = Some(code.to_uppercase());
         self
     }
 
     pub fn name(mut self, n: String) -> Self {
         self.param.name = Some(n);
+        self
+    }
+
+    pub fn lon(mut self, lon: f64) -> Self {
+        self.param.lon = Some(lon);
+        self
+    }
+
+    pub fn lat(mut self, lat: f64) -> Self {
+        self.param.lat = Some(lat);
+        self
+    }
+
+    pub fn dist(mut self, dist: f64) -> Self {
+        self.param.dist = Some(dist);
         self
     }
 
@@ -138,23 +168,10 @@ impl FindRefBuilder {
     }
 }
 
-pub enum ResultKind {
-    SOTA(Vec<SOTAReference>),
-    POTA(Vec<POTAReferenceWithLog>),
-}
-
 #[derive(Default)]
 pub struct FindResult {
-    pub results: Vec<ResultKind>,
-}
-impl FindResult {
-    pub fn sota(&mut self, v: Vec<SOTAReference>) {
-        self.results.push(ResultKind::SOTA(v))
-    }
-
-    pub fn pota(&mut self, v: Vec<POTAReferenceWithLog>) {
-        self.results.push(ResultKind::POTA(v))
-    }
+    pub sota: Option<Vec<SOTAReference>>,
+    pub pota: Option<Vec<POTAReferenceWithLog>>,
 }
 
 #[derive(Default, Debug)]
@@ -175,10 +192,18 @@ pub struct DeleteLog {
     pub before: DateTime<Utc>,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum GroupBy {
+    Callsign(Option<String>),
+    Reference(Option<String>),
+}
+
 #[derive(Default, Debug)]
 pub struct FindAct {
     pub program: Option<AwardProgram>,
-    pub after: Option<DateTime<Utc>>,
+    pub issued_after: Option<DateTime<Utc>>,
+    pub pattern: Option<String>,
+    pub group_by: Option<GroupBy>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -204,8 +229,8 @@ impl FindActBuilder {
         self
     }
 
-    pub fn after(mut self, aft: DateTime<Utc>) -> Self {
-        self.param.after = Some(aft);
+    pub fn issued_after(mut self, aft: DateTime<Utc>) -> Self {
+        self.param.issued_after = Some(aft);
         self
     }
 
@@ -219,6 +244,20 @@ impl FindActBuilder {
         self
     }
 
+    pub fn group_by_callsign(mut self, callsign: Option<String>) -> Self {
+        self.param.group_by = Some(GroupBy::Callsign(callsign));
+        self
+    }
+
+    pub fn group_by_reference(mut self, reference: Option<String>) -> Self {
+        self.param.group_by = Some(GroupBy::Reference(reference));
+        self
+    }
+
+    pub fn pattern(mut self, pattern: String) -> Self {
+        self.param.pattern = Some(pattern);
+        self
+    }
     pub fn build(self) -> FindAct {
         self.param
     }

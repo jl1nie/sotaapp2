@@ -7,7 +7,7 @@ pub enum CenturyCodeImpl {}
 
 #[derive(Debug, FromRow)]
 pub struct MunicipalityCenturyCodeImpl {
-    pub muni_code: i32,
+    pub muni_code: i64,
     pub prefecture: String,
     pub municipality: String,
     pub jcc_code: Option<String>,
@@ -26,7 +26,7 @@ impl From<MunicipalityCenturyCode> for MunicipalityCenturyCodeImpl {
                 ward_code,
                 jcc_text,
             } => Self {
-                muni_code: m.muni_code,
+                muni_code: m.muni_code as i64,
                 prefecture: m.prefecture,
                 municipality: m.municipality,
                 jcc_code: Some(jcc_code),
@@ -41,7 +41,7 @@ impl From<MunicipalityCenturyCode> for MunicipalityCenturyCodeImpl {
                 jcg_text,
                 hamlog_code,
             } => Self {
-                muni_code: m.muni_code,
+                muni_code: m.muni_code as i64,
                 prefecture: m.prefecture,
                 municipality: m.municipality,
                 jcc_code: None,
@@ -59,7 +59,7 @@ impl From<MunicipalityCenturyCodeImpl> for MunicipalityCenturyCode {
     fn from(m: MunicipalityCenturyCodeImpl) -> Self {
         if m.jcc_code.is_some() {
             MunicipalityCenturyCode {
-                muni_code: m.muni_code,
+                muni_code: m.muni_code as i32,
                 prefecture: m.prefecture,
                 municipality: m.municipality,
                 code: CenturyCode::JCC {
@@ -70,7 +70,7 @@ impl From<MunicipalityCenturyCodeImpl> for MunicipalityCenturyCode {
             }
         } else {
             MunicipalityCenturyCode {
-                muni_code: m.muni_code,
+                muni_code: m.muni_code as i32,
                 prefecture: m.prefecture,
                 municipality: m.municipality,
                 code: CenturyCode::JCG {
