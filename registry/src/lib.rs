@@ -3,8 +3,11 @@ use common::config::AppConfig;
 use shaku::module;
 use std::sync::{Arc, Mutex};
 
+use aprs_message::AprsIS;
+
 use adapter::{
     database::connect::ConnectionPool,
+    implement::aprs::{AprsRepositryImpl, AprsRepositryImplParameters},
     implement::geomag::{GeoMagRepositryImpl, GeoMagRepositryImplParameters},
 };
 
@@ -36,14 +39,14 @@ module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
         SOTARepositoryImpl,POTARepositoryImpl,
-        LocatorRepositryImpl,GeoMagRepositryImpl,
+        LocatorRepositryImpl,GeoMagRepositryImpl,AprsRepositryImpl,
         HealthCheckRepositryImpl],
         providers = [],
     }
 }
 
 impl AppRegistry {
-    pub fn new(config: &AppConfig, pool: ConnectionPool) -> Self {
+    pub fn new(config: &AppConfig, pool: ConnectionPool, aprs: AprsIS) -> Self {
         AppRegistry::builder()
             .with_component_parameters::<SOTARepositoryImpl>(SOTARepositoryImplParameters {
                 pool: pool.clone(),
@@ -69,6 +72,9 @@ impl AppRegistry {
             )
             .with_component_parameters::<GeoMagRepositryImpl>(GeoMagRepositryImplParameters {
                 latest_data: Arc::new(Mutex::new(None)),
+            })
+            .with_component_parameters::<AprsRepositryImpl>(AprsRepositryImplParameters {
+                aprs: aprs.clone(),
             })
             .with_component_parameters::<HealthCheckRepositryImpl>(
                 HealthCheckRepositryImplParameters { pool: pool.clone() },

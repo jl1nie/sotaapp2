@@ -24,6 +24,9 @@ pub struct AppConfig {
     pub spot_update_schedule: String,
     pub spot_expire: Duration,
     pub pota_log_expire: Duration,
+    pub aprs_host: String,
+    pub aprs_user: String,
+    pub aprs_password: String,
 }
 
 impl AppConfig {
@@ -50,6 +53,9 @@ impl AppConfig {
             alert_expire: Duration::hours(std::env::var("ALERT_EXPIRE")?.parse::<i64>()?),
             spot_expire: Duration::hours(std::env::var("SPOT_EXPIRE")?.parse::<i64>()?),
             pota_log_expire: Duration::days(std::env::var("POTA_LOG_EXPIRE")?.parse::<i64>()?),
+            aprs_host: std::env::var("APRSHOST")?,
+            aprs_user: std::env::var("APRSUSER")?,
+            aprs_password: std::env::var("APRSPASSWORD")?,
         })
     }
 }

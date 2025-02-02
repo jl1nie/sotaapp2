@@ -13,3 +13,4 @@ adapter.workspace = true
 service.workspace = true
 common.workspace = true
 tracing.workspace = true
+aprs-message.workspace = true

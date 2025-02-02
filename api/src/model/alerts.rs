@@ -2,6 +2,8 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
 use common::error::{AppError, AppResult};
+use common::utils::to_operator;
+
 use domain::model::common::activation::Alert;
 use domain::model::common::AwardProgram;
 
@@ -36,8 +38,9 @@ impl From<SOTAAlert> for AppResult<Alert> {
             reference: a.summit_code,
             reference_detail: a.summit_details,
             location: a.association_code,
-            activator: a.activating_callsign,
             activator_name: None,
+            operator: to_operator(&a.activating_callsign),
+            activator: a.activating_callsign,
             start_time: date_activated,
             end_time: None,
             frequencies: a.frequency,
@@ -86,6 +89,7 @@ impl From<POTAAlert> for AppResult<Alert> {
             reference: a.reference,
             reference_detail: a.name,
             location: a.location_desc,
+            operator: to_operator(&a.activator),
             activator: a.activator,
             activator_name: None,
             start_time,

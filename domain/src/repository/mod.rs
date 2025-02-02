@@ -1,4 +1,5 @@
 pub mod activation;
+pub mod aprs;
 pub mod geomag;
 pub mod healthcheck;
 pub mod locator;
