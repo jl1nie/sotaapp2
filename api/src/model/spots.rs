@@ -1,4 +1,5 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use common::utils::to_operator;
 use serde::{Deserialize, Serialize};
 
 use common::error::{AppError, AppResult};
@@ -34,6 +35,7 @@ impl From<SOTASpot> for AppResult<Spot> {
             spot_id: s.id,
             reference: s.summit_code,
             reference_detail: s.summit_details,
+            operator: to_operator(&s.activator_callsign),
             activator: s.activator_callsign,
             activator_name: Some(s.activator_name),
             spot_time,
@@ -79,6 +81,7 @@ impl From<POTASpot> for AppResult<Spot> {
             spot_id: s.spot_id,
             reference: s.reference,
             reference_detail: s.name,
+            operator: to_operator(&s.activator),
             activator: s.activator,
             activator_name: None,
             spot_time,

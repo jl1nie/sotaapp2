@@ -27,6 +27,8 @@ pub enum AppError {
     JsonError(#[source] serde_json::Error),
     #[error("時刻変換に失敗しました。")]
     ParseError(#[source] chrono::ParseError),
+    #[error("APRSにエラーが発生しました")]
+    APRSError,
     // #[error("{0}")]
     // KeyValueStoreError(#[from] redis::RedisError),
     // #[error("{0}")]
@@ -60,7 +62,7 @@ impl IntoResponse for AppError {
             AppError::UnauthorizedError => StatusCode::UNAUTHORIZED,
             e @ (AppError::TransactionError(_)
             | AppError::SpecificOperationError(_)
-   
+            | AppError::APRSError
             | AppError::NoRowsAffectedError(_)
             | AppError::PostError(_)
             | AppError::GetError(_)

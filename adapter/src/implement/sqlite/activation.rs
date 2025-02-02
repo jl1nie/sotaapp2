@@ -24,8 +24,8 @@ impl ActivationRepositryImpl {
         sqlx::query!(
             r#"
                 INSERT INTO alerts (program, alert_id, user_id, reference, reference_detail, 
-                                   "location", activator, activator_name, start_time, end_time, frequencies,comment,poster)
-                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                                   "location", activator, activator_name, operator, start_time, end_time, frequencies,comment,poster)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 ON CONFLICT (program, alert_id ) DO UPDATE             
                 SET program = EXCLUDED.program,
                     alert_id = EXCLUDED.alert_id,
@@ -35,6 +35,7 @@ impl ActivationRepositryImpl {
                     "location" = EXCLUDED."location",
                     activator = EXCLUDED. activator,
                     activator_name = EXCLUDED.activator_name,
+                    operator = EXCLUDED.operator,
                     start_time = EXCLUDED.start_time,
                     end_time = EXCLUDED.end_time,
                     frequencies = EXCLUDED.frequencies,
@@ -49,6 +50,7 @@ impl ActivationRepositryImpl {
             a.location,
             a.activator,
             a.activator_name,
+            a.operator,
             a.start_time,
             a.end_time,
             a.frequencies,
@@ -65,8 +67,8 @@ impl ActivationRepositryImpl {
         let program = s.program.as_i32();
         sqlx::query!(
             r#"
-                INSERT INTO spots (program, spot_id, reference, reference_detail, activator, activator_name, spot_time, frequency, mode, spotter,comment) 
-                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                INSERT INTO spots (program, spot_id, reference, reference_detail, activator, activator_name, operator, spot_time, frequency, mode, spotter,comment) 
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 ON CONFLICT (program, spot_id ) DO UPDATE             
                 SET program = EXCLUDED.program,
                     spot_id = EXCLUDED.spot_id,
@@ -74,6 +76,7 @@ impl ActivationRepositryImpl {
                     reference_detail = EXCLUDED.reference_detail,
                     activator = EXCLUDED.activator,
                     activator_name = EXCLUDED.activator_name,
+                    operator = EXCLUDED.operator,
                     spot_time = EXCLUDED.spot_time,
                     frequency = EXCLUDED.frequency,
                     mode = EXCLUDED.mode,
@@ -86,6 +89,7 @@ impl ActivationRepositryImpl {
             s.reference_detail,
             s.activator,
             s.activator_name,
+            s.operator,
             s.spot_time,
             s.frequency,
             s.mode,
@@ -139,6 +143,7 @@ impl ActivationRepositryImpl {
                 location,
                 activator,
                 activator_name,
+                operator,
                 start_time,
                 end_time,
                 frequencies,
@@ -168,6 +173,7 @@ impl ActivationRepositryImpl {
                 reference_detail,
                 activator,
                 activator_name,
+                operator,
                 spot_time,
                 frequency,
                 mode,

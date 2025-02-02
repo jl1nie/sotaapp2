@@ -13,3 +13,4 @@ common.workspace = true
 shaku.workspace = true
 sqlx.workspace = true
 uuid.workspace = true
+aprs-message.workspace = true
