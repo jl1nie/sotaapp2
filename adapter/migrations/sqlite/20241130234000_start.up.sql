@@ -134,3 +134,18 @@ CREATE TABLE IF NOT EXISTS municipality_century_codes(
 );
 
 CREATE INDEX IF NOT EXISTS idx_municipality_century_codes_muni_code ON municipality_century_codes (muni_code);
+
+CREATE TABLE IF NOT EXISTS aprs_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    time DATETIME NOT NULL,
+    callsign VARCHAR(255) NOT NULL,
+    ssid INTEGER NOT NULL,
+    destination VARCHAR(255) NOT NULL,
+    distance REAL NOT NULL,
+    state INTEGER NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_aprs_log_timestamp ON aprs_log (time DESC);
+CREATE INDEX IF NOT EXISTS idx_aprs_log_callsign ON aprs_log (callsign);

@@ -1,5 +1,5 @@
+pub mod implement;
 pub mod model;
-
 #[cfg(not(feature = "sqlite"))]
 pub mod connect {
     use anyhow::Result;
@@ -51,7 +51,14 @@ pub mod connect {
         let dbname = cfg.database.replace("sqlite:", "");
         let database_path = Path::new(&dbname);
         let pool = ConnectionPool(SqlitePool::connect_lazy(&cfg.database)?);
-        //fs::remove_file(&database_path).unwrap();
+
+        if cfg.init_database {
+            tracing::info!("Drop database file {}", database_path.display());
+            if fs::remove_file(database_path).is_err() {
+                tracing::warn!("Failed to remove database file {}", database_path.display());
+            }
+        }
+
         if fs::metadata(database_path).is_err() {
             tracing::warn!(
                 "Database file {} not found. Create it.",
@@ -61,6 +68,7 @@ pub mod connect {
         };
         tracing::info!("Running migrations...");
         m.run(pool.inner_ref()).await?;
+        tracing::info!("done.");
         Ok(pool)
     }
 }

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
 
-use crate::model::common::{id::UserId, AwardProgram};
+use crate::model::{id::UserId, AwardProgram};
 use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference};
 
 #[derive(new, Debug)]
@@ -265,4 +265,10 @@ impl FindActBuilder {
 #[derive(Debug)]
 pub struct DeleteAct {
     pub before: DateTime<Utc>,
+}
+
+#[derive(Debug)]
+pub struct FindAprs {
+    pub callsign: Option<String>,
+    pub after: Option<DateTime<Utc>>,
 }

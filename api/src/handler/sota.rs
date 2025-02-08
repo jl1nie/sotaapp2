@@ -10,7 +10,7 @@ use shaku_axum::Inject;
 
 use common::error::{AppError, AppResult};
 
-use domain::model::common::event::{DeleteRef, FindActBuilder, FindRefBuilder};
+use domain::model::event::{DeleteRef, FindActBuilder, FindRefBuilder};
 use domain::model::sota::SummitCode;
 
 use registry::{AppRegistry, AppState};

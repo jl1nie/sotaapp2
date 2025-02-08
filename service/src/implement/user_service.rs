@@ -3,7 +3,7 @@ use chrono::Utc;
 use common::config::AppConfig;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
-use domain::model::common::id::UserId;
+use domain::model::id::UserId;
 use regex::Regex;
 use shaku::Component;
 use std::collections::HashMap;
@@ -14,14 +14,15 @@ use crate::model::pota::{
 };
 use crate::services::UserService;
 
-use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteLog, FindAct, FindRef, FindResult, GroupBy};
+use domain::model::activation::{Alert, Spot};
+use domain::model::aprslog::AprsLog;
+use domain::model::event::{DeleteLog, FindAct, FindAprs, FindRef, FindResult, GroupBy};
 use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
 
 use domain::repository::{
-    activation::ActivationRepositry, geomag::GeoMagRepositry, locator::LocatorRepositry,
-    pota::POTARepository, sota::SOTARepository,
+    activation::ActivationRepositry, aprs::AprsLogRepository, geomag::GeoMagRepositry,
+    locator::LocatorRepositry, pota::POTARepository, sota::SOTARepository,
 };
 
 #[derive(Component)]
@@ -35,6 +36,8 @@ pub struct UserServiceImpl {
     act_repo: Arc<dyn ActivationRepositry>,
     #[shaku(inject)]
     locator_repo: Arc<dyn LocatorRepositry>,
+    #[shaku(inject)]
+    aprs_log_repo: Arc<dyn AprsLogRepository>,
     #[shaku(inject)]
     geomag_repo: Arc<dyn GeoMagRepositry>,
     config: AppConfig,
@@ -178,5 +181,18 @@ impl UserService for UserServiceImpl {
 
     async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>> {
         Ok(self.geomag_repo.get_geomag().await?)
+    }
+
+    async fn find_aprslog(&self, event: FindAprs) -> AppResult<Vec<AprsLog>> {
+        if event.callsign.is_some() {
+            self.aprs_log_repo
+                .get_aprs_log_by_callsign(&event.callsign.unwrap())
+                .await
+        } else if event.after.is_some() {
+            let after = event.after.unwrap().naive_utc();
+            self.aprs_log_repo.get_aprs_log_by_time(&after).await
+        } else {
+            Err(common::error::AppError::APRSError)
+        }
     }
 }

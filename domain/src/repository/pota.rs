@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use common::error::AppResult;
 use shaku::Interface;
 
-use crate::model::common::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
+use crate::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
 use crate::model::pota::{
     POTAActivatorLog, POTAHunterLog, POTAReference, POTAReferenceWithLog, ParkCode,
 };

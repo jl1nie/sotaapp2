@@ -15,11 +15,13 @@ common.workspace = true
 sqlx.workspace = true
 shaku.workspace = true
 chrono.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 reqwest.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 aprs-message.workspace = true
+tokio-cron-scheduler.workspace = true
 
 [dev-dependencies]
 csv.workspace = true

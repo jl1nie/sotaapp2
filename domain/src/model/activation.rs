@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::model::common::AwardProgram;
+use crate::model::AwardProgram;
 
 #[derive(Debug)]
 pub struct Alert {

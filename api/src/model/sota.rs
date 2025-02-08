@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use common::csv_reader::maidenhead;
-use domain::model::common::event::PagenatedResult;
-use domain::model::common::Maidenhead;
+use domain::model::event::PagenatedResult;
 use domain::model::sota::SOTAReference;
+use domain::model::Maidenhead;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]

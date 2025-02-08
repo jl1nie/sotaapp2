@@ -16,3 +16,4 @@ adapter.workspace = true
 tracing.workspace = true
 regex.workspace = true
 maidenhead.workspace = true
+aprs-message.workspace = true

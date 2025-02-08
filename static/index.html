@@ -132,7 +132,15 @@
 
         <input type="submit" value="送信">
     </form>
+    
+    <h4>APRS</h4>
+    <form id="aprs" method="get">
+        <label for="after">Show spots in :</label>
+        <input type="text" id="aprs-after" name="after" value="1"><br><br>
 
+        <input type="submit" value="送信">
+    </form>
+    
     <h4>Search JCC/JCG by MuniCd</h4>
     <form id="search-jcc" method="get">
         <label for="lon">Lon:</label>
@@ -185,6 +193,7 @@
         const searchbreif = baseurl + '/search/brief';
         const alertsurl = baseurl + '/activation/alerts';
         const spotsurl = baseurl + '/activation/spots';
+        const aprslogurl = baseurl + '/activation/aprslog';
 
         function uploadFile(url, inputid, buttonid) {
             event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
@@ -368,7 +377,8 @@
         document.getElementById('alerts')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                let pat = encodeURIComponent("^(JA|JP-)");
+                //let pat = encodeURIComponent("^(JA|JP-)");
+                let pat = encodeURIComponent("*");
                 let after = document.getElementById('alerts-after').value;
                 let param = `hours_ago=${after}&pat_ref=${pat}`;
 
@@ -378,10 +388,19 @@
         document.getElementById('spots')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                let pat = encodeURIComponent("^(JA|JP-)");
+                //let pat = encodeURIComponent("^(JA|JP-)");
+                let pat = encodeURIComponent("*");
                 let after = document.getElementById('spots-after').value;
                 let param = `hours_ago=${after}&pat_ref=${pat}`;
                 search(spotsurl, param);
+            });
+    
+        document.getElementById('aprs')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let after = document.getElementById('aprs-after').value;
+                let param = `hours_ago=${after}`;
+                search(aprslogurl, param);
             });
 
     </script>

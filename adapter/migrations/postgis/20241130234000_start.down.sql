@@ -7,3 +7,4 @@ DROP TABLE IF EXISTS pota_hunter_log;
 DROP TABLE IF EXISTS alerts;
 DROP TABLE IF EXISTS spots;
 DROP TABLE IF EXISTS municipality_century_codes;
+DROP TABLE IF EXISTS aprs_log;

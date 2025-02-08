@@ -1,5 +1,5 @@
 use chrono::{DateTime, NaiveDate, Utc};
-use domain::model::common::id::UserId;
+use domain::model::id::UserId;
 use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference, POTAReferenceWithLog};
 use sqlx::FromRow;
 

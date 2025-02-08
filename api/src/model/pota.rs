@@ -1,10 +1,10 @@
 use chrono::{DateTime, NaiveDate, Utc};
-use domain::model::common::Maidenhead;
+use domain::model::Maidenhead;
 use serde::{Deserialize, Serialize};
 
 use common::csv_reader::maidenhead;
-use domain::model::common::{event::PagenatedResult, id::UserId};
 use domain::model::pota::{POTAReference, POTAReferenceWithLog};
+use domain::model::{event::PagenatedResult, id::UserId};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

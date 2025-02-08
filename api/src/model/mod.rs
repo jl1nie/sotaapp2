@@ -1,5 +1,6 @@
 pub mod activation;
 pub mod alerts;
+pub mod aprslog;
 pub mod geomag;
 pub mod locator;
 pub mod param;

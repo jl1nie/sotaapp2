@@ -1,15 +1,15 @@
 use async_trait::async_trait;
-use domain::model::common::id::UserId;
+use domain::model::id::UserId;
 use shaku::Component;
 use sqlx::SqliteConnection;
 
 use common::error::{AppError, AppResult};
 
-use domain::model::common::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
-use domain::model::common::AwardProgram::POTA;
+use domain::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
 use domain::model::pota::{
     POTAActivatorLog, POTAHunterLog, POTAReference, POTAReferenceWithLog, ParkCode,
 };
+use domain::model::AwardProgram::POTA;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;

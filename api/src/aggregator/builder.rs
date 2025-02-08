@@ -1,82 +1,63 @@
-use apalis::prelude::*;
-use apalis_cron::CronStream;
-use apalis_cron::Schedule;
-use chrono::{DateTime, Utc};
-use registry::AppState;
-use std::str::FromStr;
+use std::sync::Arc;
+use tokio::time::Duration;
+use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::aggregator::alerts_spots::{UpdateAlerts, UpdateSpots};
-use crate::aggregator::geomag::UpdateGeoMag;
-
+use crate::aggregator::alerts_spots::{update_alerts, update_spots};
+use crate::aggregator::summitlist::update_summit_list;
 use common::config::AppConfig;
-use common::error::AppResult;
+use common::error::{AppError, AppResult};
+use registry::{AppRegistry, AppState};
 
-use super::summitlist::UpdateSummitList;
-
-async fn alert_executer(job: DateTime<Utc>, svc: Data<UpdateAlerts>) {
-    tracing::info!("Update Alerts {}", job);
-    let _ = svc.update().await;
-}
-
-async fn spot_executer(job: DateTime<Utc>, svc: Data<UpdateSpots>) {
-    tracing::info!("Update Spots {}", job);
-    let _ = svc.update().await;
-}
-
-async fn geomag_executer(job: DateTime<Utc>, svc: Data<UpdateGeoMag>) {
-    tracing::info!("Update geomag {}", job);
-    let _ = svc.update().await;
-}
-
-async fn summitlist_executer(job: DateTime<Utc>, svc: Data<UpdateSummitList>) {
-    tracing::info!("Update summitlist {}", job);
-    let _ = svc.update(false).await;
-}
+use super::aprs_packet::process_incoming_packet;
 
 pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
-    let alert_schedule =
-        Schedule::from_str(&config.alert_update_schedule.clone()).expect("bad cron format");
+    let registry: Arc<AppRegistry> = state.into();
 
-    let alert = UpdateAlerts::new(config, state);
-    alert.update().await?;
-    let alert_job = WorkerBuilder::new("update-alerts")
-        .data(alert)
-        .backend(CronStream::new(alert_schedule))
-        .build_fn(alert_executer);
+    let alert_interval = Duration::from_secs(config.alert_update_interval);
+    let spot_interval = Duration::from_secs(config.spot_update_interval);
+    let sched = JobScheduler::new().await.map_err(AppError::CronjobError)?;
 
-    let spot = UpdateSpots::new(config, state);
-    spot.update().await?;
-    let spot_schedule = Schedule::from_str(&config.spot_update_schedule).expect("bad cron format");
-    let spot_job = WorkerBuilder::new("update-spots")
-        .data(spot)
-        .backend(CronStream::new(spot_schedule))
-        .build_fn(spot_executer);
+    let config_alert = config.clone();
+    let registry_alert = registry.clone();
+    let alert_handle = tokio::spawn(async move {
+        loop {
+            let _ = update_alerts(&config_alert, &registry_alert).await;
+            tokio::time::sleep(alert_interval).await;
+        }
+    });
 
-    let geomag = UpdateGeoMag::new(config, state);
-    geomag.update().await?;
-    let geomag_schedule =
-        Schedule::from_str(&config.geomag_update_schedule).expect("bad cron format");
-    let geomag_job = WorkerBuilder::new("update-spots")
-        .data(geomag)
-        .backend(CronStream::new(geomag_schedule))
-        .build_fn(geomag_executer);
+    let config_spot = config.clone();
+    let registry_spot = registry.clone();
+    let spot_handle = tokio::spawn(async move {
+        loop {
+            let _ = update_spots(&config_spot, &registry_spot).await;
+            tokio::time::sleep(spot_interval).await;
+        }
+    });
 
-    let summitlist = UpdateSummitList::new(config, state);
-    if config.import_all_at_startup {
-        summitlist.update(config.import_all_at_startup).await?;
-    }
-    let summitlist_schedule =
-        Schedule::from_str(&config.sota_summitlist_update_schedule).expect("bad cron format");
-    let summit_job = WorkerBuilder::new("update-spots")
-        .data(summitlist)
-        .backend(CronStream::new(summitlist_schedule))
-        .build_fn(summitlist_executer);
+    let registry_aprs = registry.clone();
+    let aprs_handle = tokio::spawn(async move {
+        loop {
+            let _ = process_incoming_packet(&registry_aprs).await;
+        }
+    });
 
-    let alert_future = Monitor::new().register(alert_job).run();
-    let spot_future = Monitor::new().register(spot_job).run();
-    let geomag_future = Monitor::new().register(geomag_job).run();
-    let summit_future = Monitor::new().register(summit_job).run();
+    let schedule = config.sota_summitlist_update_schedule.clone();
+    let config_summit = config.clone();
+    sched
+        .add(
+            Job::new_async(&schedule, move |_uuid, _l| {
+                let config = config_summit.clone();
+                let registry = registry.clone();
+                Box::pin(async move {
+                    update_summit_list(config, registry).await.unwrap();
+                })
+            })
+            .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
+        )
+        .await
+        .map_err(AppError::CronjobError)?;
 
-    let _res = tokio::join!(alert_future, spot_future, geomag_future, summit_future);
+    let _res = tokio::join!(alert_handle, spot_handle, aprs_handle);
     Ok(())
 }
