@@ -5,13 +5,14 @@ use shaku_axum::Inject;
 
 use common::error::AppResult;
 
-use domain::model::common::event::FindActBuilder;
+use domain::model::event::{FindActBuilder, FindAprs};
 
 use registry::{AppRegistry, AppState};
 use service::services::UserService;
 
 use crate::model::{
-    activation::ActivationResponse, alerts::AlertResponse, param::GetParam, spots::SpotResponse,
+    activation::ActivationResponse, alerts::AlertResponse, aprslog::AprsLogResponse,
+    param::GetParam, spots::SpotResponse,
 };
 
 async fn show_spots(
@@ -141,6 +142,30 @@ async fn show_all_alerts(
     show_alerts(user_service, param, query).await
 }
 
+async fn show_aprs_log(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<GetParam>,
+) -> AppResult<Json<Vec<AprsLogResponse>>> {
+    let mut request = FindAprs {
+        callsign: None,
+        after: None,
+    };
+    if param.by_call.is_some() {
+        request.callsign = param.by_call;
+    } else if param.hours_ago.is_some() {
+        request.after = Some(Utc::now() - Duration::hours(param.hours_ago.unwrap()));
+    }
+
+    let result = user_service
+        .find_aprslog(request)
+        .await?
+        .into_iter()
+        .map(AprsLogResponse::from)
+        .collect::<Vec<_>>();
+
+    Ok(Json(result))
+}
+
 pub fn build_activation_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/alerts", get(show_all_alerts))
@@ -148,6 +173,7 @@ pub fn build_activation_routers() -> Router<AppState> {
         .route("/alerts/pota", get(show_pota_alerts))
         .route("/spots", get(show_all_spots))
         .route("/spots/sota", get(show_sota_spots))
-        .route("/spots/pota", get(show_pota_spots));
+        .route("/spots/pota", get(show_pota_spots))
+        .route("/aprslog", get(show_aprs_log));
     Router::new().nest("/activation", routers)
 }

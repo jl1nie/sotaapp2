@@ -1,14 +1,14 @@
 use axum::extract::FromRef;
 use common::config::AppConfig;
 use shaku::module;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use aprs_message::AprsIS;
 
 use adapter::{
+    aprs::{AprsRepositryImpl, AprsRepositryImplParameters},
     database::connect::ConnectionPool,
-    implement::aprs::{AprsRepositryImpl, AprsRepositryImplParameters},
-    implement::geomag::{GeoMagRepositryImpl, GeoMagRepositryImplParameters},
+    geomag::{GeoMag, GeoMagRepositryImpl, GeoMagRepositryImplParameters},
 };
 
 use service::implement::{
@@ -18,8 +18,9 @@ use service::implement::{
 };
 
 #[cfg(not(feature = "sqlite"))]
-use adapter::implement::postgis::{
+use adapter::database::implement::postgis::{
     activation::{ActivationRepositryImpl, ActivationRepositryImplParameters},
+    aprslog::{AprsLogRepositoryImpl, AprsLogRepositoryImplParameters},
     healthcheck::{HealthCheckRepositryImpl, HealthCheckRepositryImplParameters},
     locator::{LocatorRepositryImpl, LocatorRepositryImplParameters},
     pota_reference::{POTARepositoryImpl, POTARepositoryImplParameters},
@@ -27,8 +28,9 @@ use adapter::implement::postgis::{
 };
 
 #[cfg(feature = "sqlite")]
-use adapter::implement::sqlite::{
+use adapter::database::implement::sqlite::{
     activation::{ActivationRepositryImpl, ActivationRepositryImplParameters},
+    aprslog::{AprsLogRepositoryImpl, AprsLogRepositoryImplParameters},
     healthcheck::{HealthCheckRepositryImpl, HealthCheckRepositryImplParameters},
     locator::{LocatorRepositryImpl, LocatorRepositryImplParameters},
     pota_reference::{POTARepositoryImpl, POTARepositoryImplParameters},
@@ -39,14 +41,14 @@ module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
         SOTARepositoryImpl,POTARepositoryImpl,
-        LocatorRepositryImpl,GeoMagRepositryImpl,AprsRepositryImpl,
+        LocatorRepositryImpl,GeoMagRepositryImpl,AprsRepositryImpl,AprsLogRepositoryImpl,
         HealthCheckRepositryImpl],
         providers = [],
     }
 }
 
 impl AppRegistry {
-    pub fn new(config: &AppConfig, pool: ConnectionPool, aprs: AprsIS) -> Self {
+    pub fn new(config: &AppConfig, pool: ConnectionPool, aprs: AprsIS, geomag: GeoMag) -> Self {
         AppRegistry::builder()
             .with_component_parameters::<SOTARepositoryImpl>(SOTARepositoryImplParameters {
                 pool: pool.clone(),
@@ -57,6 +59,9 @@ impl AppRegistry {
             .with_component_parameters::<ActivationRepositryImpl>(
                 ActivationRepositryImplParameters { pool: pool.clone() },
             )
+            .with_component_parameters::<AprsLogRepositoryImpl>(AprsLogRepositoryImplParameters {
+                pool: pool.clone(),
+            })
             .with_component_parameters::<LocatorRepositryImpl>(LocatorRepositryImplParameters {
                 config: config.clone(),
                 pool: pool.clone(),
@@ -71,7 +76,7 @@ impl AppRegistry {
                 },
             )
             .with_component_parameters::<GeoMagRepositryImpl>(GeoMagRepositryImplParameters {
-                latest_data: Arc::new(Mutex::new(None)),
+                geomag: geomag.clone(),
             })
             .with_component_parameters::<AprsRepositryImpl>(AprsRepositryImplParameters {
                 aprs: aprs.clone(),

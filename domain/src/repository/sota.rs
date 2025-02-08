@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use common::error::AppResult;
 use shaku::Interface;
 
-use crate::model::common::event::{DeleteRef, FindRef, PagenatedResult};
+use crate::model::event::{DeleteRef, FindRef, PagenatedResult};
 use crate::model::sota::{SOTAReference, SummitCode};
 
 #[async_trait]

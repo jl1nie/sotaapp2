@@ -1,14 +1,17 @@
 use async_trait::async_trait;
+use domain::model::aprslog::AprsLog;
 use shaku::Interface;
 use std::collections::HashMap;
 
+use aprs_message::AprsData;
+
 use common::error::AppResult;
-use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{
-    DeleteRef, FindAct, FindRef, FindResult, GroupBy, PagenatedResult,
+use domain::model::activation::{Alert, Spot};
+use domain::model::event::{
+    DeleteRef, FindAct, FindAprs, FindRef, FindResult, GroupBy, PagenatedResult,
 };
-use domain::model::common::id::UserId;
 use domain::model::geomag::GeomagIndex;
+use domain::model::id::UserId;
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
@@ -33,7 +36,7 @@ pub trait UserService: Send + Sync + Interface {
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;
-
+    async fn find_aprslog(&self, event: FindAprs) -> AppResult<Vec<AprsLog>>;
     async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>>;
 }
 
@@ -66,5 +69,5 @@ pub trait AdminService: Send + Sync + Interface {
 pub trait AdminPeriodicService: Send + Sync + Interface {
     async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()>;
     async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()>;
-    async fn update_geomag(&self, index: GeomagIndex) -> AppResult<()>;
+    async fn aprs_packet_received(&self, packet: AprsData) -> AppResult<()>;
 }

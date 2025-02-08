@@ -1,5 +1,5 @@
-use domain::model::common::event::{FindAct, FindRef};
-use domain::model::common::AwardProgram::{self, POTA, SOTA, WWFF};
+use domain::model::event::{FindAct, FindRef};
+use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
 
 fn calculate_bounding_box(lat: f64, lon: f64, distance: f64) -> (f64, f64, f64, f64) {
     let earth_radius = 6371000.0;

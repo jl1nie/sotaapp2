@@ -2,10 +2,10 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
 use common::error::{AppError, AppResult};
-use common::utils::to_operator;
+use common::utils::call_to_operator;
 
-use domain::model::common::activation::Alert;
-use domain::model::common::AwardProgram;
+use domain::model::activation::Alert;
+use domain::model::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +39,7 @@ impl From<SOTAAlert> for AppResult<Alert> {
             reference_detail: a.summit_details,
             location: a.association_code,
             activator_name: None,
-            operator: to_operator(&a.activating_callsign),
+            operator: call_to_operator(&a.activating_callsign),
             activator: a.activating_callsign,
             start_time: date_activated,
             end_time: None,
@@ -89,7 +89,7 @@ impl From<POTAAlert> for AppResult<Alert> {
             reference: a.reference,
             reference_detail: a.name,
             location: a.location_desc,
-            operator: to_operator(&a.activator),
+            operator: call_to_operator(&a.activator),
             activator: a.activator,
             activator_name: None,
             start_time,

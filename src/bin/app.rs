@@ -1,4 +1,7 @@
-use adapter::{aprs::connect::connect_aprsis_with, database::connect::connect_database_with};
+use adapter::{
+    aprs::connect_aprsis_with, database::connect::connect_database_with,
+    geomag::connect_geomag_with,
+};
 use anyhow::{Error, Result};
 use axum::{http::HeaderValue, Router};
 use common::config::AppConfig;
@@ -30,8 +33,9 @@ async fn bootstrap() -> Result<()> {
 
     let pool = connect_database_with(&config).await?;
     let aprs = connect_aprsis_with(&config).await?;
+    let geomag = connect_geomag_with(&config).await?;
 
-    let module = AppRegistry::new(&config, pool, aprs);
+    let module = AppRegistry::new(&config, pool, aprs, geomag);
     let app_state = AppState::new(module);
     let job_state = app_state.clone();
 

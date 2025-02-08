@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::str::FromStr;
 
 use common::error::AppResult;
-use domain::model::common::{
+use domain::model::{
     event::{FindRef, FindRefBuilder},
     id::UserId,
 };

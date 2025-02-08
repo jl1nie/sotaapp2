@@ -8,7 +8,7 @@ use std::sync::Arc;
 use common::csv_reader::csv_reader;
 use common::error::AppResult;
 
-use domain::model::common::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
+use domain::model::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};

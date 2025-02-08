@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use common::error::AppResult;
 use shaku::Interface;
 
-use crate::model::common::event::FindRef;
+use crate::model::event::FindRef;
 
 #[async_trait]
 pub trait MapCodeRepositry: Send + Sync + Interface {

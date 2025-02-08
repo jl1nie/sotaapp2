@@ -9,11 +9,11 @@ use common::error::{AppError, AppResult};
 use shaku_axum::Inject;
 use std::str::FromStr;
 
-use domain::model::common::{
+use domain::model::pota::ParkCode;
+use domain::model::{
     event::{DeleteRef, FindActBuilder, FindRefBuilder},
     id::UserId,
 };
-use domain::model::pota::ParkCode;
 
 use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};

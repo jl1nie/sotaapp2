@@ -29,6 +29,8 @@ pub enum AppError {
     ParseError(#[source] chrono::ParseError),
     #[error("APRSにエラーが発生しました")]
     APRSError,
+    #[error("JOBSにエラーが発生しました")]
+    CronjobError(#[source] tokio_cron_scheduler::JobSchedulerError),
     // #[error("{0}")]
     // KeyValueStoreError(#[from] redis::RedisError),
     // #[error("{0}")]
@@ -63,6 +65,7 @@ impl IntoResponse for AppError {
             e @ (AppError::TransactionError(_)
             | AppError::SpecificOperationError(_)
             | AppError::APRSError
+            | AppError::CronjobError(_)
             | AppError::NoRowsAffectedError(_)
             | AppError::PostError(_)
             | AppError::GetError(_)

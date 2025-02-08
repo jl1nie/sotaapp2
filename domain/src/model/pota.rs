@@ -1,4 +1,4 @@
-use super::common::{id::UserId, Maidenhead};
+use super::{id::UserId, Maidenhead};
 use chrono::{DateTime, NaiveDate, Utc};
 
 #[derive(Debug)]

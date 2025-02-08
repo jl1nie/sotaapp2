@@ -16,18 +16,18 @@ LOG_LEVEL = "info"
 SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
 SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
 SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
-SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
-IMPORT_STARTUP = "false"
+SUMMITLIST_SCHEDULE = "0 0 16 * * *"
 POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
 POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
 GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
-GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+GEOMAG_SCHEDULE = "0 35 */3 * * *"
 MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
-ALERT_SCHEDULE = "30 */10 * * * *"
-SPOT_SCHEDULE = "0 */2 * * * *"
-ALERT_EXPIRE = "24"
-SPOT_EXPIRE = "48"
-POTA_LOG_EXPIRE = "180"
+ALERT_INTERVAL = 600
+SPOT_INTERVAL = 120
+ALERT_EXPIRE = 24
+SPOT_EXPIRE = 48
+APRSLOG_EXPIRE = 10
+POTA_LOG_EXPIRE = 180
 
 # Docker Composeのネットワーク内でのDB等への接続情報
 [tasks.set-env-docker.env]
@@ -36,6 +36,7 @@ MIGRATION_PATH = "./migrations"
 DATABASE_HOST = "postgres"
 DATABASE_PORT = "${DATABASE_PORT_INNER}"
 DATABASE_URL = "sqlite:/app/data/sotaapp2.db"
+INIT_DATABASE = "true"
 #DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
 REDIS_HOST = "redis"
 REDIS_PORT = "${REDIS_PORT_INNER}"
@@ -45,24 +46,26 @@ LOG_LEVEL = "info"
 SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
 SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
 SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
-SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
-IMPORT_STARTUP = "false"
+SUMMITLIST_SCHEDULE = "0 0 16 * * *"
 POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
 POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
 GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
-GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+GEOMAG_SCHEDULE = "0 35 */3 * * *"
 MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
-ALERT_SCHEDULE = "30 */10 * * * *"
-SPOT_SCHEDULE = "0 */2 * * * *"
-ALERT_EXPIRE = "24"
-SPOT_EXPIRE = "48"
-POTA_LOG_EXPIRE = "180"
+ALERT_INTERVAL = 600
+SPOT_INTERVAL = 120
+ALERT_EXPIRE = 24
+SPOT_EXPIRE = 48
+APRSLOG_EXPIRE = 10
+POTA_LOG_EXPIRE = 180
+
 # Docker Compose外からDB等にアクセスする際の接続情報
 [tasks.set-env-local.env]
 DOCKER_FILE = "Dockerfile.sqlite"
 DATABASE_PORT = "${DATABASE_PORT_OUTER}"
 DATABASE_URL = "sqlite:./sotaapp2.db"
 MIGRATION_PATH = "./migrations"
+INIT_DATABASE = "true"
 #DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
 REDIS_HOST = "localhost"
 REDIS_PORT = "${REDIS_PORT_OUTER}"
@@ -72,18 +75,18 @@ LOG_LEVEL = "info"
 SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
 SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
 SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
-SUMMITLIST_SCHEDULE = "0 0 16 * * * *"
-IMPORT_STARTUP = "false"
+SUMMITLIST_SCHEDULE = "0 0 16 * * *"
 POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
 POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
 GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
-GEOMAG_SCHEDULE = "0 35 */3 * * * *"
+GEOMAG_SCHEDULE = "0 35 0/3 * * *"
 MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
-ALERT_SCHEDULE = "30 */10 * * * *"
-SPOT_SCHEDULE = "0 */2 * * * *"
-ALERT_EXPIRE = "24"
-SPOT_EXPIRE = "48"
-POTA_LOG_EXPIRE = "180"
+ALERT_INTERVAL = 600
+SPOT_INTERVAL = 120
+ALERT_EXPIRE = 24
+SPOT_EXPIRE = 48
+APRSLOG_EXPIRE = 10
+POTA_LOG_EXPIRE = 180
 [tasks.before-build]
 run_task = [{ name = ["compose-up-db", "compose-up-redis"] }]
 
@@ -107,7 +110,8 @@ args = ["run", "${@}"]
 
 [tasks.run-in-docker]
 extend = "set-env-docker"
-dependencies = ["before-build", "compose-build-app"]
+#dependencies = ["before-build", "compose-build-app"]
+dependencies = ["compose-build-app"]
 command = "docker"
 args = ["compose", "up", "-d", "app"]
 

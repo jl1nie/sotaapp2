@@ -4,7 +4,7 @@ use shaku_axum::Inject;
 use std::time::Instant;
 
 use common::error::AppResult;
-use domain::model::common::event::{FindRefBuilder, FindResult};
+use domain::model::event::{FindRefBuilder, FindResult};
 
 use registry::{AppRegistry, AppState};
 use service::services::UserService;

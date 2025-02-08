@@ -1,16 +1,13 @@
+use aprs_message::AprsData;
 use async_trait::async_trait;
 use chrono::{DateTime, TimeDelta, Utc};
-use common::config::AppConfig;
-use domain::model::common::AwardProgram;
-use domain::repository::aprs::AprsRepositry;
+use domain::repository::aprs::AprsLogRepository;
 use shaku::Component;
 use std::sync::Arc;
 
-use common::error::AppResult;
-
-use domain::model::common::{activation::Alert, activation::Spot, event::DeleteAct};
-use domain::model::geomag::GeomagIndex;
-use domain::repository::{activation::ActivationRepositry, geomag::GeoMagRepositry};
+use common::{config::AppConfig, error::AppResult};
+use domain::model::{activation::Alert, activation::Spot, event::DeleteAct};
+use domain::repository::{activation::ActivationRepositry, aprs::AprsRepositry};
 
 use crate::services::AdminPeriodicService;
 
@@ -20,9 +17,10 @@ pub struct AdminPeriodicServiceImpl {
     #[shaku(inject)]
     act_repo: Arc<dyn ActivationRepositry>,
     #[shaku(inject)]
-    geomag_repo: Arc<dyn GeoMagRepositry>,
-    #[shaku(inject)]
     aprs_repo: Arc<dyn AprsRepositry>,
+    #[shaku(inject)]
+    aprs_log_repo: Arc<dyn AprsLogRepository>,
+
     config: AppConfig,
 }
 
@@ -33,19 +31,20 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
 
         let now: DateTime<Utc> = Utc::now();
         let alert_window_start = now - TimeDelta::hours(3);
-        let alert_window_end = now + TimeDelta::hours(5);
-        let buddy: Vec<_> = alerts
+        let alert_window_end = now + TimeDelta::hours(6);
+        let mut buddy: Vec<_> = alerts
             .iter()
             .filter(|a| {
-                a.program == AwardProgram::SOTA
+                a.program == domain::model::AwardProgram::SOTA
                     && a.start_time > alert_window_start
                     && a.start_time < alert_window_end
             })
-            .map(|a| a.operator.clone() + "-*")
+            .map(|a| a.operator.clone())
             .collect();
 
-        if buddy.len() > 0 {
-            tracing::info!("buddy list ={:?}", buddy);
+        buddy.push("JL1NIE".to_string());
+
+        if !buddy.is_empty() {
             self.aprs_repo.set_buddy_list(buddy).await?;
         }
 
@@ -71,8 +70,60 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
         Ok(())
     }
 
-    async fn update_geomag(&self, index: GeomagIndex) -> AppResult<()> {
-        self.geomag_repo.update_geomag(index).await?;
+    async fn aprs_packet_received(&self, packet: AprsData) -> AppResult<()> {
+        tracing::info!("APRS packet received {:?}", packet);
+        match packet {
+            AprsData::AprsMesasge {
+                callsign,
+                ssid,
+                addressee,
+                message,
+            } => {
+                tracing::info!(
+                    "APRS message from = {:} ssid = {:?} to = {:} message = {:}",
+                    callsign,
+                    ssid,
+                    addressee,
+                    message
+                );
+                let message = format!("{}:{}", callsign, message);
+                self.aprs_repo.write_message(&callsign, &message).await?;
+            }
+            AprsData::AprsPosition {
+                callsign,
+                ssid,
+                latitude,
+                longitude,
+            } => {
+                if let Some(ssid) = ssid {
+                    if [5, 6, 7, 8, 9].contains(&ssid) {
+                        tracing::info!(
+                            "APRS position from = {:} ssid = {:} lon={} lat={}",
+                            callsign,
+                            ssid,
+                            longitude,
+                            latitude
+                        );
+                        let time = Utc::now().naive_utc();
+                        let log = domain::model::aprslog::AprsLog {
+                            callsign: callsign.clone(),
+                            ssid,
+                            destination: "".to_string(),
+                            state: domain::model::aprslog::AprsState::Approaching {
+                                time,
+                                distance: 0.0,
+                            },
+                            longitude,
+                            latitude,
+                        };
+                        self.aprs_log_repo.insert_aprs_log(log).await?;
+
+                        let expire = time - self.config.aprslog_expire;
+                        self.aprs_log_repo.delete_aprs_log(&expire).await?;
+                    }
+                }
+            }
+        };
         Ok(())
     }
 }

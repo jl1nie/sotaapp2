@@ -1,4 +1,4 @@
-use super::common::Maidenhead;
+use super::Maidenhead;
 
 pub struct SummitCode(String);
 impl SummitCode {

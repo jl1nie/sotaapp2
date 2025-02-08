@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use common::error::AppResult;
 use shaku::Interface;
 
-use crate::model::common::activation::{Alert, Spot};
-use crate::model::common::event::{DeleteAct, FindAct};
+use crate::model::activation::{Alert, Spot};
+use crate::model::event::{DeleteAct, FindAct};
 
 #[async_trait]
 pub trait ActivationRepositry: Send + Sync + Interface {

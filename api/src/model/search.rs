@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use super::pota::{POTARefResponseWithLog, POTASearchResult};
 use super::sota::{SOTARefResponse, SOTASearchResult};
-use domain::model::common::event::FindResult;
+use domain::model::event::FindResult;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

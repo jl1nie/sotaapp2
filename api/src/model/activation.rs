@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use domain::model::common::event::GroupBy;
+use domain::model::event::GroupBy;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

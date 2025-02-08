@@ -1,4 +1,4 @@
-pub fn to_operator(callsign: &String) -> String {
+pub fn call_to_operator(callsign: &str) -> String {
     let callsign = callsign.trim_end().to_string();
     let parts: Vec<_> = callsign.split("/").collect();
     match parts.len() {

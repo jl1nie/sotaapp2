@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use shaku::Component;
-use sqlx::PgConnection;
+use sqlx::SqliteConnection;
 
 use common::error::{AppError, AppResult};
 
-use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteAct, FindAct};
+use domain::model::activation::{Alert, Spot};
+use domain::model::event::{DeleteAct, FindAct};
 use domain::repository::activation::ActivationRepositry;
 
 use super::querybuilder::findact_query_builder;
@@ -19,11 +19,12 @@ pub struct ActivationRepositryImpl {
 }
 
 impl ActivationRepositryImpl {
-    async fn update_alert_impl(&self, a: AlertImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update_alert_impl(&self, a: AlertImpl, db: &mut SqliteConnection) -> AppResult<()> {
+        let program = a.program.as_i32();
         sqlx::query!(
             r#"
                 INSERT INTO alerts (program, alert_id, user_id, reference, reference_detail, 
-                                   "location", activator, activator_name, operator, tart_time, end_time, frequencies,comment,poster)
+                                   "location", activator, activator_name, operator, start_time, end_time, frequencies,comment,poster)
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 ON CONFLICT (program, alert_id ) DO UPDATE             
                 SET program = EXCLUDED.program,
@@ -34,14 +35,14 @@ impl ActivationRepositryImpl {
                     "location" = EXCLUDED."location",
                     activator = EXCLUDED. activator,
                     activator_name = EXCLUDED.activator_name,
-                    operator = EXCLUDE.operator,
+                    operator = EXCLUDED.operator,
                     start_time = EXCLUDED.start_time,
                     end_time = EXCLUDED.end_time,
                     frequencies = EXCLUDED.frequencies,
                     comment = EXCLUDED.comment,
                     poster = EXCLUDED.poster
             "#,
-            a.program.as_i32(),
+            program,
             a.alert_id,
             a.user_id,
             a.reference,
@@ -62,7 +63,8 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn update_spot_impl(&self, s: SpotImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update_spot_impl(&self, s: SpotImpl, db: &mut SqliteConnection) -> AppResult<()> {
+        let program = s.program.as_i32();
         sqlx::query!(
             r#"
                 INSERT INTO spots (program, spot_id, reference, reference_detail, activator, activator_name, operator, spot_time, frequency, mode, spotter,comment) 
@@ -74,14 +76,14 @@ impl ActivationRepositryImpl {
                     reference_detail = EXCLUDED.reference_detail,
                     activator = EXCLUDED.activator,
                     activator_name = EXCLUDED.activator_name,
-                    operator = EXCLUDE.operator,
+                    operator = EXCLUDED.operator,
                     spot_time = EXCLUDED.spot_time,
                     frequency = EXCLUDED.frequency,
                     mode = EXCLUDED.mode,
                     spotter = EXCLUDED.spotter,
                     comment = EXCLUDED.comment
             "#,
-            s.program.as_i32(),
+            program,
             s.spot_id,
             s.reference,
             s.reference_detail,
@@ -100,7 +102,7 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn delete_alerts_impl(&self, d: DeleteAct, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete_alerts_impl(&self, d: DeleteAct, db: &mut SqliteConnection) -> AppResult<()> {
         let before = d.before;
         sqlx::query!(
             r#"
@@ -115,7 +117,7 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn delete_spots_impl(&self, d: DeleteAct, db: &mut PgConnection) -> AppResult<()> {
+    async fn delete_spots_impl(&self, d: DeleteAct, db: &mut SqliteConnection) -> AppResult<()> {
         let before = d.before;
         sqlx::query!(
             r#"
@@ -201,13 +203,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        let len = alerts.len();
+
         for r in alerts.into_iter().enumerate() {
             self.update_alert_impl(AlertImpl::from(r.1), &mut tx)
                 .await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
-        tracing::info!("{} alerts updated.", len);
         Ok(())
     }
 
@@ -218,12 +219,11 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        let len = spots.len();
+
         for r in spots.into_iter().enumerate() {
             self.update_spot_impl(SpotImpl::from(r.1), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
-        tracing::info!("{} spots updated.", len);
         Ok(())
     }
     async fn delete_alerts(&self, query: DeleteAct) -> AppResult<()> {
