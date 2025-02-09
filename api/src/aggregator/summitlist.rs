@@ -1,6 +1,7 @@
 use reqwest;
 use shaku::HasComponent;
 use std::sync::Arc;
+use std::time::Duration;
 
 use common::error::AppResult;
 use common::{config::AppConfig, error::AppError};
@@ -20,6 +21,10 @@ pub async fn update_summit_list(config: AppConfig, registry: Arc<AppRegistry>) -
 
     let event = UploadSOTACSV { data };
     service.update_summit_list(event).await?;
+
+    tokio::time::sleep(Duration::from_secs(10)).await;
+    tracing::info!("Sending graceful shutdown signal.");
+    let _ = config.shutdown_tx.send(true);
 
     Ok(())
 }

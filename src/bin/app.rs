@@ -6,7 +6,7 @@ use anyhow::{Error, Result};
 use axum::{http::HeaderValue, Router};
 use common::config::AppConfig;
 use std::net::{IpAddr, SocketAddr};
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::watch};
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
@@ -53,7 +53,12 @@ async fn bootstrap() -> Result<()> {
     let ip_addr: IpAddr = config.host.parse().expect("Invalid IP Address");
     let addr = SocketAddr::new(ip_addr, config.port);
     let listener = TcpListener::bind(&addr).await?;
-    let http = async { axum::serve(listener, app).await.map_err(Error::from) };
+    let http = async {
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shudown_signal(config.shutdown_rx.clone()))
+            .await
+            .map_err(Error::from)
+    };
     let job_monitor = async { api::aggregator::builder::build(&config, &job_state).await };
 
     tracing::info!("DATABASE_URL = {}", config.database);
@@ -62,4 +67,9 @@ async fn bootstrap() -> Result<()> {
     let _res = tokio::join!(job_monitor, http);
 
     Ok(())
+}
+
+async fn shudown_signal(mut shutdown_rx: watch::Receiver<bool>) {
+    let _ = shutdown_rx.changed().await;
+    tracing::info!("Shutdowm axum server.");
 }

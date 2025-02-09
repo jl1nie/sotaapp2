@@ -16,7 +16,7 @@ LOG_LEVEL = "info"
 SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
 SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
 SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
-SUMMITLIST_SCHEDULE = "0 0 16 * * *"
+SUMMITLIST_SCHEDULE = "0 10 9 * * *"
 POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
 POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
 GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
@@ -36,7 +36,7 @@ MIGRATION_PATH = "./migrations"
 DATABASE_HOST = "postgres"
 DATABASE_PORT = "${DATABASE_PORT_INNER}"
 DATABASE_URL = "sqlite:/app/data/sotaapp2.db"
-INIT_DATABASE = "true"
+INIT_DATABASE = "false"
 #DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
 REDIS_HOST = "redis"
 REDIS_PORT = "${REDIS_PORT_INNER}"
@@ -65,7 +65,7 @@ DOCKER_FILE = "Dockerfile.sqlite"
 DATABASE_PORT = "${DATABASE_PORT_OUTER}"
 DATABASE_URL = "sqlite:./sotaapp2.db"
 MIGRATION_PATH = "./migrations"
-INIT_DATABASE = "true"
+INIT_DATABASE = "false"
 #DATABASE_URL = "postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?user=${DATABASE_USERNAME}&password=${DATABASE_PASSWORD}"
 REDIS_HOST = "localhost"
 REDIS_PORT = "${REDIS_PORT_OUTER}"
@@ -75,14 +75,14 @@ LOG_LEVEL = "info"
 SOTA_ALERT_ENDPOINT = "https://api2.sota.org.uk/api/alerts"
 SOTA_SPOT_ENDPOINT = "https://api2.sota.org.uk/api/spots/20?"
 SOTA_SUMMITLIST_ENDPOINT = "https://www.sotadata.org.uk/summitslist.csv"
-SUMMITLIST_SCHEDULE = "0 0 16 * * *"
+SUMMITLIST_SCHEDULE = "0 47 10 * * *"
 POTA_ALERT_ENDPOINT = "https://api.pota.app/activation/"
 POTA_SPOT_ENDPOINT = "https://api.pota.app/spot/activator/"
 GEOMAG_ENDPOINT = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
 GEOMAG_SCHEDULE = "0 35 0/3 * * *"
 MAPCODE_ENDPOINT = "https://japanmapcode.com/mapcode"
-ALERT_INTERVAL = 600
-SPOT_INTERVAL = 120
+ALERT_INTERVAL = 300
+SPOT_INTERVAL = 60
 ALERT_EXPIRE = 24
 SPOT_EXPIRE = 48
 APRSLOG_EXPIRE = 10
@@ -104,7 +104,7 @@ args = [
 
 [tasks.run]
 extend = "set-env-local"
-dependencies = ["before-build"]
+#dependencies = ["before-build"]
 command = "cargo"
 args = ["run", "${@}"]
 
@@ -123,7 +123,7 @@ args = ["compose", "logs", "${@}"]
 
 [tasks.build]
 extend = "set-env-local"
-dependencies = ["before-build"]
+#dependencies = ["before-build"]
 command = "cargo"
 args = ["build", "${@}"]
 
