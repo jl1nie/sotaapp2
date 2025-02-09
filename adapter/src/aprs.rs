@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use aprs_message::{AprsData, AprsIS};
+use aprs_message::{AprsCallsign, AprsData, AprsIS};
 use async_trait::async_trait;
 use shaku::Component;
 
@@ -22,7 +22,7 @@ pub struct AprsRepositryImpl {
 
 #[async_trait]
 impl AprsRepositry for AprsRepositryImpl {
-    async fn write_message(&self, addressee: &str, message: &str) -> AppResult<()> {
+    async fn write_message(&self, addressee: &AprsCallsign, message: &str) -> AppResult<()> {
         self.aprs
             .write_message(addressee, message)
             .await

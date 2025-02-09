@@ -30,7 +30,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
         tracing::info!("Update {} alerts", alerts.len());
 
         let now: DateTime<Utc> = Utc::now();
-        let alert_window_start = now - TimeDelta::hours(3);
+        let alert_window_start = now - TimeDelta::hours(5);
         let alert_window_end = now + TimeDelta::hours(6);
         let mut buddy: Vec<_> = alerts
             .iter()
@@ -46,6 +46,9 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
 
         if !buddy.is_empty() {
             self.aprs_repo.set_buddy_list(buddy).await?;
+            //self.aprs_repo
+            //    .set_filter("r/35.684074/139.75296/100 b/JL1NIE".to_string())
+            //    .await?;
         }
 
         self.act_repo.update_alerts(alerts).await?;
@@ -53,6 +56,11 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
         let expire = now - self.config.alert_expire;
         self.act_repo
             .delete_alerts(DeleteAct { before: expire })
+            .await?;
+
+        let expire = now - self.config.aprslog_expire;
+        self.aprs_log_repo
+            .delete_aprs_log(&expire.naive_utc())
             .await?;
 
         Ok(())
@@ -71,42 +79,40 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
     }
 
     async fn aprs_packet_received(&self, packet: AprsData) -> AppResult<()> {
-        tracing::info!("APRS packet received {:?}", packet);
         match packet {
             AprsData::AprsMesasge {
-                callsign,
-                ssid,
+                ref callsign,
                 addressee,
                 message,
             } => {
                 tracing::info!(
-                    "APRS message from = {:} ssid = {:?} to = {:} message = {:}",
+                    "APRS message from = {:?} to = {:} message = {:}",
                     callsign,
-                    ssid,
                     addressee,
                     message
                 );
-                let message = format!("{}:{}", callsign, message);
-                self.aprs_repo.write_message(&callsign, &message).await?;
+
+                let msgcall: String = callsign.into();
+                let message = format!("{}:{}", msgcall, message);
+
+                self.aprs_repo.write_message(callsign, &message).await?;
             }
             AprsData::AprsPosition {
-                callsign,
-                ssid,
+                ref callsign,
                 latitude,
                 longitude,
             } => {
-                if let Some(ssid) = ssid {
+                if let Some(ssid) = callsign.ssid {
                     if [5, 6, 7, 8, 9].contains(&ssid) {
                         tracing::info!(
-                            "APRS position from = {:} ssid = {:} lon={} lat={}",
+                            "APRS position from = {:?} lon={} lat={}",
                             callsign,
-                            ssid,
                             longitude,
                             latitude
                         );
                         let time = Utc::now().naive_utc();
                         let log = domain::model::aprslog::AprsLog {
-                            callsign: callsign.clone(),
+                            callsign: callsign.into(),
                             ssid,
                             destination: "".to_string(),
                             state: domain::model::aprslog::AprsState::Approaching {
@@ -117,9 +123,6 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                             latitude,
                         };
                         self.aprs_log_repo.insert_aprs_log(log).await?;
-
-                        let expire = time - self.config.aprslog_expire;
-                        self.aprs_log_repo.delete_aprs_log(&expire).await?;
                     }
                 }
             }

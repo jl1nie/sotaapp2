@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::Duration;
+use tokio::sync::watch;
 
 #[derive(Clone)]
 pub struct AppConfig {
@@ -28,10 +29,13 @@ pub struct AppConfig {
     pub aprs_host: String,
     pub aprs_user: String,
     pub aprs_password: String,
+    pub shutdown_tx: watch::Sender<bool>,
+    pub shutdown_rx: watch::Receiver<bool>,
 }
 
 impl AppConfig {
     pub fn new() -> Result<Self> {
+        let (shutdown_tx, shutdown_rx) = watch::channel(false);
         Ok(Self {
             host: std::env::var("HOST")?,
             port: std::env::var("PORT")?.parse::<u16>()?,
@@ -58,6 +62,8 @@ impl AppConfig {
             aprs_host: std::env::var("APRSHOST")?,
             aprs_user: std::env::var("APRSUSER")?,
             aprs_password: std::env::var("APRSPASSWORD")?,
+            shutdown_rx,
+            shutdown_tx,
         })
     }
 }

@@ -150,6 +150,7 @@ async fn show_aprs_log(
         callsign: None,
         after: None,
     };
+
     if param.by_call.is_some() {
         request.callsign = param.by_call;
     } else if param.hours_ago.is_some() {

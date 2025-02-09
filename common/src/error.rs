@@ -29,7 +29,7 @@ pub enum AppError {
     ParseError(#[source] chrono::ParseError),
     #[error("APRSにエラーが発生しました")]
     APRSError,
-    #[error("JOBSにエラーが発生しました")]
+    #[error("JOBSchedulerにエラーが発生しました")]
     CronjobError(#[source] tokio_cron_scheduler::JobSchedulerError),
     // #[error("{0}")]
     // KeyValueStoreError(#[from] redis::RedisError),

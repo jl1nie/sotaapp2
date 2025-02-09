@@ -60,7 +60,7 @@ impl AprsLogRepositoryImpl {
         .fetch_all(self.pool.inner_ref())
         .await
         .map_err(AppError::SpecificOperationError)?;
-
+        tracing::info!("select_by_time after {:?}: {:?}", after, result);
         Ok(result)
     }
 
@@ -90,7 +90,7 @@ impl AprsLogRepositoryImpl {
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
-
+        tracing::info!("insert log: {:?}", log);
         Ok(())
     }
 
@@ -104,6 +104,7 @@ impl AprsLogRepositoryImpl {
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
+        tracing::info!("delete log before: {:?}", before);
         Ok(())
     }
 }

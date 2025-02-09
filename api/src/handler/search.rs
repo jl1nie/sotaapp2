@@ -1,29 +1,20 @@
 use axum::{extract::Query, routing::get, Json, Router};
-
 use shaku_axum::Inject;
-use std::time::Instant;
-
-use common::error::AppResult;
-use domain::model::event::{FindRefBuilder, FindResult};
-
-use registry::{AppRegistry, AppState};
-use service::services::UserService;
 
 use crate::model::param::{build_findref_query, GetParam};
-
 use crate::model::search::{SearchBriefResponse, SearchFullResponse, SearchResponse};
+use common::error::AppResult;
+use domain::model::event::{FindRefBuilder, FindResult};
+use registry::{AppRegistry, AppState};
+use service::services::UserService;
 
 async fn search(
     user_service: Inject<AppRegistry, dyn UserService>,
     param: GetParam,
 ) -> AppResult<FindResult> {
-    let start = Instant::now();
     let query = FindRefBuilder::default().sota().pota();
     let query = build_findref_query(param, query)?;
-
     let results = user_service.find_references(query).await?;
-    let end = start.elapsed();
-    tracing::info!("find reference {}ms", end.as_millis());
     Ok(results)
 }
 
