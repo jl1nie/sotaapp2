@@ -39,10 +39,10 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                     && a.start_time > alert_window_start
                     && a.start_time < alert_window_end
             })
-            .map(|a| a.operator.clone())
+            .map(|a| format!("{}-*", a.operator))
             .collect();
 
-        buddy.push("JL1NIE".to_string());
+        buddy.push("JL1NIE-*".to_string());
 
         if !buddy.is_empty() {
             self.aprs_repo.set_buddy_list(buddy).await?;
