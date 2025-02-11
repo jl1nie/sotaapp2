@@ -153,6 +153,11 @@ impl AdminPeriodicServiceImpl {
         };
 
         let old_state = aprslog.first();
+        tracing::info!(
+            "APRS Beacon: old state={:?} new state={:?}",
+            old_state,
+            new_state
+        );
 
         let state = if old_state.is_none() {
             match new_state {
@@ -235,7 +240,7 @@ impl AdminPeriodicServiceImpl {
         };
 
         let log = AprsLog {
-            callsign: from.into(),
+            callsign: from.callsign.clone(),
             ssid,
             destination,
             state,

@@ -103,16 +103,14 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
 
     if is_alert {
         if let Some(after) = r.issued_after {
-            query.push_str(&format!(
-                "start_time >= '{}' ORDER BY start_time ASC ",
-                after
-            ));
+            query.push_str(&format!("start_time >= '{}' AND ", after));
         }
-    } else if let Some(after) = r.issued_after {
-        query.push_str(&format!(
-            "spot_time >= '{}' ORDER BY spot_time DESC ",
-            after
-        ));
+        query.push_str("TRUE ORDER BY start_time ASC ");
+    } else {
+        if let Some(after) = r.issued_after {
+            query.push_str(&format!("spot_time >= '{}' AND ", after));
+        }
+        query.push_str("TRUE ORDER BY spot_time DESC ");
     }
 
     if let Some(limit) = &r.limit {
