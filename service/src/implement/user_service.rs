@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use common::config::AppConfig;
-use common::csv_reader::csv_reader;
 use common::error::AppResult;
+use common::utils::csv_reader;
 use domain::model::id::UserId;
 use regex::Regex;
 use shaku::Component;
