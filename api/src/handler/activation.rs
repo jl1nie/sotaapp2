@@ -40,7 +40,7 @@ async fn show_spots(
     query = query.issued_after(Utc::now() - Duration::hours(hours));
 
     if let Some(pat) = param.pat_ref {
-        query = query.pattern(pat);
+        query = query.pattern(&pat);
     }
 
     let result = user_service.find_spots(query.build()).await?;
@@ -78,7 +78,7 @@ async fn show_alerts(
     query = query.issued_after(Utc::now() - Duration::hours(hours));
 
     if let Some(pat) = param.pat_ref {
-        query = query.pattern(pat);
+        query = query.pattern(&pat);
     }
 
     let result = user_service.find_alerts(query.build()).await?;

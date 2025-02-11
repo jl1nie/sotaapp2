@@ -20,7 +20,7 @@ pub struct Alert {
     pub poster: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Spot {
     pub program: AwardProgram,
     pub spot_id: i32,

@@ -29,8 +29,8 @@ impl From<AprsLog> for AprsLogResponse {
         let (time, state, distance) = match state {
             AprsState::Approaching { time, distance } => (time, "Approaching", distance),
             AprsState::Climbing { time, distance } => (time, "Climbing", distance),
-            AprsState::NearSummit { time, distance } => (time, "NearSummit", distance),
-            AprsState::OnSummit { time, distance } => (time, "OnSummit", distance),
+            AprsState::NearSummit { time, distance, .. } => (time, "NearSummit", distance),
+            AprsState::OnSummit { time, distance, .. } => (time, "OnSummit", distance),
             AprsState::Descending { time, distance } => (time, "Descending", distance),
         };
         AprsLogResponse {

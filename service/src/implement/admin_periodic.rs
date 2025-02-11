@@ -7,7 +7,9 @@ use std::sync::Arc;
 
 use common::{config::AppConfig, error::AppResult};
 use domain::model::{activation::Alert, activation::Spot, event::DeleteAct};
-use domain::repository::{activation::ActivationRepositry, aprs::AprsRepositry};
+use domain::repository::{
+    activation::ActivationRepositry, aprs::AprsRepositry, sota::SOTARepository,
+};
 
 use crate::services::AdminPeriodicService;
 
@@ -15,11 +17,13 @@ use crate::services::AdminPeriodicService;
 #[shaku(interface = AdminPeriodicService)]
 pub struct AdminPeriodicServiceImpl {
     #[shaku(inject)]
-    act_repo: Arc<dyn ActivationRepositry>,
+    pub act_repo: Arc<dyn ActivationRepositry>,
     #[shaku(inject)]
-    aprs_repo: Arc<dyn AprsRepositry>,
+    pub aprs_repo: Arc<dyn AprsRepositry>,
     #[shaku(inject)]
-    aprs_log_repo: Arc<dyn AprsLogRepository>,
+    pub aprs_log_repo: Arc<dyn AprsLogRepository>,
+    #[shaku(inject)]
+    pub sota_repo: Arc<dyn SOTARepository>,
 
     config: AppConfig,
 }
@@ -81,7 +85,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
     async fn aprs_packet_received(&self, packet: AprsData) -> AppResult<()> {
         match packet {
             AprsData::AprsMesasge {
-                ref callsign,
+                callsign,
                 addressee,
                 message,
             } => {
@@ -91,11 +95,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                     addressee,
                     message
                 );
-
-                let msgcall: String = callsign.into();
-                let message = format!("{}:{}", msgcall, message);
-
-                self.aprs_repo.write_message(callsign, &message).await?;
+                return self.process_message(&callsign, message).await;
             }
             AprsData::AprsPosition {
                 ref callsign,
@@ -110,19 +110,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                             longitude,
                             latitude
                         );
-                        let time = Utc::now().naive_utc();
-                        let log = domain::model::aprslog::AprsLog {
-                            callsign: callsign.into(),
-                            ssid,
-                            destination: "".to_string(),
-                            state: domain::model::aprslog::AprsState::Approaching {
-                                time,
-                                distance: 0.0,
-                            },
-                            longitude,
-                            latitude,
-                        };
-                        self.aprs_log_repo.insert_aprs_log(log).await?;
+                        return self.process_position(callsign, longitude, latitude).await;
                     }
                 }
             }

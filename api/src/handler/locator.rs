@@ -10,8 +10,8 @@ use crate::model::{
     locator::{CenturyCodeResponse, MapcodeResponse},
     param::GetParam,
 };
-use common::csv_reader::maidenhead;
 use common::error::{AppError, AppResult};
+use common::utils::maidenhead;
 use registry::{AppRegistry, AppState};
 
 use service::model::locator::UploadMuniCSV;

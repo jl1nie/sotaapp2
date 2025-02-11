@@ -1,4 +1,4 @@
-use common::csv_reader::maidenhead;
+use common::utils::maidenhead;
 use domain::model::sota::SOTAReference;
 use serde::{Deserialize, Serialize};
 

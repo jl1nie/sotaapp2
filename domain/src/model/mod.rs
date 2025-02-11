@@ -7,7 +7,7 @@ pub mod locator;
 pub mod pota;
 pub mod sota;
 
-#[derive(PartialEq, Debug, sqlx::Type)]
+#[derive(PartialEq, Debug, sqlx::Type, Clone)]
 #[repr(i32)]
 pub enum AwardProgram {
     SOTA = 0,

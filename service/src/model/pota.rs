@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
-use common::csv_reader::maidenhead;
+use common::utils::maidenhead;
 use domain::model::id::UserId;
 use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference};
 
