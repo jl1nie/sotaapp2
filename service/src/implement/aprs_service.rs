@@ -121,7 +121,7 @@ impl AdminPeriodicServiceImpl {
             .await?;
 
         let time = Utc::now().naive_utc();
-        let distance = calculate_distance(latitude, longitude, destlat, destlon);
+        let distance = calculate_distance(latitude, longitude, destlat, destlon).floor();
 
         let new_state = if distance > 1000.0 {
             AprsState::Approaching { time, distance }
