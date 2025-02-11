@@ -93,6 +93,7 @@ impl AdminPeriodicServiceImpl {
         let alert = self.act_repo.find_alerts(&query).await?;
 
         if alert.is_empty() {
+            tracing::error!("Unknown activator {}:{:?}", &from.callsign, &alert);
             return Ok(());
         }
 
@@ -102,6 +103,7 @@ impl AdminPeriodicServiceImpl {
         let dest = self.sota_repo.find_reference(&query).await?;
 
         if dest.is_empty() {
+            tracing::error!("Unknown destination {}", &alert[0].reference);
             return Ok(());
         }
 
