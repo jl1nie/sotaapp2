@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS aprs_log (
     ssid INTEGER NOT NULL,
     destination VARCHAR(255) NOT NULL,
     distance REAL NOT NULL,
+    message VARCHAR(255),
     state INTEGER NOT NULL,
     latitude REAL NOT NULL,
     longitude REAL NOT NULL

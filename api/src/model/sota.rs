@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use common::csv_reader::maidenhead;
+use common::utils::maidenhead;
 use domain::model::event::PagenatedResult;
 use domain::model::sota::SOTAReference;
 use domain::model::Maidenhead;

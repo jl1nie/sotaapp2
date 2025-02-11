@@ -1,6 +1,5 @@
 use crate::error::{AppError, AppResult};
 use csv::ReaderBuilder;
-use maidenhead::longlat_to_grid;
 use serde::de::DeserializeOwned;
 
 pub fn csv_reader<T: DeserializeOwned + std::fmt::Debug>(
@@ -21,8 +20,4 @@ pub fn csv_reader<T: DeserializeOwned + std::fmt::Debug>(
         reflist.push(req);
     }
     Ok(reflist)
-}
-
-pub fn maidenhead(lon: f64, lat: f64) -> String {
-    longlat_to_grid(lon, lat, 8).unwrap_or("--------".to_string())
 }

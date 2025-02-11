@@ -27,9 +27,11 @@ impl AprsLogRepositoryImpl {
                     destination,
                     distance,
                     state,
+                    message,
                     longitude,
                     latitude
                 FROM aprs_log WHERE callsign = $1
+                ORDER BY time DESC
             "#,
             callsign
         )
@@ -51,9 +53,11 @@ impl AprsLogRepositoryImpl {
                     destination,
                     distance,
                     state,
+                    message,
                     longitude,
                     latitude
                 FROM aprs_log WHERE time > $1
+                ORDER BY time DESC
             "#,
             after
         )
@@ -74,9 +78,10 @@ impl AprsLogRepositoryImpl {
                     destination,
                     distance,
                     state,
+                    message,
                     longitude,
                     latitude
-                ) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+                ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#,
             log.time,
             log.callsign,
@@ -84,6 +89,7 @@ impl AprsLogRepositoryImpl {
             log.destination,
             log.distance,
             log.state,
+            log.message,
             log.longitude,
             log.latitude,
         )

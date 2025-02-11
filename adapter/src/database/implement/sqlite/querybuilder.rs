@@ -1,18 +1,6 @@
+use common::utils::calculate_bounding_box;
 use domain::model::event::{FindAct, FindRef};
 use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
-
-fn calculate_bounding_box(lat: f64, lon: f64, distance: f64) -> (f64, f64, f64, f64) {
-    let earth_radius = 6371000.0;
-    let lat_radians = lat.to_radians();
-    let distance_radians = distance / earth_radius;
-
-    let min_lat = lat - distance_radians.to_degrees();
-    let max_lat = lat + distance_radians.to_degrees(); // 経度方向の距離を緯度方向に補正する
-    let delta_lon = (distance_radians / lat_radians.cos()).to_degrees();
-    let min_lon = lon - delta_lon;
-    let max_lon = lon + delta_lon;
-    (min_lon, min_lat, max_lon, max_lat)
-}
 
 pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
     let mut query: String = String::new();
@@ -107,6 +95,10 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
 
     if let Some(prog) = &r.program {
         query.push_str(format!("program = {} AND ", prog.as_i32()).as_str());
+    }
+
+    if let Some(pat) = &r.operator {
+        query.push_str(&format!("operator = '{}' AND ", pat));
     }
 
     if is_alert {

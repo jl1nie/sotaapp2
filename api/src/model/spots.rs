@@ -33,7 +33,7 @@ impl From<SOTASpot> for AppResult<Spot> {
         Ok(Spot {
             program: AwardProgram::SOTA,
             spot_id: s.id,
-            reference: s.summit_code,
+            reference: s.association_code + "/" + &s.summit_code,
             reference_detail: s.summit_details,
             operator: call_to_operator(&s.activator_callsign),
             activator: s.activator_callsign,

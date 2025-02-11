@@ -1,12 +1,29 @@
 use chrono::NaiveDateTime;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AprsState {
-    Approaching { time: NaiveDateTime, distance: f64 },
-    Climbing { time: NaiveDateTime, distance: f64 },
-    NearSummit { time: NaiveDateTime, distance: f64 },
-    OnSummit { time: NaiveDateTime, distance: f64 },
-    Descending { time: NaiveDateTime, distance: f64 },
+    Approaching {
+        time: NaiveDateTime,
+        distance: f64,
+    },
+    Climbing {
+        time: NaiveDateTime,
+        distance: f64,
+    },
+    NearSummit {
+        time: NaiveDateTime,
+        distance: f64,
+        message: Option<String>,
+    },
+    OnSummit {
+        time: NaiveDateTime,
+        distance: f64,
+        message: Option<String>,
+    },
+    Descending {
+        time: NaiveDateTime,
+        distance: f64,
+    },
 }
 
 #[derive(Debug)]

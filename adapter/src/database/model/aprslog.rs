@@ -9,6 +9,7 @@ pub struct AprsLogImpl {
     pub destination: String,
     pub distance: f64,
     pub state: i64,
+    pub message: Option<String>,
     pub longitude: f64,
     pub latitude: f64,
 }
@@ -27,10 +28,12 @@ impl From<AprsLogImpl> for AprsLog {
             2 => AprsState::NearSummit {
                 time: aprs_log.time,
                 distance: aprs_log.distance,
+                message: aprs_log.message,
             },
             3 => AprsState::OnSummit {
                 time: aprs_log.time,
                 distance: aprs_log.distance,
+                message: aprs_log.message,
             },
             4 => AprsState::Descending {
                 time: aprs_log.time,
@@ -51,12 +54,20 @@ impl From<AprsLogImpl> for AprsLog {
 
 impl From<AprsLog> for AprsLogImpl {
     fn from(aprs_log: AprsLog) -> Self {
-        let (state, time, distance) = match aprs_log.state {
-            AprsState::Approaching { time, distance } => (0, time, distance),
-            AprsState::Climbing { time, distance } => (1, time, distance),
-            AprsState::NearSummit { time, distance } => (2, time, distance),
-            AprsState::OnSummit { time, distance } => (3, time, distance),
-            AprsState::Descending { time, distance } => (4, time, distance),
+        let (state, time, distance, message) = match aprs_log.state {
+            AprsState::Approaching { time, distance } => (0, time, distance, None),
+            AprsState::Climbing { time, distance } => (1, time, distance, None),
+            AprsState::NearSummit {
+                time,
+                distance,
+                message,
+            } => (2, time, distance, message),
+            AprsState::OnSummit {
+                time,
+                distance,
+                message,
+            } => (3, time, distance, message),
+            AprsState::Descending { time, distance } => (4, time, distance, None),
         };
         AprsLogImpl {
             time,
@@ -65,6 +76,7 @@ impl From<AprsLog> for AprsLogImpl {
             destination: aprs_log.destination,
             distance,
             state,
+            message,
             longitude: aprs_log.longitude,
             latitude: aprs_log.latitude,
         }
