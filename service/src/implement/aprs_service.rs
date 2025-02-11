@@ -130,7 +130,7 @@ impl AdminPeriodicServiceImpl {
                 time,
                 distance,
                 message: Some(format!(
-                    "Approching {}. {}m to go.",
+                    "Approaching {}. {}m to go.",
                     summit.summit_code, distance
                 )),
             }
@@ -158,17 +158,23 @@ impl AdminPeriodicServiceImpl {
                     message: Some(ref message),
                     ..
                 } => {
+                    tracing::info!("APRS Message {}: {}", from.callsign, message);
+                    /*
                     if destination.starts_with("JA") {
                         self.aprs_repo.write_message(from, message).await?;
                     }
+                    */
                 }
                 AprsState::OnSummit {
                     message: Some(ref message),
                     ..
                 } => {
+                    tracing::info!("APRS Message {}: {}", from.callsign, message);
+                    /*
                     if destination.starts_with("JA") {
                         self.aprs_repo.write_message(from, message).await?;
                     }
+                    */
                 }
                 _ => {}
             }
@@ -181,9 +187,12 @@ impl AdminPeriodicServiceImpl {
                         message: Some(ref message),
                         ..
                     } => {
+                        tracing::info!("APRS Message {}: {}", from.callsign, message);
+                        /*
                         if destination.starts_with("JA") {
                             self.aprs_repo.write_message(from, message).await?;
                         }
+                        */
                         new_state
                     }
                     _ => old_state,
@@ -193,18 +202,24 @@ impl AdminPeriodicServiceImpl {
                         message: Some(ref message),
                         ..
                     } => {
+                        tracing::info!("APRS Message {}: {}", from.callsign, message);
+                        /*
                         if destination.starts_with("JA") {
                             self.aprs_repo.write_message(from, message).await?;
                         }
+                        */
                         new_state
                     }
                     AprsState::OnSummit {
                         message: Some(ref message),
                         ..
                     } => {
+                        tracing::info!("APRS Message {}: {}", from.callsign, message);
+                        /*
                         if destination.starts_with("JA") {
                             self.aprs_repo.write_message(from, message).await?;
                         }
+                        */
                         new_state
                     }
                     _ => new_state,
