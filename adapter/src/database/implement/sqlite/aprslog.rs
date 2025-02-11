@@ -96,7 +96,6 @@ impl AprsLogRepositoryImpl {
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
-        tracing::info!("insert log: {:?}", log);
         Ok(())
     }
 
