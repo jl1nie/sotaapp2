@@ -35,7 +35,7 @@ impl From<SOTAAlert> for AppResult<Alert> {
             program: AwardProgram::SOTA,
             alert_id: a.id,
             user_id: a.user_id,
-            reference: a.summit_code,
+            reference: a.association_code.clone() + "/" + &a.summit_code,
             reference_detail: a.summit_details,
             location: a.association_code,
             activator_name: None,

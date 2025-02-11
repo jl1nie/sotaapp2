@@ -5,8 +5,8 @@ use shaku::Component;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use common::csv_reader::csv_reader;
 use common::error::AppResult;
+use common::utils::csv_reader;
 
 use domain::model::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
 use domain::model::locator::MunicipalityCenturyCode;
