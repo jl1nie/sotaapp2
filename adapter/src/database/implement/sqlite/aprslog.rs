@@ -64,7 +64,7 @@ impl AprsLogRepositoryImpl {
         .fetch_all(self.pool.inner_ref())
         .await
         .map_err(AppError::SpecificOperationError)?;
-        tracing::info!("select_by_time after {:?}: {:?}", after, result);
+
         Ok(result)
     }
 

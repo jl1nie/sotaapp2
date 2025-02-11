@@ -56,7 +56,9 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
     let registry_aprs = registry.clone();
     let _aprs_handle = tokio::spawn(async move {
         loop {
-            let _ = process_incoming_packet(&registry_aprs).await;
+            if let Err(e) = process_incoming_packet(&registry_aprs).await {
+                tracing::error!("APRS Error {:?}", e);
+            }
         }
     });
 
