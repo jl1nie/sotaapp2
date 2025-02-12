@@ -1,3 +1,4 @@
+use aprs_message::AprsCallsign;
 use chrono::NaiveDateTime;
 use domain::model::aprslog::{AprsLog, AprsState};
 
@@ -41,9 +42,16 @@ impl From<AprsLogImpl> for AprsLog {
             },
             _ => panic!("Invalid state"),
         };
+        let ssid = if aprs_log.ssid == 0 {
+            None
+        } else {
+            Some(aprs_log.ssid as u32)
+        };
         AprsLog {
-            callsign: aprs_log.callsign,
-            ssid: aprs_log.ssid as u32,
+            callsign: AprsCallsign {
+                callsign: aprs_log.callsign,
+                ssid,
+            },
             destination: aprs_log.destination,
             state,
             longitude: aprs_log.longitude,
@@ -71,8 +79,8 @@ impl From<AprsLog> for AprsLogImpl {
         };
         AprsLogImpl {
             time,
-            callsign: aprs_log.callsign,
-            ssid: aprs_log.ssid as i64,
+            callsign: aprs_log.callsign.callsign,
+            ssid: aprs_log.callsign.ssid.unwrap_or(0) as i64,
             destination: aprs_log.destination,
             distance,
             state,

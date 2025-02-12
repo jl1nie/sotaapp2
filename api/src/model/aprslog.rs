@@ -19,10 +19,9 @@ pub struct AprsLogResponse {
 impl From<AprsLog> for AprsLogResponse {
     fn from(l: AprsLog) -> AprsLogResponse {
         let AprsLog {
-            ssid,
+            callsign,
             destination,
             state,
-            callsign,
             longitude,
             latitude,
         } = l;
@@ -35,8 +34,8 @@ impl From<AprsLog> for AprsLogResponse {
         };
         AprsLogResponse {
             time,
-            callsign,
-            ssid: ssid as i32,
+            callsign: callsign.callsign,
+            ssid: callsign.ssid.unwrap_or_default() as i32,
             destination,
             state: state.to_string(),
             distance,

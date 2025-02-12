@@ -1,3 +1,4 @@
+use aprs_message::AprsCallsign;
 use chrono::NaiveDateTime;
 
 #[derive(Debug, Clone)]
@@ -28,8 +29,7 @@ pub enum AprsState {
 
 #[derive(Debug)]
 pub struct AprsLog {
-    pub callsign: String,
-    pub ssid: u32,
+    pub callsign: AprsCallsign,
     pub destination: String,
     pub state: AprsState,
     pub longitude: f64,

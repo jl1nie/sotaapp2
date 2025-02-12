@@ -15,7 +15,7 @@ pub trait AprsRepositry: Send + Sync + Interface {
 }
 #[async_trait]
 pub trait AprsLogRepository: Send + Sync + Interface {
-    async fn get_aprs_log_by_callsign(&self, callsign: &str) -> AppResult<Vec<AprsLog>>;
+    async fn get_aprs_log_by_callsign(&self, callsign: &AprsCallsign) -> AppResult<Vec<AprsLog>>;
     async fn get_aprs_log_by_time(&self, after: &NaiveDateTime) -> AppResult<Vec<AprsLog>>;
     async fn insert_aprs_log(&self, aprs_log: AprsLog) -> AppResult<()>;
     async fn delete_aprs_log(&self, before: &NaiveDateTime) -> AppResult<()>;

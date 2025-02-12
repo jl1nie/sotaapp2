@@ -50,9 +50,6 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
 
         if !buddy.is_empty() {
             self.aprs_repo.set_buddy_list(buddy).await?;
-            //self.aprs_repo
-            //    .set_filter("r/35.684074/139.75296/100 b/JL1NIE".to_string())
-            //    .await?;
         }
 
         self.act_repo.update_alerts(alerts).await?;
@@ -62,7 +59,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
             .delete_alerts(DeleteAct { before: expire })
             .await?;
 
-        let expire = now - self.config.aprslog_expire;
+        let expire = now - self.config.aprs_log_expire;
         self.aprs_log_repo
             .delete_aprs_log(&expire.naive_utc())
             .await?;
@@ -95,6 +92,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                     addressee,
                     message
                 );
+
                 return self.process_message(&callsign, message).await;
             }
             AprsData::AprsPosition {
@@ -104,12 +102,6 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
             } => {
                 if let Some(ssid) = callsign.ssid {
                     if [5, 6, 7, 8, 9].contains(&ssid) {
-                        tracing::info!(
-                            "APRS position from = {:?} lon={} lat={}",
-                            callsign,
-                            longitude,
-                            latitude
-                        );
                         return self.process_position(callsign, longitude, latitude).await;
                     }
                 }

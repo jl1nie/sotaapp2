@@ -60,6 +60,7 @@ impl AdminPeriodicServiceImpl {
     pub async fn process_message(&self, from: &AprsCallsign, message: String) -> AppResult<()> {
         let message = message.to_uppercase();
         let commands: Vec<_> = message.split_ascii_whitespace().collect();
+
         if commands.is_empty() || commands.len() > 2 {
             self.aprs_repo.write_message(from, "?").await?;
             return Ok(());
@@ -84,8 +85,6 @@ impl AdminPeriodicServiceImpl {
         longitude: f64,
         latitude: f64,
     ) -> AppResult<()> {
-        let ssid = from.ssid.unwrap_or_default();
-
         let query = FindActBuilder::default()
             .sota()
             .operator(&from.callsign)
@@ -115,10 +114,7 @@ impl AdminPeriodicServiceImpl {
             summit.latitude.unwrap_or_default(),
         );
 
-        let aprslog = self
-            .aprs_log_repo
-            .get_aprs_log_by_callsign(&from.callsign)
-            .await?;
+        let aprslog = self.aprs_log_repo.get_aprs_log_by_callsign(from).await?;
 
         let time = Utc::now().naive_utc();
         let distance = calculate_distance(latitude, longitude, destlat, destlon).floor();
@@ -137,27 +133,35 @@ impl AdminPeriodicServiceImpl {
                 )),
             }
         } else {
-            AprsState::OnSummit {
-                time,
-                distance,
-                message: Some(format!(
+            let message = if destination.starts_with("JA") {
+                format!(
                     "Welcome to {}. {} {}m {}pts.\n{}\n{}",
                     summit.summit_code,
                     summit.summit_name,
                     summit.alt_m,
                     summit.points,
                     summit.city.unwrap_or_default(),
-                    self.last_three_spots_messasge("^JA").await?
-                )),
+                    self.last_three_spots_messasge("^JA.*").await?
+                )
+            } else {
+                format!(
+                    "Welcome to {}. {} {}m {}pts.\n{}",
+                    summit.summit_code,
+                    summit.summit_name,
+                    summit.alt_m,
+                    summit.points,
+                    self.last_three_spots_messasge(".*").await?
+                )
+            };
+
+            AprsState::OnSummit {
+                time,
+                distance,
+                message: Some(message),
             }
         };
 
         let old_state = aprslog.first();
-        tracing::info!(
-            "APRS Beacon: old state={:?} new state={:?}",
-            old_state,
-            new_state
-        );
 
         let state = if old_state.is_none() {
             match new_state {
@@ -240,13 +244,17 @@ impl AdminPeriodicServiceImpl {
         };
 
         let log = AprsLog {
-            callsign: from.callsign.clone(),
-            ssid,
+            callsign: AprsCallsign {
+                callsign: from.callsign.clone(),
+                ssid: from.ssid,
+            },
             destination,
             state,
             longitude,
             latitude,
         };
+
+        tracing::info!("APRS Beacon:{:?}", log);
 
         self.aprs_log_repo.insert_aprs_log(log).await?;
 
