@@ -66,9 +66,13 @@ pub mod connect {
             );
             let _file = fs::File::create(database_path)?;
         };
-        tracing::info!("Running migrations...");
-        m.run(pool.inner_ref()).await?;
-        tracing::info!("done.");
+
+        if cfg.run_migration {
+            tracing::info!("Running migrations...");
+            m.run(pool.inner_ref()).await?;
+            tracing::info!("done.");
+        }
+
         Ok(pool)
     }
 }

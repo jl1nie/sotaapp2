@@ -1,3 +1,4 @@
+use aprs_message::AprsCallsign;
 use async_trait::async_trait;
 use chrono::Utc;
 use common::config::AppConfig;
@@ -185,9 +186,8 @@ impl UserService for UserServiceImpl {
 
     async fn find_aprslog(&self, event: FindAprs) -> AppResult<Vec<AprsLog>> {
         if event.callsign.is_some() {
-            self.aprs_log_repo
-                .get_aprs_log_by_callsign(&event.callsign.unwrap())
-                .await
+            let callsign = AprsCallsign::from(&event.callsign.unwrap());
+            self.aprs_log_repo.get_aprs_log_by_callsign(&callsign).await
         } else if event.after.is_some() {
             let after = event.after.unwrap().naive_utc();
             self.aprs_log_repo.get_aprs_log_by_time(&after).await

@@ -1,3 +1,4 @@
+use aprs_message::AprsCallsign;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use shaku::Component;
@@ -16,7 +17,7 @@ pub struct AprsLogRepositoryImpl {
 }
 
 impl AprsLogRepositoryImpl {
-    async fn select_by_call(&self, callsign: &str) -> AppResult<Vec<AprsLogImpl>> {
+    async fn select_by_call(&self, callsign: &str, ssid: u32) -> AppResult<Vec<AprsLogImpl>> {
         let result = sqlx::query_as!(
             AprsLogImpl,
             r#"
@@ -30,10 +31,11 @@ impl AprsLogRepositoryImpl {
                     message,
                     longitude,
                     latitude
-                FROM aprs_log WHERE callsign = $1
+                FROM aprs_log WHERE callsign = $1 AND ssid = $2
                 ORDER BY time DESC
             "#,
-            callsign
+            callsign,
+            ssid
         )
         .fetch_all(self.pool.inner_ref())
         .await
@@ -109,15 +111,16 @@ impl AprsLogRepositoryImpl {
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
-        tracing::info!("delete log before: {:?}", before);
         Ok(())
     }
 }
 
 #[async_trait]
 impl AprsLogRepository for AprsLogRepositoryImpl {
-    async fn get_aprs_log_by_callsign(&self, callsign: &str) -> AppResult<Vec<AprsLog>> {
-        let result = self.select_by_call(callsign).await?;
+    async fn get_aprs_log_by_callsign(&self, callsign: &AprsCallsign) -> AppResult<Vec<AprsLog>> {
+        let call = &callsign.callsign;
+        let ssid = callsign.ssid.unwrap_or_default();
+        let result = self.select_by_call(call, ssid).await?;
         let mut logs = Vec::new();
         for log in result {
             logs.push(log.into());
