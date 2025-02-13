@@ -169,7 +169,12 @@ impl AdminPeriodicServiceImpl {
                     message: Some(ref message),
                     ..
                 } => {
-                    tracing::info!("APRS Message {}: {}", from.callsign, message);
+                    tracing::info!(
+                        "APRS Message {}-{}: {}",
+                        from.callsign,
+                        from.ssid.unwrap_or_default(),
+                        message
+                    );
                     /*
                     if destination.starts_with("JA") {
                         self.aprs_repo.write_message(from, message).await?;
@@ -180,7 +185,12 @@ impl AdminPeriodicServiceImpl {
                     message: Some(ref message),
                     ..
                 } => {
-                    tracing::info!("APRS Message {}: {}", from.callsign, message);
+                    tracing::info!(
+                        "APRS Message {}-{}: {}",
+                        from.callsign,
+                        from.ssid.unwrap_or_default(),
+                        message
+                    );
                     /*
                     if destination.starts_with("JA") {
                         self.aprs_repo.write_message(from, message).await?;
@@ -198,7 +208,12 @@ impl AdminPeriodicServiceImpl {
                         message: Some(ref message),
                         ..
                     } => {
-                        tracing::info!("APRS Message {}: {}", from.callsign, message);
+                        tracing::info!(
+                            "APRS Message {}-{}: {}",
+                            from.callsign,
+                            from.ssid.unwrap_or_default(),
+                            message
+                        );
                         /*
                         if destination.starts_with("JA") {
                             self.aprs_repo.write_message(from, message).await?;
@@ -213,7 +228,12 @@ impl AdminPeriodicServiceImpl {
                         message: Some(ref message),
                         ..
                     } => {
-                        tracing::info!("APRS Message {}: {}", from.callsign, message);
+                        tracing::info!(
+                            "APRS Message {}-{}: {}",
+                            from.callsign,
+                            from.ssid.unwrap_or_default(),
+                            message
+                        );
                         /*
                         if destination.starts_with("JA") {
                             self.aprs_repo.write_message(from, message).await?;
@@ -225,7 +245,12 @@ impl AdminPeriodicServiceImpl {
                         message: Some(ref message),
                         ..
                     } => {
-                        tracing::info!("APRS Message {}: {}", from.callsign, message);
+                        tracing::info!(
+                            "APRS Message {}-{}: {}",
+                            from.callsign,
+                            from.ssid.unwrap_or_default(),
+                            message
+                        );
                         /*
                         if destination.starts_with("JA") {
                             self.aprs_repo.write_message(from, message).await?;
