@@ -6,10 +6,11 @@ use crate::error::{AppError, AppResult};
 
 pub fn csv_reader<T: DeserializeOwned + std::fmt::Debug>(
     csv: String,
+    has_headers: bool,
     skip: usize,
 ) -> AppResult<Vec<T>> {
     let mut rdr = ReaderBuilder::new()
-        .has_headers(false)
+        .has_headers(has_headers)
         .flexible(true)
         .from_reader(csv.as_bytes());
 

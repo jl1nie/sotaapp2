@@ -1,5 +1,5 @@
 use common::utils::calculate_bounding_box;
-use domain::model::event::{FindAct, FindRef};
+use domain::model::event::{FindAct, FindLog, FindRef};
 use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
 
 pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
@@ -120,5 +120,27 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     if let Some(offset) = &r.offset {
         query.push_str(&format!("OFFSET {} ", offset));
     }
+    query
+}
+
+pub fn findlog_query_builder(r: &FindLog) -> String {
+    let mut query = String::new();
+
+    if r.activation {
+        query.push_str("my_summit_code IS NOT NULL AND ");
+    } else {
+        query.push_str("my_summit_code IS NULL AND ");
+    }
+
+    if let Some(after) = r.after {
+        query.push_str(&format!("time >= '{}' AND ", after));
+    }
+
+    if let Some(before) = r.before {
+        query.push_str(&format!("time <= '{}' AND ", before));
+    }
+
+    query.push_str("TRUE ORDER BY time ASC");
+
     query
 }

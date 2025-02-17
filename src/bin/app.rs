@@ -3,8 +3,9 @@ use adapter::{
     geomag::connect_geomag_with,
 };
 use anyhow::{Error, Result};
-use axum::{http::HeaderValue, Router};
+use axum::{http::HeaderValue, Extension, Router};
 use common::config::AppConfig;
+use firebase_auth_sdk::FireAuth;
 use std::net::{IpAddr, SocketAddr};
 use tokio::{net::TcpListener, sync::watch};
 use tower_http::{
@@ -39,6 +40,8 @@ async fn bootstrap() -> Result<()> {
     let app_state = AppState::new(module);
     let job_state = app_state.clone();
 
+    let firebase = FireAuth::new(config.firebase_api_key.clone());
+
     let cors = match config.cors_origin.clone() {
         Some(origin) => CorsLayer::new().allow_origin(origin.parse::<HeaderValue>().unwrap()),
         None => CorsLayer::new().allow_origin(Any),
@@ -48,6 +51,7 @@ async fn bootstrap() -> Result<()> {
         .merge(v2::routes())
         .with_state(app_state)
         .layer(cors)
+        .layer(Extension(firebase))
         .nest_service("/admin-console", ServeDir::new("static"));
 
     let ip_addr: IpAddr = config.host.parse().expect("Invalid IP Address");

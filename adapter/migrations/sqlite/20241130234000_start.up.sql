@@ -27,6 +27,23 @@ CREATE INDEX IF NOT EXISTS idx_sota_references_summit_code ON sota_references (s
 CREATE INDEX IF NOT EXISTS idex_sota_reference_alt ON sota_references (alt_m DESC);
 CREATE INDEX IF NOT EXISTS idx_sota_references_coordinate ON sota_references (longitude, latitude);
 
+CREATE TABLE IF NOT EXISTS sota_log (
+    user_id UUID,
+    my_callsign VARCHAR(255) NOT NULL,
+    operator VARCHAR(255) NOT NULL,
+    my_summit_code VARCHAR(255),
+    time DATETIME NOT NULL,
+    frequency VARCHAR(255) NOT NULL,
+    mode VARCHAR(255) NOT NULL,
+    his_callsign VARCHAR(255) NOT NULL,
+    his_summit_code VARCHAR(255),
+    comment VARCHAR(255),
+    "update" DATETIME NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_operator_sota_log ON sota_log (operator, user_id);
+CREATE INDEX IF NOT EXISTS idx_time_sota_log ON sota_log(time);
+
 CREATE TABLE IF NOT EXISTS pota_references (
     pota_code VARCHAR(255),
     wwff_code VARCHAR(255),

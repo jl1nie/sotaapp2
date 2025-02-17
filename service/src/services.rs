@@ -8,7 +8,7 @@ use aprs_message::AprsData;
 use common::error::AppResult;
 use domain::model::activation::{Alert, Spot};
 use domain::model::event::{
-    DeleteRef, FindAct, FindAprs, FindRef, FindResult, GroupBy, PagenatedResult,
+    DeleteRef, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy, PagenatedResult,
 };
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::UserId;
@@ -18,7 +18,7 @@ use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::model::locator::UploadMuniCSV;
 use crate::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
-use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
+use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
@@ -34,6 +34,10 @@ pub trait UserService: Send + Sync + Interface {
     ) -> AppResult<()>;
     async fn upload_hunter_csv(&self, user_id: UserId, event: UploadHunterCSV) -> AppResult<()>;
 
+    async fn upload_sota_csv(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
+    async fn delete_sota_log(&self, user_id: UserId) -> AppResult<()>;
+    async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;
+
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;
     async fn find_aprslog(&self, event: FindAprs) -> AppResult<Vec<AprsLog>>;
@@ -42,9 +46,9 @@ pub trait UserService: Send + Sync + Interface {
 
 #[async_trait]
 pub trait AdminService: Send + Sync + Interface {
-    async fn import_summit_list(&self, event: UploadSOTACSV) -> AppResult<()>;
-    async fn update_summit_list(&self, event: UploadSOTACSV) -> AppResult<()>;
-    async fn import_summit_opt_list(&self, event: UploadSOTAOptCSV) -> AppResult<()>;
+    async fn import_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
+    async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
+    async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<()>;
     async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SOTAReference>;

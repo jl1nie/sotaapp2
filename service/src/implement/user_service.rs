@@ -1,23 +1,24 @@
 use aprs_message::AprsCallsign;
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 use common::config::AppConfig;
 use common::error::AppResult;
-use common::utils::csv_reader;
+use common::utils::{call_to_operator, csv_reader};
 use domain::model::id::UserId;
 use regex::Regex;
 use shaku::Component;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::model::pota::{
     POTAActivatorLogCSV, POTAHunterLogCSV, UploadActivatorCSV, UploadHunterCSV,
 };
+use crate::model::sota::{SOTALogCSV, UploadSOTALog};
 use crate::services::UserService;
 
 use domain::model::activation::{Alert, Spot};
 use domain::model::aprslog::AprsLog;
-use domain::model::event::{DeleteLog, FindAct, FindAprs, FindRef, FindResult, GroupBy};
+use domain::model::event::{DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy};
 use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
 
@@ -135,7 +136,7 @@ impl UserService for UserServiceImpl {
         user_id: UserId,
         UploadActivatorCSV { data }: UploadActivatorCSV,
     ) -> AppResult<()> {
-        let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, 1)?;
+        let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, false, 1)?;
         let newlog: Vec<_> = requests
             .into_iter()
             .map(|l| POTAActivatorLogCSV::to_log(user_id, l))
@@ -154,7 +155,7 @@ impl UserService for UserServiceImpl {
         user_id: UserId,
         UploadHunterCSV { data }: UploadHunterCSV,
     ) -> AppResult<()> {
-        let requests: Vec<POTAHunterLogCSV> = csv_reader(data, 1)?;
+        let requests: Vec<POTAHunterLogCSV> = csv_reader(data, false, 1)?;
         let newlog: Vec<_> = requests
             .into_iter()
             .map(|l| POTAHunterLogCSV::to_log(user_id, l))
@@ -166,6 +167,150 @@ impl UserService for UserServiceImpl {
             })
             .await?;
         Ok(())
+    }
+
+    async fn upload_sota_csv(
+        &self,
+        user_id: UserId,
+        UploadSOTALog { data }: UploadSOTALog,
+    ) -> AppResult<()> {
+        let requests: Vec<SOTALogCSV> = csv_reader(data, false, 0)?;
+
+        let from = Utc.with_ymd_and_hms(2024, 7, 1, 0, 0, 0).unwrap();
+        let to = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+
+        let newlog: Vec<_> = requests
+            .into_iter()
+            .map(|l| SOTALogCSV::to_log(user_id, l))
+            .filter(|l| l.time >= from && l.time < to)
+            .collect();
+        self.sota_repo.upload_log(newlog).await?;
+        Ok(())
+    }
+
+    async fn delete_sota_log(&self, _user_id: UserId) -> AppResult<()> {
+        self.sota_repo
+            .delete_log(DeleteLog { before: Utc::now() })
+            .await?;
+        Ok(())
+    }
+
+    async fn award_progress(&self, _user_id: UserId, mut query: FindLog) -> AppResult<String> {
+        let mut response = String::new();
+
+        let after = query.after.unwrap_or_default();
+        let before = query.before.unwrap_or_default();
+
+        query.activation = true;
+        let act_log = self.sota_repo.find_log(&query).await?;
+        query.activation = false;
+        let chase_log = self.sota_repo.find_log(&query).await?;
+
+        let mut act_hash = HashMap::new();
+
+        for a in act_log {
+            let my_summit_code = a.my_summit_code.unwrap();
+            let act_count = act_hash.entry((a.operator, my_summit_code)).or_insert(0);
+            *act_count += 1;
+        }
+
+        let mut chase_summit_hash = HashMap::new();
+        let mut chase_operator_hash = HashMap::new();
+        let mut chase_callsign_hash = HashMap::new();
+
+        for c in chase_log {
+            let my_operator = c.operator.clone();
+            let his_summit_code = c.his_summit_code.unwrap();
+            let his_operator = call_to_operator(&c.his_callsign);
+            let his_callsign = c.his_callsign.clone();
+
+            let chase_count = chase_summit_hash
+                .entry(c.operator)
+                .or_insert(HashSet::new());
+            chase_count.insert(his_summit_code);
+
+            let chase_op_count = chase_operator_hash
+                .entry(my_operator.clone())
+                .or_insert(HashSet::new());
+            chase_op_count.insert(his_operator);
+
+            let chase_call_count = chase_callsign_hash
+                .entry(my_operator.clone())
+                .or_insert(HashSet::new());
+            chase_call_count.insert(his_callsign);
+        }
+
+        let act_result: Vec<_> = act_hash
+            .into_iter()
+            .filter(|&(_, count)| count >= 10)
+            .map(|((call, summit), count)| (call, format!("{} {} qsos", summit, count)))
+            .collect();
+
+        let mut act_hash = HashMap::new();
+        for (call, summit) in act_result {
+            act_hash.entry(call).or_insert(Vec::new()).push(summit);
+        }
+
+        let act_result: Vec<_> = act_hash
+            .into_iter()
+            .filter(|(_, summits)| summits.len() >= 10)
+            .collect();
+
+        response.push_str(&format!("集計期間 {} - {}\n", after, before));
+
+        for a in act_result {
+            response.push_str(&format!(
+                "アクティベータ：{} activate {} summits ",
+                a.0,
+                a.1.len()
+            ));
+            for s in a.1 {
+                response.push_str(&format!("{} ", s));
+            }
+            response.push('\n');
+        }
+
+        let chase_summit10: Vec<_> = chase_summit_hash
+            .clone()
+            .into_iter()
+            .filter(|(_, h)| h.len() >= 10)
+            .map(|(call, h)| (call, format!("{} summits", h.len())))
+            .collect();
+
+        let chase_op10: Vec<_> = chase_operator_hash
+            .clone()
+            .into_iter()
+            .filter(|(_, h)| h.len() >= 10)
+            .map(|(call, h)| (call, format!("{} operators", h.len())))
+            .collect();
+
+        let chase_call10: Vec<_> = chase_callsign_hash
+            .clone()
+            .into_iter()
+            .filter(|(_, h)| h.len() >= 10)
+            .map(|(call, h)| (call, format!("{} stations", h.len())))
+            .collect();
+
+        for op in chase_op10 {
+            if let Some((_, summit)) = chase_summit10.iter().find(|&item| item.0 == op.0) {
+                response.push_str(&format!(
+                    "チェイサー10x10(operator) {} {} {}\n",
+                    op.0, op.1, summit
+                ));
+            }
+        }
+
+        for call in chase_call10 {
+            if let Some((_, summit)) = chase_summit10.iter().find(|&item| item.0 == call.0) {
+                response.push_str(&format!(
+                    "チェイサー10x10(callsign) {} {} {}\n",
+                    call.0, call.1, summit
+                ));
+            }
+        }
+        tracing::info!("Result = {}", response);
+
+        Ok(response)
     }
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode> {

@@ -192,6 +192,44 @@ pub struct DeleteLog {
     pub before: DateTime<Utc>,
 }
 
+#[derive(Debug, Default)]
+pub struct FindLog {
+    pub after: Option<DateTime<Utc>>,
+    pub before: Option<DateTime<Utc>>,
+    pub activation: bool,
+}
+
+#[derive(Default)]
+pub struct FindLogBuilder {
+    param: FindLog,
+}
+
+impl FindLogBuilder {
+    pub fn after(mut self, after: DateTime<Utc>) -> Self {
+        self.param.after = Some(after);
+        self
+    }
+
+    pub fn before(mut self, before: DateTime<Utc>) -> Self {
+        self.param.before = Some(before);
+        self
+    }
+
+    pub fn activation(mut self) -> Self {
+        self.param.activation = true;
+        self
+    }
+
+    pub fn chase(mut self) -> Self {
+        self.param.activation = false;
+        self
+    }
+
+    pub fn build(self) -> FindLog {
+        self.param
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum GroupBy {
     Callsign(Option<String>),

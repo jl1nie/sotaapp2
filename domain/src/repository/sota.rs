@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use common::error::AppResult;
 use shaku::Interface;
 
-use crate::model::event::{DeleteRef, FindRef, PagenatedResult};
-use crate::model::sota::{SOTAReference, SummitCode};
+use crate::model::event::{DeleteLog, DeleteRef, FindLog, FindRef, PagenatedResult};
+use crate::model::sota::{SOTALog, SOTAReference, SummitCode};
 
 #[async_trait]
 pub trait SOTARepository: Send + Sync + Interface {
@@ -18,4 +18,8 @@ pub trait SOTARepository: Send + Sync + Interface {
     async fn update_reference(&self, references: Vec<SOTAReference>) -> AppResult<()>;
     async fn upsert_reference(&self, references: Vec<SOTAReference>) -> AppResult<()>;
     async fn delete_reference(&self, query: DeleteRef<SummitCode>) -> AppResult<()>;
+
+    async fn upload_log(&self, logs: Vec<SOTALog>) -> AppResult<()>;
+    async fn find_log(&self, query: &FindLog) -> AppResult<Vec<SOTALog>>;
+    async fn delete_log(&self, query: DeleteLog) -> AppResult<()>;
 }
