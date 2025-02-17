@@ -1,4 +1,7 @@
-use domain::model::sota::SOTAReference;
+use chrono::{DateTime, NaiveDate, Utc};
+use domain::model::id::UserId;
+use domain::model::sota::{SOTALog, SOTAReference};
+use sqlx::types::Uuid;
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
@@ -19,8 +22,8 @@ pub struct SOTAReferenceImpl {
     pub maidenhead: String,
     pub points: i32,
     pub bonus_points: i32,
-    pub valid_from: String,
-    pub valid_to: String,
+    pub valid_from: NaiveDate,
+    pub valid_to: NaiveDate,
     pub activation_count: i32,
     pub activation_date: Option<String>,
     pub activation_call: Option<String>,
@@ -123,6 +126,83 @@ impl From<SOTAReferenceImpl> for SOTAReference {
             activation_count,
             activation_date,
             activation_call,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+pub struct SOTALogImpl {
+    pub user_id: Uuid,
+    pub my_callsign: String,
+    pub operator: String,
+    pub my_summit_code: Option<String>,
+    pub time: DateTime<Utc>,
+    pub frequency: String,
+    pub mode: String,
+    pub his_callsign: String,
+    pub his_summit_code: Option<String>,
+    pub comment: Option<String>,
+    pub update: DateTime<Utc>,
+}
+
+impl From<SOTALog> for SOTALogImpl {
+    fn from(value: SOTALog) -> Self {
+        let SOTALog {
+            user_id,
+            my_callsign,
+            operator,
+            my_summit_code,
+            time,
+            frequency,
+            mode,
+            his_callsign,
+            his_summit_code,
+            comment,
+            update,
+        } = value;
+        Self {
+            user_id: user_id.raw(),
+            my_callsign,
+            operator,
+            my_summit_code,
+            time,
+            frequency,
+            mode,
+            his_callsign,
+            his_summit_code,
+            comment,
+            update,
+        }
+    }
+}
+
+impl From<SOTALogImpl> for SOTALog {
+    fn from(value: SOTALogImpl) -> Self {
+        let SOTALogImpl {
+            user_id,
+            my_callsign,
+            operator,
+            my_summit_code,
+            time,
+            frequency,
+            mode,
+            his_callsign,
+            his_summit_code,
+            comment,
+            update,
+        } = value;
+        Self {
+            user_id: UserId::from(user_id),
+            my_callsign,
+            operator,
+            my_summit_code,
+            time,
+            frequency,
+            mode,
+            his_callsign,
+            his_summit_code,
+            comment,
+            update,
         }
     }
 }

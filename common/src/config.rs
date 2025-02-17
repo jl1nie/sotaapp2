@@ -11,6 +11,8 @@ pub struct AppConfig {
     pub run_migration: bool,
     pub migration_path: String,
     pub cors_origin: Option<String>,
+    pub firebase_api_key: String,
+    pub auth_token_ttl: Duration,
     pub log_level: String,
     pub sota_alert_endpoint: String,
     pub sota_spot_endpoint: String,
@@ -50,6 +52,12 @@ impl AppConfig {
                 .parse::<bool>()?,
             migration_path: std::env::var("MIGRATION_PATH").expect("MIGRATION_PATH"),
             cors_origin: std::env::var("CORS_ORIGIN").ok(),
+            firebase_api_key: std::env::var("FIREBASE_API_KEY").expect("FIREBASE_API_KEY"),
+            auth_token_ttl: Duration::hours(
+                std::env::var("AUTH_TOKEN_TTL")
+                    .expect("AUTH_TOKEN_TTL")
+                    .parse::<i64>()?,
+            ),
             sota_alert_endpoint: std::env::var("SOTA_ALERT_ENDPOINT").expect("SOTA_ALERT_ENDPOINT"),
             sota_spot_endpoint: std::env::var("SOTA_SPOT_ENDPOINT").expect("SOTA_SPOT_ENDPOINT"),
             sota_summitlist_endpoint: std::env::var("SOTA_SUMMITLIST_ENDPOINT")

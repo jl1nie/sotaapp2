@@ -6,7 +6,7 @@ use std::time::Duration;
 use common::error::AppResult;
 use common::{config::AppConfig, error::AppError};
 use registry::AppRegistry;
-use service::{model::sota::UploadSOTACSV, services::AdminService};
+use service::{model::sota::UploadSOTASummit, services::AdminService};
 
 pub async fn update_summit_list(config: AppConfig, registry: Arc<AppRegistry>) -> AppResult<()> {
     let service: &dyn AdminService = registry.resolve_ref();
@@ -19,7 +19,7 @@ pub async fn update_summit_list(config: AppConfig, registry: Arc<AppRegistry>) -
         .await
         .map_err(AppError::GetError)?;
 
-    let event = UploadSOTACSV { data };
+    let event = UploadSOTASummit { data };
     service.update_summit_list(event).await?;
 
     tokio::time::sleep(Duration::from_secs(10)).await;

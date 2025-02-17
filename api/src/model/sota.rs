@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
@@ -71,8 +72,8 @@ impl From<CreateRefRequest> for Vec<SOTAReference> {
             maidenhead: maidenhead(longitude, latitude),
             points,
             bonus_points,
-            valid_from,
-            valid_to,
+            valid_from: NaiveDate::parse_from_str(&valid_from, "%d/%m/%Y").unwrap(),
+            valid_to: NaiveDate::parse_from_str(&valid_to, "%d/%m/%Y").unwrap(),
             activation_count,
             activation_date,
             activation_call,
@@ -146,8 +147,8 @@ impl From<UpdateRefRequest> for Vec<SOTAReference> {
             maidenhead: maidenhead(longitude, latitude),
             points,
             bonus_points,
-            valid_from,
-            valid_to,
+            valid_from: NaiveDate::parse_from_str(&valid_from, "%d/%m/%Y").unwrap(),
+            valid_to: NaiveDate::parse_from_str(&valid_to, "%d/%m/%Y").unwrap(),
             activation_count,
             activation_date,
             activation_call,

@@ -1,4 +1,5 @@
 pub mod activation;
+pub mod auth;
 pub mod health;
 pub mod locator;
 pub mod pota;

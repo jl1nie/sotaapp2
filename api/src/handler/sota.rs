@@ -5,16 +5,20 @@ use axum::{
     Json, Router,
 };
 
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeZone, Utc};
 use shaku_axum::Inject;
+use std::str::FromStr;
 
 use common::error::{AppError, AppResult};
 
-use domain::model::event::{DeleteRef, FindActBuilder, FindRefBuilder};
 use domain::model::sota::SummitCode;
+use domain::model::{
+    event::{DeleteRef, FindActBuilder, FindLogBuilder, FindRefBuilder},
+    id::UserId,
+};
 
 use registry::{AppRegistry, AppState};
-use service::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
+use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use service::services::{AdminService, UserService};
 
 use crate::model::{
@@ -44,7 +48,7 @@ async fn import_summit_list(
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
 
-        let reqs = UploadSOTACSV { data };
+        let reqs = UploadSOTASummit { data };
 
         return admin_service
             .import_summit_list(reqs)
@@ -62,7 +66,7 @@ async fn update_summit_list(
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
 
-        let reqs = UploadSOTACSV { data };
+        let reqs = UploadSOTASummit { data };
 
         return admin_service
             .update_summit_list(reqs)
@@ -80,7 +84,7 @@ async fn import_sota_opt_reference(
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
 
-        let reqs = UploadSOTAOptCSV { data };
+        let reqs = UploadSOTASummitOpt { data };
 
         return admin_service
             .import_summit_opt_list(reqs)
@@ -88,6 +92,52 @@ async fn import_sota_opt_reference(
             .map(|_| StatusCode::CREATED);
     }
     Err(AppError::ForbiddenOperation)
+}
+
+async fn upload_log(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Path(user_id): Path<String>,
+    mut multipart: Multipart,
+) -> AppResult<StatusCode> {
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let data = field.bytes().await.unwrap();
+        let data = String::from_utf8(data.to_vec()).unwrap();
+        let user_id = UserId::from_str(&user_id)?;
+        let reqs = UploadSOTALog { data };
+
+        return user_service
+            .upload_sota_csv(user_id, reqs)
+            .await
+            .map(|_| StatusCode::CREATED);
+    }
+    Err(AppError::ForbiddenOperation)
+}
+
+async fn delete_log(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Path(user_id): Path<String>,
+) -> AppResult<StatusCode> {
+    let user_id = UserId::from_str(&user_id)?;
+    user_service
+        .delete_sota_log(user_id)
+        .await
+        .map(|_| StatusCode::OK)
+}
+
+async fn show_progress(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Path(user_id): Path<String>,
+) -> AppResult<Json<String>> {
+    let user_id = UserId::from_str(&user_id)?;
+    let mut query = FindLogBuilder::default();
+    let from = Utc.with_ymd_and_hms(2024, 7, 1, 0, 0, 0).unwrap();
+    let to = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+
+    query = query.after(from).before(to);
+    let query = query.build();
+
+    let result = user_service.award_progress(user_id, query).await?;
+    Ok(Json(result))
 }
 
 async fn delete_sota_reference(
@@ -130,6 +180,7 @@ async fn show_all_sota_reference(
         .await?;
     Ok(Json(result.into()))
 }
+
 async fn search_sota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
@@ -193,6 +244,9 @@ pub fn build_sota_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/import", post(import_summit_list))
         .route("/import/ja", post(import_sota_opt_reference))
+        .route("/log/:user_id", post(upload_log))
+        .route("/log/:user_id", delete(delete_log))
+        .route("/log/:user_id", get(show_progress))
         .route("/update", post(update_summit_list))
         .route("/spots", get(show_sota_spots))
         .route("/alerts", get(show_sota_alerts))

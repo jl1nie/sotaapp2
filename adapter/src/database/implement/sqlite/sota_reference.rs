@@ -3,13 +3,14 @@ use shaku::Component;
 use sqlx::SqliteConnection;
 
 use common::error::{AppError, AppResult};
-use domain::model::event::{DeleteRef, FindRef, PagenatedResult};
-use domain::model::sota::{SOTAReference, SummitCode};
+use domain::model::event::{DeleteLog, DeleteRef, FindLog, FindRef, PagenatedResult};
+use domain::model::sota::{SOTALog, SOTAReference, SummitCode};
 use domain::model::AwardProgram::SOTA;
 
-use super::querybuilder::findref_query_builder;
+use super::querybuilder::{findlog_query_builder, findref_query_builder};
 use crate::database::connect::ConnectionPool;
-use crate::database::model::sota::SOTAReferenceImpl;
+use crate::database::model::sota::{SOTALogImpl, SOTAReferenceImpl};
+
 use domain::repository::sota::SOTARepository;
 
 #[derive(Component)]
@@ -68,6 +69,42 @@ impl SOTARepositoryImpl {
             r.activation_count,
             r.activation_date,
             r.activation_call)
+        .execute(db)
+        .await
+        .map_err(AppError::SpecificOperationError)?;
+        Ok(())
+    }
+
+    async fn create_log(&self, l: SOTALogImpl, db: &mut SqliteConnection) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+                INSERT INTO sota_log(
+                      user_id,
+                      my_callsign,
+                      operator,
+                      my_summit_code,
+                      time,
+                      frequency,
+                      mode,
+                      his_callsign,
+                      his_summit_code,
+                      comment,
+                      "update"
+                )
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            l.user_id,
+            l.my_callsign,
+            l.operator,
+            l.my_summit_code,
+            l.time,
+            l.frequency,
+            l.mode,
+            l.his_callsign,
+            l.his_summit_code,
+            l.comment,
+            l.update
+        )
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
@@ -234,6 +271,21 @@ impl SOTARepositoryImpl {
         Ok(())
     }
 
+    async fn delete_log(&self, d: DeleteLog, db: &mut SqliteConnection) -> AppResult<()> {
+        let before = d.before;
+        sqlx::query!(
+            r#"
+                DELETE FROM sota_log
+                WHERE time < $1
+            "#,
+            before,
+        )
+        .execute(&mut *db)
+        .await
+        .map_err(AppError::SpecificOperationError)?;
+        Ok(())
+    }
+
     async fn select(&self, query: &str) -> AppResult<SOTAReferenceImpl> {
         let mut select = r#"
             SELECT
@@ -351,6 +403,34 @@ impl SOTARepositoryImpl {
 
         Ok(rows)
     }
+
+    async fn select_log_by_condition(&self, query: &str) -> AppResult<Vec<SOTALogImpl>> {
+        let mut select = r#"
+            SELECT
+                user_id,
+                my_callsign,
+                operator,
+                my_summit_code,
+                time,
+                frequency,
+                mode,
+                his_callsign,
+                his_summit_code,
+                comment,
+                "update"
+            FROM sota_log WHERE "#
+            .to_string();
+
+        select.push_str(query);
+
+        let sql_query = sqlx::query_as::<_, SOTALogImpl>(&select);
+        let rows: Vec<SOTALogImpl> = sql_query
+            .fetch_all(self.pool.inner_ref())
+            .await
+            .map_err(AppError::RowNotFound)?;
+
+        Ok(rows)
+    }
 }
 
 #[async_trait]
@@ -451,5 +531,42 @@ impl SOTARepository for SOTARepositoryImpl {
         let results = self.select_by_condition(&query).await?;
         let results = results.into_iter().map(SOTAReference::from).collect();
         Ok(results)
+    }
+    async fn upload_log(&self, logs: Vec<SOTALog>) -> AppResult<()> {
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+
+        for l in logs.into_iter().enumerate() {
+            self.create_log(SOTALogImpl::from(l.1), &mut tx).await?;
+            if l.0 % 500 == 0 {
+                tracing::info!("insert sota log {} rescords", l.0);
+            }
+        }
+        tx.commit().await.map_err(AppError::TransactionError)?;
+        Ok(())
+    }
+
+    async fn find_log(&self, query: &FindLog) -> AppResult<Vec<SOTALog>> {
+        let query = findlog_query_builder(query);
+        let results = self.select_log_by_condition(&query).await?;
+        let results = results.into_iter().map(SOTALog::from).collect();
+        Ok(results)
+    }
+    async fn delete_log(&self, query: DeleteLog) -> AppResult<()> {
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+
+        self.delete_log(query, &mut tx).await?;
+        tx.commit().await.map_err(AppError::TransactionError)?;
+
+        Ok(())
     }
 }

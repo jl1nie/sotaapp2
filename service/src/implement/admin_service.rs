@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use chrono::{Local, NaiveDate};
+use chrono::Local;
 
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
@@ -19,8 +19,8 @@ use domain::repository::{
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
 use crate::model::pota::{POTACSVFile, UploadPOTACSV};
-use crate::model::sota::{SOTACSVFile, SOTACSVOptFile};
-use crate::model::sota::{UploadSOTACSV, UploadSOTAOptCSV};
+use crate::model::sota::{SOTASumitOptCSV, SOTASummitCSV};
+use crate::model::sota::{UploadSOTASummit, UploadSOTASummitOpt};
 
 use crate::services::AdminService;
 
@@ -39,15 +39,16 @@ pub struct AdminServiceImpl {
 
 fn is_valid_summit(r: &SOTAReference) -> bool {
     let today = Local::now().date_naive();
-    let validfrom = NaiveDate::parse_from_str(&r.valid_from, "%d/%m/%Y").unwrap_or(today);
-    let validto = NaiveDate::parse_from_str(&r.valid_to, "%d/%m/%Y").unwrap_or(today);
-    today <= validto && today >= validfrom
+    today <= r.valid_to && today >= r.valid_from
 }
 
 #[async_trait]
 impl AdminService for AdminServiceImpl {
-    async fn import_summit_list(&self, UploadSOTACSV { data }: UploadSOTACSV) -> AppResult<()> {
-        let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
+    async fn import_summit_list(
+        &self,
+        UploadSOTASummit { data }: UploadSOTASummit,
+    ) -> AppResult<()> {
+        let csv: Vec<SOTASummitCSV> = csv_reader(data, false, 2)?;
         let req: Vec<_> = csv
             .into_iter()
             .map(SOTAReference::from)
@@ -62,7 +63,10 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn update_summit_list(&self, UploadSOTACSV { data }: UploadSOTACSV) -> AppResult<()> {
+    async fn update_summit_list(
+        &self,
+        UploadSOTASummit { data }: UploadSOTASummit,
+    ) -> AppResult<()> {
         let partial_equal = |r: &SOTAReference, other: &SOTAReference| {
             r.summit_code == other.summit_code
                 && r.association_name == other.association_name
@@ -79,7 +83,7 @@ impl AdminService for AdminServiceImpl {
                 && r.activation_call == other.activation_call
         };
 
-        let csv: Vec<SOTACSVFile> = csv_reader(data, 2)?;
+        let csv: Vec<SOTASummitCSV> = csv_reader(data, false, 2)?;
 
         let new_hash: HashMap<_, _> = csv
             .into_iter()
@@ -121,9 +125,9 @@ impl AdminService for AdminServiceImpl {
 
     async fn import_summit_opt_list(
         &self,
-        UploadSOTAOptCSV { data }: UploadSOTAOptCSV,
+        UploadSOTASummitOpt { data }: UploadSOTASummitOpt,
     ) -> AppResult<()> {
-        let csv: Vec<SOTACSVOptFile> = csv_reader(data, 1)?;
+        let csv: Vec<SOTASumitOptCSV> = csv_reader(data, false, 1)?;
 
         let ja_hash: HashMap<_, _> = csv
             .into_iter()
@@ -160,7 +164,7 @@ impl AdminService for AdminServiceImpl {
     }
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
-        let requests: Vec<POTACSVFile> = csv_reader(data, 1)?;
+        let requests: Vec<POTACSVFile> = csv_reader(data, false, 1)?;
         let newref = requests.into_iter().map(POTAReference::from).collect();
         self.pota_repo
             .delete_reference(DeleteRef::DeleteAll)
@@ -173,7 +177,7 @@ impl AdminService for AdminServiceImpl {
         &self,
         UploadMuniCSV { data }: UploadMuniCSV,
     ) -> AppResult<()> {
-        let requests: Vec<MuniCSVFile> = csv_reader(data, 1)?;
+        let requests: Vec<MuniCSVFile> = csv_reader(data, false, 1)?;
         let newtable = requests
             .into_iter()
             .map(MunicipalityCenturyCode::from)

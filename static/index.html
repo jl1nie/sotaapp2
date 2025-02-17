@@ -8,6 +8,21 @@
 </head>
 
 <body>
+        
+    <hr>
+    <h4>Upload SOTA Log </h4>
+    <form id="upload-sota-log" method="post" enctype="multipart/form-data">
+        <input id="upload-sota-log-file" type="file" name="file">
+        <button id="upload-sota-log-button" type="submit">Upload</button>
+    </form>
+
+    <h4>Analyze SOTA Log</h4>
+    <form id="award-progress" method="get">
+        <input type="submit" value="送信">
+    </form>
+
+    <hr>
+
     <h4>Import SOTA Summits list </h4>
     <form id="import-summit" method="post" enctype="multipart/form-data">
         <input id="import-summit-file" type="file" name="file">
@@ -178,6 +193,7 @@
         const importsota = baseurl + '/sota/import';
         const importsotaja = baseurl + '/sota/import/ja';
         const importactivation = baseurl + '/sota/update';
+        const uploadsotalog = baseurl + '/sota/log';
 
         const potasearch = baseurl + '/pota/parks/search';
         const potalist = baseurl + '/pota/parks';
@@ -224,6 +240,29 @@
                 })
         };
 
+        function delete_data(url,buttonid) {
+            event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
+            const button = document.getElementById(buttonid);
+            button.disabled = true;
+            fetch(url, { method: 'DELETE'})
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Success:', response.status);
+                        resultDiv.textContent = 'DELETE done: ' + response.status;
+                    } else {
+                        console.error('Error:', response.status);
+                        resultDiv.textContent = 'Error: ' + response.status;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    resultDiv.textContent = 'Error: ' + response.status;
+                })
+                .finally(() => {
+                    button.disabled = false;
+                })
+        };
+
         function search(baseurl, param) {
             event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
 
@@ -249,6 +288,21 @@
                 });
         };
 
+        document.getElementById('upload-sota-log')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let eid = encodeURIComponent(uid);
+                uploadFile(uploadsotalog + `/${eid}`, 'upload-sota-log-file', 'upload-sota-log-button');
+            });
+
+        document.getElementById('award-progress')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                let eid = encodeURIComponent(uid);
+                search(uploadsotalog + `/${eid}`, '');
+            });
+
+            
         document.getElementById('import-summit')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
