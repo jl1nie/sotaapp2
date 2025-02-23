@@ -1,4 +1,5 @@
 use csv::ReaderBuilder;
+use geographiclib_rs::{DirectGeodesic, Geodesic, InverseGeodesic};
 use maidenhead::longlat_to_grid;
 use serde::de::DeserializeOwned;
 
@@ -36,31 +37,19 @@ pub fn call_to_operator(callsign: &str) -> String {
     }
 }
 
-const EARTH_RADIUS: f64 = 6371000.0;
-
 pub fn calculate_bounding_box(lat: f64, lon: f64, distance: f64) -> (f64, f64, f64, f64) {
-    let lat_radians = lat.to_radians();
-    let distance_radians = distance / EARTH_RADIUS;
+    let g = Geodesic::wgs84();
 
-    let min_lat = lat - distance_radians.to_degrees();
-    let max_lat = lat + distance_radians.to_degrees(); // 経度方向の距離を緯度方向に補正する
-    let delta_lon = (distance_radians / lat_radians.cos()).to_degrees();
-    let min_lon = lon - delta_lon;
-    let max_lon = lon + delta_lon;
-    (min_lon, min_lat, max_lon, max_lat)
+    let (max_lat, max_lon, _, _) = g.direct(lat, lon, 45.0, distance);
+    let (min_lat, min_lon, _, _) = g.direct(lat, lon, 225.0, distance);
+
+    (min_lat, min_lon, max_lat, max_lon)
 }
 
 pub fn calculate_distance(lat: f64, lon: f64, lat2: f64, lon2: f64) -> f64 {
-    let dlat = (lat2 - lat).to_radians();
-    let dlng = (lon2 - lon).to_radians();
+    let g = Geodesic::wgs84();
 
-    let lat1 = lat.to_radians();
-    let lat2 = lat2.to_radians();
-
-    let a = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlng / 2.0).sin().powi(2);
-    let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
-
-    EARTH_RADIUS * c
+    g.inverse(lat, lon, lat2, lon2)
 }
 
 pub fn maidenhead(lon: f64, lat: f64) -> String {
