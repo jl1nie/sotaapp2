@@ -244,17 +244,17 @@ pub fn build_sota_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/import", post(import_summit_list))
         .route("/import/ja", post(import_sota_opt_reference))
-        .route("/log/:user_id", post(upload_log))
-        .route("/log/:user_id", delete(delete_log))
-        .route("/log/:user_id", get(show_progress))
+        .route("/log/{user_id}", post(upload_log))
+        .route("/log/{user_id}", delete(delete_log))
+        .route("/log/{user_id}", get(show_progress))
         .route("/update", post(update_summit_list))
         .route("/spots", get(show_sota_spots))
         .route("/alerts", get(show_sota_alerts))
         .route("/summits", get(show_all_sota_reference))
         .route("/summits/search", get(search_sota_reference))
-        .route("/summits/:summit_code", get(show_sota_reference))
-        .route("/summits/:summit_code", put(update_sota_reference))
-        .route("/summits/:summit_code", delete(delete_sota_reference));
+        .route("/summits/{summit_code}", get(show_sota_reference))
+        .route("/summits/{summit_code}", put(update_sota_reference))
+        .route("/summits/{summit_code}", delete(delete_sota_reference));
 
     Router::new().nest("/sota", routers)
 }

@@ -82,8 +82,8 @@ impl AdminPeriodicServiceImpl {
     pub async fn process_position(
         &self,
         from: &AprsCallsign,
-        longitude: f64,
         latitude: f64,
+        longitude: f64,
     ) -> AppResult<()> {
         let query = FindActBuilder::default()
             .sota()
@@ -109,9 +109,9 @@ impl AdminPeriodicServiceImpl {
         let summit = dest[0].clone();
         let destination = summit.summit_code.clone();
 
-        let (destlon, destlat) = (
-            summit.longitude.unwrap_or_default(),
+        let (destlat, destlon) = (
             summit.latitude.unwrap_or_default(),
+            summit.longitude.unwrap_or_default(),
         );
 
         let aprslog = self.aprs_log_repo.get_aprs_log_by_callsign(from).await?;
@@ -279,7 +279,7 @@ impl AdminPeriodicServiceImpl {
             latitude,
         };
 
-        tracing::info!("APRS Beacon:{:?}", log);
+        //tracing::info!("APRS Beacon:{:?}", log);
 
         self.aprs_log_repo.insert_aprs_log(log).await?;
 

@@ -57,7 +57,9 @@ pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
         } else if let Some(dist) = r.dist {
             let lon = r.lon.unwrap_or_default();
             let lat = r.lat.unwrap_or_default();
-            let (min_lon, min_lat, max_lon, max_lat) = calculate_bounding_box(lat, lon, dist);
+
+            let (min_lat, min_lon, max_lat, max_lon) = calculate_bounding_box(lat, lon, dist);
+
             query.push_str(&format!(
                 "(longitude > {} AND latitude > {} AND longitude < {} AND latitude < {}) AND ",
                 min_lon, min_lat, max_lon, max_lat

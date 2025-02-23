@@ -199,17 +199,17 @@ pub fn build_pota_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/import", post(import_pota_reference))
         .route(
-            "/upload/activator/:user_id",
+            "/upload/activator/{user_id}",
             post(upload_pota_activator_log),
         )
-        .route("/upload/hunter/:user_id", post(upload_pota_hunter_log))
+        .route("/upload/hunter/{user_id}", post(upload_pota_hunter_log))
         .route("/spots", get(show_pota_spots))
         .route("/alerts", get(show_pota_alerts))
         .route("/parks", get(show_all_pota_reference))
         .route("/parks/search", get(find_pota_reference))
-        .route("/parks/:park_code", get(show_pota_reference))
-        .route("/parks/:park_code", put(update_pota_reference))
-        .route("/parks/:park_code", delete(delete_pota_reference));
+        .route("/parks/{park_code}", get(show_pota_reference))
+        .route("/parks/{park_code}", put(update_pota_reference))
+        .route("/parks/{park_code}", delete(delete_pota_reference));
 
     Router::new().nest("/pota", routers)
 }

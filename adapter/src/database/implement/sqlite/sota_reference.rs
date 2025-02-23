@@ -532,6 +532,7 @@ impl SOTARepository for SOTARepositoryImpl {
         let results = results.into_iter().map(SOTAReference::from).collect();
         Ok(results)
     }
+
     async fn upload_log(&self, logs: Vec<SOTALog>) -> AppResult<()> {
         let mut tx = self
             .pool
@@ -556,6 +557,7 @@ impl SOTARepository for SOTARepositoryImpl {
         let results = results.into_iter().map(SOTALog::from).collect();
         Ok(results)
     }
+
     async fn delete_log(&self, query: DeleteLog) -> AppResult<()> {
         let mut tx = self
             .pool

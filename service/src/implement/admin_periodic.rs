@@ -68,8 +68,6 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
     }
 
     async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()> {
-        tracing::info!("Update {} spots", spots.len());
-
         self.act_repo.update_spots(spots).await?;
 
         let expire: DateTime<Utc> = Utc::now() - self.config.alert_expire;
@@ -102,7 +100,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
             } => {
                 if let Some(ssid) = callsign.ssid {
                     if [5, 6, 7, 8, 9].contains(&ssid) {
-                        return self.process_position(callsign, longitude, latitude).await;
+                        return self.process_position(callsign, latitude, longitude).await;
                     }
                 }
             }

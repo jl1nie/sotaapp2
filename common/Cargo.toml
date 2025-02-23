@@ -19,4 +19,5 @@ uuid.workspace = true
 regex.workspace = true
 reqwest.workspace = true
 maidenhead.workspace = true
+geographiclib-rs.workspace = true
 tokio-cron-scheduler.workspace = true
