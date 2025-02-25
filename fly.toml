@@ -1,0 +1,33 @@
+# fly.toml app configuration file generated for sotaapp2 on 2025-02-25T20:14:53+09:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'sotaapp2'
+primary_region = 'nrt'
+swap_size_mb = 256
+
+[build]
+image = "jl1nie/sotaapp2:latest"
+
+[http_service]
+internal_port = 8080
+force_https = true
+auto_stop_machines = 'stop'
+auto_start_machines = true
+min_machines_running = 0
+processes = ['app']
+
+[[vm]]
+size = 'shared-cpu-1x'
+memory = "256mb"
+
+[[mounts]]
+source = "data"
+destination = "/data"
+processes = ["app"]
+
+[[restart]]
+policy = "always"
+retries = 3
+processes = ["app"]

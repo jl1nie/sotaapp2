@@ -16,7 +16,4 @@ WORKDIR /app
 COPY --from=builder ./app/target/release/app ./target/release/app
 COPY static/ static/
 COPY adapter/migrations/sqlite migrations/
-RUN mkdir -p /app/data
-#RUN adduser admin && chown -R admin /app
-#USER admin
 ENTRYPOINT ["./target/release/app"]
