@@ -1,5 +1,8 @@
-use super::{id::UserId, Maidenhead};
-use chrono::{DateTime, NaiveDate, Utc};
+use super::{
+    id::{LogId, UserId},
+    Maidenhead,
+};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 
 #[derive(Debug)]
 pub struct ParkCode(String);
@@ -51,7 +54,7 @@ pub struct POTAReferenceWithLog {
 
 #[derive(Debug)]
 pub struct POTAActivatorLog {
-    pub user_id: UserId,
+    pub log_id: LogId,
     pub dx_entity: String,
     pub location: String,
     pub hasc: String,
@@ -61,12 +64,11 @@ pub struct POTAActivatorLog {
     pub attempts: i32,
     pub activations: i32,
     pub qsos: i32,
-    pub upload: DateTime<Utc>,
 }
 
 #[derive(Debug)]
 pub struct POTAHunterLog {
-    pub user_id: UserId,
+    pub log_id: LogId,
     pub dx_entity: String,
     pub location: String,
     pub hasc: String,
@@ -74,5 +76,10 @@ pub struct POTAHunterLog {
     pub park_name: String,
     pub first_qso_date: NaiveDate,
     pub qsos: i32,
-    pub upload: DateTime<Utc>,
+}
+
+pub struct POTALogUser {
+    pub user_id: UserId,
+    pub log_id: LogId,
+    pub update: NaiveDateTime,
 }

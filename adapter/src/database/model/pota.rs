@@ -1,6 +1,8 @@
-use chrono::{DateTime, NaiveDate, Utc};
-use domain::model::id::UserId;
-use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference, POTAReferenceWithLog};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use domain::model::id::{LogId, UserId};
+use domain::model::pota::{
+    POTAActivatorLog, POTAHunterLog, POTALogUser, POTAReference, POTAReferenceWithLog,
+};
 use sqlx::FromRow;
 
 #[derive(Debug)]
@@ -111,64 +113,87 @@ impl From<POTAReferenceImpl> for POTAReference {
     }
 }
 
-#[derive(Debug, FromRow)]
-pub struct POTAActivatorLogImpl {
-    pub user_id: UserId,
-    pub dx_entity: String,
-    pub location: String,
-    pub hasc: String,
-    pub pota_code: String,
-    pub park_name: String,
-    pub first_qso_date: NaiveDate,
-    pub attempts: i32,
-    pub activations: i32,
-    pub qsos: i32,
-    pub upload: DateTime<Utc>,
+#[derive(Debug, sqlx::Type)]
+#[repr(i32)]
+pub enum POTALogType {
+    ActivatorLog = 1,
+    HunterLog = 2,
 }
-
-impl From<POTAActivatorLog> for POTAActivatorLogImpl {
-    fn from(l: POTAActivatorLog) -> Self {
-        POTAActivatorLogImpl {
-            user_id: l.user_id,
-            dx_entity: l.dx_entity,
-            location: l.location,
-            hasc: l.hasc,
-            pota_code: l.pota_code,
-            park_name: l.park_name,
-            first_qso_date: l.first_qso_date,
-            attempts: l.attempts,
-            activations: l.activations,
-            qsos: l.qsos,
-            upload: l.upload,
+impl TryFrom<i32> for POTALogType {
+    type Error = ();
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(POTALogType::ActivatorLog),
+            2 => Ok(POTALogType::HunterLog),
+            _ => Err(()),
         }
     }
 }
 
 #[derive(Debug, FromRow)]
-pub struct POTAHunterLogImpl {
-    pub user_id: UserId,
+pub struct POTALogImpl {
+    pub log_id: LogId,
+    pub log_type: POTALogType,
     pub dx_entity: String,
     pub location: String,
     pub hasc: String,
     pub pota_code: String,
     pub park_name: String,
     pub first_qso_date: NaiveDate,
+    pub attempts: Option<i32>,
+    pub activations: Option<i32>,
     pub qsos: i32,
-    pub upload: DateTime<Utc>,
 }
 
-impl From<POTAHunterLog> for POTAHunterLogImpl {
-    fn from(l: POTAHunterLog) -> Self {
-        POTAHunterLogImpl {
-            user_id: l.user_id,
+impl From<POTAActivatorLog> for POTALogImpl {
+    fn from(l: POTAActivatorLog) -> Self {
+        POTALogImpl {
+            log_id: l.log_id,
+            log_type: POTALogType::ActivatorLog,
             dx_entity: l.dx_entity,
             location: l.location,
             hasc: l.hasc,
             pota_code: l.pota_code,
             park_name: l.park_name,
             first_qso_date: l.first_qso_date,
+            attempts: Some(l.attempts),
+            activations: Some(l.activations),
             qsos: l.qsos,
-            upload: l.upload,
+        }
+    }
+}
+
+impl From<POTAHunterLog> for POTALogImpl {
+    fn from(l: POTAHunterLog) -> Self {
+        POTALogImpl {
+            log_id: l.log_id,
+            log_type: POTALogType::HunterLog,
+            dx_entity: l.dx_entity,
+            location: l.location,
+            hasc: l.hasc,
+            pota_code: l.pota_code,
+            park_name: l.park_name,
+            first_qso_date: l.first_qso_date,
+            attempts: None,
+            activations: None,
+            qsos: l.qsos,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+pub struct POTALogUserImpl {
+    pub user_id: UserId,
+    pub log_id: LogId,
+    pub update: NaiveDateTime,
+}
+
+impl From<POTALogUser> for POTALogUserImpl {
+    fn from(l: POTALogUser) -> Self {
+        POTALogUserImpl {
+            user_id: l.user_id,
+            log_id: l.log_id,
+            update: l.update,
         }
     }
 }

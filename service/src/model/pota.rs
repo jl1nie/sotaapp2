@@ -2,7 +2,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
-use domain::model::id::UserId;
+use domain::model::id::LogId;
 use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -70,7 +70,7 @@ pub struct POTAActivatorLogCSV {
 }
 
 impl POTAActivatorLogCSV {
-    pub fn to_log(user_id: UserId, value: POTAActivatorLogCSV) -> POTAActivatorLog {
+    pub fn to_log(log_id: LogId, value: POTAActivatorLogCSV) -> POTAActivatorLog {
         let POTAActivatorLogCSV {
             dx_entity,
             location,
@@ -82,10 +82,9 @@ impl POTAActivatorLogCSV {
             activations,
             qsos,
         } = value;
-        let upload: DateTime<Utc> = Utc::now();
         let first_qso_date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d").unwrap();
         POTAActivatorLog {
-            user_id,
+            log_id,
             dx_entity,
             location,
             hasc,
@@ -95,7 +94,6 @@ impl POTAActivatorLogCSV {
             attempts,
             activations,
             qsos,
-            upload,
         }
     }
 }
@@ -112,7 +110,7 @@ pub struct POTAHunterLogCSV {
     pub qsos: i32,
 }
 impl POTAHunterLogCSV {
-    pub fn to_log(user_id: UserId, value: POTAHunterLogCSV) -> POTAHunterLog {
+    pub fn to_log(log_id: LogId, value: POTAHunterLogCSV) -> POTAHunterLog {
         let POTAHunterLogCSV {
             dx_entity,
             location,
@@ -122,10 +120,9 @@ impl POTAHunterLogCSV {
             first_qso_date,
             qsos,
         } = value;
-        let upload: DateTime<Utc> = Utc::now();
         let first_qso_date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d").unwrap();
         POTAHunterLog {
-            user_id,
+            log_id,
             dx_entity,
             location,
             hasc,
@@ -133,7 +130,6 @@ impl POTAHunterLogCSV {
             park_name,
             first_qso_date,
             qsos,
-            upload,
         }
     }
 }

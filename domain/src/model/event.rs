@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use derive_new::new;
 
-use crate::model::{id::UserId, AwardProgram};
+use crate::model::{id::LogId, AwardProgram};
 use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference};
 
 #[derive(new, Debug)]
@@ -33,7 +33,7 @@ pub struct FindRef {
     pub center: Option<CenterRadius>,
     pub min_elev: Option<i32>,
     pub min_area: Option<i32>,
-    pub user_id: Option<UserId>,
+    pub log_id: Option<LogId>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -148,8 +148,8 @@ impl FindRefBuilder {
         self
     }
 
-    pub fn user_id(mut self, id: UserId) -> Self {
-        self.param.user_id = Some(id);
+    pub fn log_id(mut self, id: LogId) -> Self {
+        self.param.log_id = Some(id);
         self
     }
 

@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use domain::model::id::UserId;
+use domain::model::id::LogId;
 use shaku::Component;
 use sqlx::SqliteConnection;
 
@@ -13,9 +13,7 @@ use domain::model::AwardProgram::POTA;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;
-use crate::database::model::pota::{
-    POTAActivatorLogImpl, POTAHunterLogImpl, POTAReferenceImpl, POTAReferenceWithLogImpl,
-};
+use crate::database::model::pota::{POTALogImpl, POTAReferenceImpl, POTAReferenceWithLogImpl};
 
 use domain::repository::pota::POTARepository;
 
@@ -131,18 +129,15 @@ impl POTARepositoryImpl {
         Ok(())
     }
 
-    async fn update_activator_log(
-        &self,
-        r: POTAActivatorLogImpl,
-        db: &mut SqliteConnection,
-    ) -> AppResult<()> {
-        let user_id = r.user_id.raw();
+    async fn update_log(&self, r: POTALogImpl, db: &mut SqliteConnection) -> AppResult<()> {
+        let log_id = r.log_id.raw();
         sqlx::query!(
             r#"
-                INSERT INTO pota_activator_log (user_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, attempts, activations, qsos, upload)
+                INSERT INTO pota_log (log_id, log_type, dx_entity, location, hasc, pota_code, park_name, first_qso_date, attempts, activations, qsos)
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                ON CONFLICT (user_id, pota_code) DO UPDATE
-                SET dx_entity = EXCLUDED.dx_entity,
+                ON CONFLICT (log_id, pota_code) DO UPDATE
+                SET log_type = EXCLUDED.log_type,
+                    dx_entity = EXCLUDED.dx_entity,
                     location = EXCLUDED.location,
                     hasc = EXCLUDED.hasc,
                     pota_code = EXCLUDED.pota_code,
@@ -150,10 +145,10 @@ impl POTARepositoryImpl {
                     first_qso_date = EXCLUDED.first_qso_date,
                     attempts = EXCLUDED.attempts,
                     activations = EXCLUDED.activations,
-                    qsos = EXCLUDED.qsos,
-                    upload = EXCLUDED.upload
+                    qsos = EXCLUDED.qsos
             "#,
-            user_id,
+            log_id,
+            r.log_type,
             r.dx_entity,
             r.location,
             r.hasc,
@@ -162,44 +157,7 @@ impl POTARepositoryImpl {
             r.first_qso_date,
             r.attempts,
             r.activations,
-            r.qsos,
-            r.upload
-        )
-        .execute(db)
-        .await
-        .map_err(AppError::SpecificOperationError)?;
-        Ok(())
-    }
-
-    async fn update_hunter_log(
-        &self,
-        r: POTAHunterLogImpl,
-        db: &mut SqliteConnection,
-    ) -> AppResult<()> {
-        let user_id = r.user_id.raw();
-        sqlx::query!(
-            r#"
-                INSERT INTO pota_hunter_log (user_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, qsos, upload)
-                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                ON CONFLICT (user_id, pota_code) DO UPDATE
-                SET dx_entity = EXCLUDED.dx_entity,
-                    location = EXCLUDED.location,
-                    hasc = EXCLUDED.hasc,
-                    pota_code = EXCLUDED.pota_code,
-                    park_name = EXCLUDED.park_name,
-                    first_qso_date = EXCLUDED.first_qso_date,
-                    qsos = EXCLUDED.qsos,
-                    upload = EXCLUDED.upload
-            "#,
-            user_id,
-            r.dx_entity,
-            r.location,
-            r.hasc,
-            r.pota_code,
-            r.park_name,
-            r.first_qso_date,
-            r.qsos,
-            r.upload
+            r.qsos
         )
         .execute(db)
         .await
@@ -212,8 +170,8 @@ impl POTARepositoryImpl {
         let before = d.before;
         sqlx::query!(
             r#"
-                DELETE FROM pota_activator_log
-                WHERE upload < $1
+                DELETE FROM pota_log
+                WHERE log_id IN (SELECT log_id FROM pota_log_user WHERE "update" < $1)
             "#,
             before,
         )
@@ -223,12 +181,12 @@ impl POTARepositoryImpl {
 
         sqlx::query!(
             r#"
-                DELETE FROM pota_hunter_log
-                WHERE upload < $1
-            "#,
+            DELETE FROM pota_log_user
+            WHERE "update" < $1
+        "#,
             before,
         )
-        .execute(db)
+        .execute(&mut *db)
         .await
         .map_err(AppError::SpecificOperationError)?;
 
@@ -301,11 +259,11 @@ impl POTARepositoryImpl {
 
     async fn select_by_condition(
         &self,
-        user_id: Option<UserId>,
+        log_id: Option<LogId>,
         query: &str,
     ) -> AppResult<Vec<POTAReferenceWithLogImpl>> {
         let mut select = String::new();
-        if user_id.is_none() {
+        if log_id.is_none() {
             select.push_str(
                 r#"
                 SELECT
@@ -328,7 +286,7 @@ impl POTARepositoryImpl {
                 FROM pota_references AS p WHERE "#,
             );
         } else {
-            let user_id = user_id.unwrap().raw().to_string();
+            let log_id = log_id.unwrap().raw().to_string();
             select.push_str(&format!(
                 r#"
                 SELECT
@@ -344,15 +302,14 @@ impl POTARepositoryImpl {
                     p.longitude AS longitude,
                     p.latitude AS latitude,
                     p.maidenhead AS maidenhead,
-                    a.attempts as attempts,
-                    a.activations AS activations,
-                    h.first_qso_date AS first_qso_date,
-                    h.qsos AS qsos
+                    l.attempts as attempts,
+                    l.activations AS activations,
+                    l.first_qso_date AS first_qso_date,
+                    l.qsos AS qsos
                 FROM pota_references AS p 
-                LEFT JOIN pota_activator_log AS a ON p.pota_code = a.pota_code AND a.user_id = '{}'
-                LEFT JOIN pota_hunter_log AS h ON p.pota_code = h.pota_code AND h.user_id = '{}'
+                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = '{}'
                 WHERE "#,
-                user_id, user_id
+                log_id
             ));
         }
         select.push_str(query);
@@ -369,9 +326,9 @@ impl POTARepositoryImpl {
 #[async_trait]
 impl POTARepository for POTARepositoryImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<POTAReferenceWithLog>> {
-        let user_id = event.user_id;
+        let log_id = event.log_id;
         let query = findref_query_builder(POTA, event);
-        let results = self.select_by_condition(user_id, &query).await?;
+        let results = self.select_by_condition(log_id, &query).await?;
         let results = results
             .into_iter()
             .map(POTAReferenceWithLog::from)
@@ -459,8 +416,7 @@ impl POTARepository for POTARepositoryImpl {
         tracing::info!("upload activator log {} rescords", logs.len());
 
         for r in logs.into_iter() {
-            self.update_activator_log(POTAActivatorLogImpl::from(r), &mut tx)
-                .await?;
+            self.update_log(POTALogImpl::from(r), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
@@ -477,8 +433,7 @@ impl POTARepository for POTARepositoryImpl {
         tracing::info!("upload hunter log {} rescords", logs.len());
 
         for r in logs.into_iter() {
-            self.update_hunter_log(POTAHunterLogImpl::from(r), &mut tx)
-                .await?;
+            self.update_log(POTALogImpl::from(r), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())

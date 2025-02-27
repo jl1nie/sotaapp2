@@ -4,7 +4,7 @@ use std::str::FromStr;
 use common::error::AppResult;
 use domain::model::{
     event::{FindRef, FindRefBuilder},
-    id::UserId,
+    id::LogId,
 };
 
 #[derive(Debug, Deserialize)]
@@ -23,6 +23,7 @@ pub struct GetParam {
     pub sota_code: Option<String>,
     pub wwff_code: Option<String>,
     pub user_id: Option<String>,
+    pub log_id: Option<String>,
     pub name: Option<String>,
     pub hours_ago: Option<i64>,
     pub limit: Option<i32>,
@@ -58,8 +59,8 @@ pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppRes
         query = query.wwff_code(param.wwff_code.unwrap());
     }
 
-    if param.user_id.is_some() {
-        query = query.user_id(UserId::from_str(&param.user_id.unwrap())?);
+    if param.log_id.is_some() {
+        query = query.log_id(LogId::from_str(&param.log_id.unwrap())?);
     }
 
     if param.min_area.is_some() {

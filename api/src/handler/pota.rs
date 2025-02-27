@@ -12,7 +12,7 @@ use std::str::FromStr;
 use domain::model::pota::ParkCode;
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindRefBuilder},
-    id::UserId,
+    id::LogId,
 };
 
 use registry::{AppRegistry, AppState};
@@ -59,17 +59,17 @@ async fn import_pota_reference(
 
 async fn upload_pota_activator_log(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Path(user_id): Path<String>,
+    Path(log_id): Path<String>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
     if let Some(field) = multipart.next_field().await.unwrap() {
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
-        let user_id = UserId::from_str(&user_id)?;
+        let log_id = LogId::from_str(&log_id)?;
         let reqs = UploadActivatorCSV { data };
 
         return user_service
-            .upload_activator_csv(user_id, reqs)
+            .upload_activator_csv(log_id, reqs)
             .await
             .map(|_| StatusCode::CREATED);
     }
@@ -78,17 +78,17 @@ async fn upload_pota_activator_log(
 
 async fn upload_pota_hunter_log(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Path(user_id): Path<String>,
+    Path(log_id): Path<String>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
     if let Some(field) = multipart.next_field().await.unwrap() {
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
-        let user_id = UserId::from_str(&user_id)?;
+        let log_id = LogId::from_str(&log_id)?;
         let reqs = UploadHunterCSV { data };
 
         return user_service
-            .upload_hunter_csv(user_id, reqs)
+            .upload_hunter_csv(log_id, reqs)
             .await
             .map(|_| StatusCode::CREATED);
     }
