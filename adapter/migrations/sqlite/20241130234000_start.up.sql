@@ -57,46 +57,37 @@ CREATE TABLE IF NOT EXISTS pota_references (
     longitude REAL,
     latitude REAL,
     maidenhead VARCHAR(16),
-    "update" TEXT,
+    "update" DATETIME NOT NULL,
     PRIMARY KEY(pota_code, wwff_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pota_references_code ON pota_references (pota_code,wwff_code, park_name,park_name_j);
 CREATE INDEX IF NOT EXISTS idx_pota_references_coordinate ON pota_references (longitude, latitude);
 
-CREATE TABLE IF NOT EXISTS pota_activator_log (
-    user_id UUID,
-    dx_entity VARCHAR(255),
-    "location" VARCHAR(255),
-    hasc VARCHAR(255),
+CREATE TABLE IF NOT EXISTS pota_log (
+    log_id UUID NOT NULL,
+    log_type INTEGER NOT NULL,
+    dx_entity VARCHAR(255) NOT NULL,
+    "location" VARCHAR(255) NOT NULL,
+    hasc VARCHAR(255) NOT NULL,
     pota_code VARCHAR(255) NOT NULL,
-    park_name VARCHAR(255),
-    first_qso_date TEXT,
+    park_name VARCHAR(255) NOT NULL,
+    first_qso_date TEXT NOT NULL,
     attempts INTEGER,
     activations INTEGER,
     qsos INTEGER,
-    upload TEXT,
-    PRIMARY KEY(user_id, pota_code)
+    PRIMARY KEY(log_id, pota_code)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pota_activator_log ON pota_activator_log (user_id,pota_code);
-CREATE INDEX IF NOT EXISTS idx_pota_activator_log_date ON pota_activator_log (upload);
+CREATE INDEX IF NOT EXISTS idx_pota_log ON pota_log (log_id,pota_code);
 
-CREATE TABLE IF NOT EXISTS pota_hunter_log (
-    user_id UUID,
-    dx_entity VARCHAR(255),
-    "location" VARCHAR(255),
-    hasc VARCHAR(255),
-    pota_code VARCHAR(255) NOT NULL,
-    park_name VARCHAR(255),
-    first_qso_date TEXT,
-    qsos INTEGER,
-    upload TEXT,
-    PRIMARY KEY(user_id, pota_code)
+CREATE TABLE IF NOT EXISTS pota_log_user (
+    user_id  VARCHAR(255),
+    log_id UUID NOT NULL,
+    "update" DATETIME NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_pota_hunter_log ON pota_hunter_log (user_id,pota_code);
-CREATE INDEX IF NOT EXISTS idx_pota_hunter_log_date ON pota_hunter_log (upload);
+CREATE INDEX IF NOT EXISTS idx_pota_log_user ON pota_log_user (user_id, log_id, "update");
 
 CREATE TABLE IF NOT EXISTS alerts (
     program INTEGER NOT NULL,

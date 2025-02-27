@@ -11,7 +11,7 @@ use domain::model::event::{
     DeleteRef, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy, PagenatedResult,
 };
 use domain::model::geomag::GeomagIndex;
-use domain::model::id::UserId;
+use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
@@ -27,12 +27,9 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
     async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>>;
 
-    async fn upload_activator_csv(
-        &self,
-        user_id: UserId,
-        event: UploadActivatorCSV,
-    ) -> AppResult<()>;
-    async fn upload_hunter_csv(&self, user_id: UserId, event: UploadHunterCSV) -> AppResult<()>;
+    async fn upload_activator_csv(&self, lod_id: LogId, event: UploadActivatorCSV)
+        -> AppResult<()>;
+    async fn upload_hunter_csv(&self, log_id: LogId, event: UploadHunterCSV) -> AppResult<()>;
 
     async fn upload_sota_csv(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
     async fn delete_sota_log(&self, user_id: UserId) -> AppResult<()>;

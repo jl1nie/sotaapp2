@@ -1,10 +1,6 @@
 use aprs_message::AprsCallsign;
 use async_trait::async_trait;
 use chrono::{TimeZone, Utc};
-use common::config::AppConfig;
-use common::error::AppResult;
-use common::utils::{call_to_operator, csv_reader};
-use domain::model::id::UserId;
 use regex::Regex;
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
@@ -15,13 +11,15 @@ use crate::model::pota::{
 };
 use crate::model::sota::{SOTALogCSV, UploadSOTALog};
 use crate::services::UserService;
-
+use common::config::AppConfig;
+use common::error::AppResult;
+use common::utils::{call_to_operator, csv_reader};
 use domain::model::activation::{Alert, Spot};
 use domain::model::aprslog::AprsLog;
 use domain::model::event::{DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy};
 use domain::model::geomag::GeomagIndex;
+use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
-
 use domain::repository::{
     activation::ActivationRepositry, aprs::AprsLogRepository, geomag::GeoMagRepositry,
     locator::LocatorRepositry, pota::POTARepository, sota::SOTARepository,
@@ -133,13 +131,13 @@ impl UserService for UserServiceImpl {
 
     async fn upload_activator_csv(
         &self,
-        user_id: UserId,
+        log_id: LogId,
         UploadActivatorCSV { data }: UploadActivatorCSV,
     ) -> AppResult<()> {
         let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, false, 1)?;
         let newlog: Vec<_> = requests
             .into_iter()
-            .map(|l| POTAActivatorLogCSV::to_log(user_id, l))
+            .map(|l| POTAActivatorLogCSV::to_log(log_id, l))
             .collect();
         self.pota_repo.upload_activator_log(newlog).await?;
         self.pota_repo
@@ -152,13 +150,13 @@ impl UserService for UserServiceImpl {
 
     async fn upload_hunter_csv(
         &self,
-        user_id: UserId,
+        log_id: LogId,
         UploadHunterCSV { data }: UploadHunterCSV,
     ) -> AppResult<()> {
         let requests: Vec<POTAHunterLogCSV> = csv_reader(data, false, 1)?;
         let newlog: Vec<_> = requests
             .into_iter()
-            .map(|l| POTAHunterLogCSV::to_log(user_id, l))
+            .map(|l| POTAHunterLogCSV::to_log(log_id, l))
             .collect();
         self.pota_repo.upload_hunter_log(newlog).await?;
         self.pota_repo
