@@ -174,7 +174,7 @@ impl From<POTALogUser> for POTALogUserImpl {
         POTALogUserImpl {
             user_id: l.user_id,
             log_id: l.log_id,
-            log_kind: l.log_kind.map(|k| k.into()),
+            log_kind: l.log_kind.and_then(|k| Some(k.into())),
             update: l.update,
         }
     }
@@ -185,7 +185,7 @@ impl From<POTALogUserImpl> for POTALogUser {
         POTALogUser {
             user_id: l.user_id,
             log_id: l.log_id,
-            log_kind: l.log_kind.map(|k| k.into()),
+            log_kind: l.log_kind.and_then(|k| Some(k.into())),
             update: l.update,
         }
     }
