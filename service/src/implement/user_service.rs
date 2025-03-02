@@ -4,6 +4,7 @@ use chrono::{TimeZone, Utc};
 use regex::Regex;
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::model::pota::{POTAActivatorLogCSV, POTAHunterLogCSV, UploadPOTALog};
@@ -130,9 +131,22 @@ impl UserService for UserServiceImpl {
 
     async fn upload_pota_log(
         &self,
-        log_id: LogId,
-        UploadPOTALog { data }: UploadPOTALog,
+        UploadPOTALog {
+            activator_logid,
+            hunter_logid,
+            data,
+        }: UploadPOTALog,
     ) -> AppResult<POTALogUser> {
+        let logid = if data.contains("Attempts") {
+            tracing::info!("Upload activator log");
+            activator_logid
+        } else {
+            tracing::info!("Upload hunter log");
+            hunter_logid
+        };
+
+        let log_id = LogId::from_str(&logid).unwrap_or(LogId::default());
+
         let mut update_id = self.pota_repo.find_logid(log_id).await;
 
         if let Ok(ref mut id) = update_id {
@@ -151,12 +165,11 @@ impl UserService for UserServiceImpl {
         }
 
         let mut update_id = update_id?;
-        self.pota_repo.update_logid(update_id.clone()).await?;
-
         let log_id = update_id.log_id;
 
         if data.contains("Attempts") {
             let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, true, 1)?;
+
             let newlog: Vec<_> = requests
                 .into_iter()
                 .map(|l| POTAActivatorLogCSV::to_log(log_id, l))
@@ -168,6 +181,7 @@ impl UserService for UserServiceImpl {
             update_id.log_kind = Some(POTALogKind::ActivatorLog);
         } else {
             let requests: Vec<POTAHunterLogCSV> = csv_reader(data, false, 1)?;
+
             let newlog: Vec<_> = requests
                 .into_iter()
                 .map(|l| POTAHunterLogCSV::to_log(log_id, l))
@@ -178,6 +192,8 @@ impl UserService for UserServiceImpl {
 
             update_id.log_kind = Some(POTALogKind::HunterLog);
         }
+
+        self.pota_repo.update_logid(update_id.clone()).await?;
 
         self.pota_repo
             .delete_log(DeleteLog {

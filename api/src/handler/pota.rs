@@ -61,19 +61,20 @@ async fn import_pota_reference(
 
 async fn upload_pota_log(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Path(log_id): Path<String>,
+    Path((activator_logid, hunter_logid)): Path<(String, String)>,
     mut multipart: Multipart,
 ) -> AppResult<Json<POTALogUserResponse>> {
     if let Some(field) = multipart.next_field().await.unwrap() {
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
 
-        let log_id = LogId::from_str(&log_id).unwrap_or(LogId::new());
+        let reqs = UploadPOTALog {
+            activator_logid,
+            hunter_logid,
+            data,
+        };
 
-        let reqs = UploadPOTALog { data };
-        let res = user_service.upload_pota_log(log_id, reqs).await;
-
-        tracing::info!("upload_pota_log {:?}", res);
+        let res = user_service.upload_pota_log(reqs).await;
 
         if let Ok(loguser) = res {
             return Ok(Json(loguser.into()));
@@ -257,7 +258,7 @@ async fn obtain_shareid(
 pub fn build_pota_routers() -> Router<AppState> {
     let routers = Router::new()
         .route("/import", post(import_pota_reference))
-        .route("/log/{log_id}", post(upload_pota_log))
+        .route("/log/{act_id}/{hntr_id}", post(upload_pota_log))
         .route("/log/{log_id}", get(get_pota_logid))
         .route("/log/{log_id}", delete(delete_pota_log))
         .route("/log-share/{act_id}/{hntr_id}", get(reqeust_shareid))

@@ -27,7 +27,7 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
     async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>>;
 
-    async fn upload_pota_log(&self, log_id: LogId, event: UploadPOTALog) -> AppResult<POTALogUser>;
+    async fn upload_pota_log(&self, event: UploadPOTALog) -> AppResult<POTALogUser>;
     async fn delete_pota_log(&self, log_id: LogId) -> AppResult<()>;
     async fn find_logid(&self, log_id: LogId) -> AppResult<POTALogUser>;
 
