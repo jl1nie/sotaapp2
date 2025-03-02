@@ -188,8 +188,10 @@ pub enum DeleteRef<T> {
     DeleteAll,
 }
 
+#[derive(Debug, Default)]
 pub struct DeleteLog {
-    pub before: DateTime<Utc>,
+    pub before: Option<DateTime<Utc>>,
+    pub log_id: Option<LogId>,
 }
 
 #[derive(Debug, Default)]

@@ -1,6 +1,6 @@
 use adapter::{
     aprs::connect_aprsis_with, database::connect::connect_database_with,
-    geomag::connect_geomag_with,
+    geomag::connect_geomag_with, minikvs::MiniKvs,
 };
 use anyhow::{Error, Result};
 use axum::{http::HeaderValue, Extension, Router};
@@ -35,8 +35,8 @@ async fn bootstrap() -> Result<()> {
     let pool = connect_database_with(&config).await?;
     let aprs = connect_aprsis_with(&config).await?;
     let geomag = connect_geomag_with(&config).await?;
-
-    let module = AppRegistry::new(&config, pool, aprs, geomag);
+    let minikvs = MiniKvs::new(config.auth_token_ttl);
+    let module = AppRegistry::new(&config, pool, aprs, geomag, minikvs);
     let app_state = AppState::new(module);
     let job_state = app_state.clone();
 

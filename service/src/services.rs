@@ -13,11 +13,11 @@ use domain::model::event::{
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
-use domain::model::pota::{POTAReference, ParkCode};
+use domain::model::pota::{POTALogUser, POTAReference, ParkCode};
 use domain::model::sota::{SOTAReference, SummitCode};
 
 use crate::model::locator::UploadMuniCSV;
-use crate::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
+use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
 use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 
 #[async_trait]
@@ -27,12 +27,13 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
     async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>>;
 
-    async fn upload_activator_csv(&self, lod_id: LogId, event: UploadActivatorCSV)
-        -> AppResult<()>;
-    async fn upload_hunter_csv(&self, log_id: LogId, event: UploadHunterCSV) -> AppResult<()>;
+    async fn upload_pota_log(&self, log_id: LogId, event: UploadPOTALog) -> AppResult<POTALogUser>;
+    async fn delete_pota_log(&self, log_id: LogId) -> AppResult<()>;
+    async fn find_logid(&self, log_id: LogId) -> AppResult<POTALogUser>;
 
     async fn upload_sota_csv(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
     async fn delete_sota_log(&self, user_id: UserId) -> AppResult<()>;
+
     async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
@@ -46,7 +47,7 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
     async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
     async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<()>;
-    async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
+    async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SOTAReference>;
     async fn show_all_sota_references(

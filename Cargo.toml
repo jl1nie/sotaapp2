@@ -17,13 +17,11 @@ api = { path = "./api" }
 service = { path = "./service" }
 adapter = { path = "./adapter", features = ["sqlite"] }
 registry = { path = "./registry", features = ["sqlite"] }
-#adapter = { path = "./adapter", features = [] }
-#registry = { path = "./registry", features = [] }
 
 anyhow = "^1.0"
 derive-new = "0.7.0"
 firebase-auth-sdk = "0.1.0"
-uuid = { version = "^1.11", features = [
+uuid = { version = "^1.15.1", features = [
     "v4",
     "fast-rng",
     "serde",
@@ -62,13 +60,14 @@ reqwest = { version = "^0.12", features = ["json"] }
 thiserror = "^2.0"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-chrono = { version = "0.4.34", features = ["serde"] }
+chrono = { version = "0.4.40", features = ["serde"] }
 chrono-tz = { version = "^0.10", features = ["filter-by-regex", "serde"] }
 csv = "1.3.1"
 rstest = "0.24.0"
 shaku = "0.6.2"
 shaku_axum = "0.6.0"
 regex = "1.5.4"
+fastrand = "2.3.0"
 
 [dependencies]
 api.workspace = true

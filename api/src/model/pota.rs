@@ -3,7 +3,7 @@ use domain::model::Maidenhead;
 use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
-use domain::model::pota::{POTAReference, POTAReferenceWithLog};
+use domain::model::pota::{POTALogUser, POTAReference, POTAReferenceWithLog};
 use domain::model::{event::PagenatedResult, id::UserId};
 
 #[derive(Debug, Deserialize)]
@@ -268,6 +268,29 @@ impl From<POTAReferenceWithLog> for POTASearchResult {
             activ: pota.activations,
             date: pota.first_qso_date,
             qsos: pota.qsos,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct POTALogUserResponse {
+    pub log_id: String,
+    pub log_kind: String,
+    pub last_update: NaiveDate,
+}
+
+impl From<POTALogUser> for POTALogUserResponse {
+    fn from(log: POTALogUser) -> Self {
+        let log_kind = match log.log_kind {
+            Some(kind) => kind.into(),
+            None => "none".to_string(),
+        };
+
+        POTALogUserResponse {
+            log_id: log.log_id.into(),
+            log_kind,
+            last_update: log.update.date(),
         }
     }
 }

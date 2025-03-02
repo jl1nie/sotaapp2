@@ -272,17 +272,18 @@ impl SOTARepositoryImpl {
     }
 
     async fn delete_log(&self, d: DeleteLog, db: &mut SqliteConnection) -> AppResult<()> {
-        let before = d.before;
-        sqlx::query!(
-            r#"
+        if let Some(before) = d.before {
+            sqlx::query!(
+                r#"
                 DELETE FROM sota_log
                 WHERE time < $1
             "#,
-            before,
-        )
-        .execute(&mut *db)
-        .await
-        .map_err(AppError::SpecificOperationError)?;
+                before,
+            )
+            .execute(&mut *db)
+            .await
+            .map_err(AppError::SpecificOperationError)?;
+        }
         Ok(())
     }
 

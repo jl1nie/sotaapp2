@@ -113,27 +113,9 @@ impl From<POTAReferenceImpl> for POTAReference {
     }
 }
 
-#[derive(Debug, sqlx::Type)]
-#[repr(i32)]
-pub enum POTALogType {
-    ActivatorLog = 1,
-    HunterLog = 2,
-}
-impl TryFrom<i32> for POTALogType {
-    type Error = ();
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(POTALogType::ActivatorLog),
-            2 => Ok(POTALogType::HunterLog),
-            _ => Err(()),
-        }
-    }
-}
-
 #[derive(Debug, FromRow)]
 pub struct POTALogImpl {
     pub log_id: LogId,
-    pub log_type: POTALogType,
     pub dx_entity: String,
     pub location: String,
     pub hasc: String,
@@ -149,7 +131,6 @@ impl From<POTAActivatorLog> for POTALogImpl {
     fn from(l: POTAActivatorLog) -> Self {
         POTALogImpl {
             log_id: l.log_id,
-            log_type: POTALogType::ActivatorLog,
             dx_entity: l.dx_entity,
             location: l.location,
             hasc: l.hasc,
@@ -167,7 +148,6 @@ impl From<POTAHunterLog> for POTALogImpl {
     fn from(l: POTAHunterLog) -> Self {
         POTALogImpl {
             log_id: l.log_id,
-            log_type: POTALogType::HunterLog,
             dx_entity: l.dx_entity,
             location: l.location,
             hasc: l.hasc,
@@ -183,8 +163,9 @@ impl From<POTAHunterLog> for POTALogImpl {
 
 #[derive(Debug, FromRow)]
 pub struct POTALogUserImpl {
-    pub user_id: UserId,
+    pub user_id: Option<UserId>,
     pub log_id: LogId,
+    pub log_kind: Option<String>,
     pub update: NaiveDateTime,
 }
 
@@ -193,6 +174,18 @@ impl From<POTALogUser> for POTALogUserImpl {
         POTALogUserImpl {
             user_id: l.user_id,
             log_id: l.log_id,
+            log_kind: l.log_kind.map(|k| k.into()),
+            update: l.update,
+        }
+    }
+}
+
+impl From<POTALogUserImpl> for POTALogUser {
+    fn from(l: POTALogUserImpl) -> Self {
+        POTALogUser {
+            user_id: l.user_id,
+            log_id: l.log_id,
+            log_kind: l.log_kind.map(|k| k.into()),
             update: l.update,
         }
     }
