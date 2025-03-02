@@ -6,9 +6,7 @@ use shaku::Component;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::model::pota::{
-    POTAActivatorLogCSV, POTAHunterLogCSV, UploadActivatorCSV, UploadHunterCSV,
-};
+use crate::model::pota::{POTAActivatorLogCSV, POTAHunterLogCSV, UploadPOTALog};
 use crate::model::sota::{SOTALogCSV, UploadSOTALog};
 use crate::services::UserService;
 use common::config::AppConfig;
@@ -20,6 +18,7 @@ use domain::model::event::{DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindR
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
+use domain::model::pota::{POTALogKind, POTALogUser};
 use domain::repository::{
     activation::ActivationRepositry, aprs::AprsLogRepository, geomag::GeoMagRepositry,
     locator::LocatorRepositry, pota::POTARepository, sota::SOTARepository,
@@ -129,39 +128,76 @@ impl UserService for UserServiceImpl {
         Ok(result)
     }
 
-    async fn upload_activator_csv(
+    async fn upload_pota_log(
         &self,
         log_id: LogId,
-        UploadActivatorCSV { data }: UploadActivatorCSV,
-    ) -> AppResult<()> {
-        let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, false, 1)?;
-        let newlog: Vec<_> = requests
-            .into_iter()
-            .map(|l| POTAActivatorLogCSV::to_log(log_id, l))
-            .collect();
-        self.pota_repo.upload_activator_log(newlog).await?;
+        UploadPOTALog { data }: UploadPOTALog,
+    ) -> AppResult<POTALogUser> {
+        let mut update_id = self.pota_repo.find_logid(log_id).await;
+
+        if let Ok(ref mut id) = update_id {
+            let expire = Utc::now() - self.config.pota_log_expire;
+            if id.update < expire.naive_utc() {
+                let query = DeleteLog {
+                    log_id: Some(id.log_id),
+                    ..Default::default()
+                };
+                self.pota_repo.delete_log(query).await?;
+                *id = POTALogUser::new(None);
+                self.pota_repo.update_logid(id.clone()).await?;
+            }
+        } else {
+            update_id = Ok(POTALogUser::new(None));
+        }
+
+        let mut update_id = update_id?;
+        self.pota_repo.update_logid(update_id.clone()).await?;
+
+        let log_id = update_id.log_id;
+
+        if data.contains("Attempts") {
+            let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, true, 1)?;
+            let newlog: Vec<_> = requests
+                .into_iter()
+                .map(|l| POTAActivatorLogCSV::to_log(log_id, l))
+                .collect();
+
+            tracing::info!("Upload activator log {} entries", newlog.len());
+            self.pota_repo.upload_activator_log(newlog).await?;
+
+            update_id.log_kind = Some(POTALogKind::ActivatorLog);
+        } else {
+            let requests: Vec<POTAHunterLogCSV> = csv_reader(data, false, 1)?;
+            let newlog: Vec<_> = requests
+                .into_iter()
+                .map(|l| POTAHunterLogCSV::to_log(log_id, l))
+                .collect();
+
+            tracing::info!("Upload hunter log {} entries", newlog.len());
+            self.pota_repo.upload_hunter_log(newlog).await?;
+
+            update_id.log_kind = Some(POTALogKind::HunterLog);
+        }
+
         self.pota_repo
             .delete_log(DeleteLog {
-                before: Utc::now() - self.config.pota_log_expire,
+                before: Some(Utc::now() - self.config.pota_log_expire),
+                ..Default::default()
             })
             .await?;
-        Ok(())
+
+        Ok(update_id)
     }
 
-    async fn upload_hunter_csv(
-        &self,
-        log_id: LogId,
-        UploadHunterCSV { data }: UploadHunterCSV,
-    ) -> AppResult<()> {
-        let requests: Vec<POTAHunterLogCSV> = csv_reader(data, false, 1)?;
-        let newlog: Vec<_> = requests
-            .into_iter()
-            .map(|l| POTAHunterLogCSV::to_log(log_id, l))
-            .collect();
-        self.pota_repo.upload_hunter_log(newlog).await?;
+    async fn find_logid(&self, log_id: LogId) -> AppResult<POTALogUser> {
+        self.pota_repo.find_logid(log_id).await
+    }
+
+    async fn delete_pota_log(&self, log_id: LogId) -> AppResult<()> {
         self.pota_repo
             .delete_log(DeleteLog {
-                before: Utc::now() - self.config.pota_log_expire,
+                log_id: Some(log_id),
+                ..Default::default()
             })
             .await?;
         Ok(())
@@ -188,7 +224,10 @@ impl UserService for UserServiceImpl {
 
     async fn delete_sota_log(&self, _user_id: UserId) -> AppResult<()> {
         self.sota_repo
-            .delete_log(DeleteLog { before: Utc::now() })
+            .delete_log(DeleteLog {
+                before: Some(Utc::now()),
+                ..Default::default()
+            })
             .await?;
         Ok(())
     }

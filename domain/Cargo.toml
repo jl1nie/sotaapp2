@@ -9,6 +9,7 @@ chrono.workspace = true
 derive-new.workspace = true
 csv.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 common.workspace = true
 shaku.workspace = true
 sqlx.workspace = true

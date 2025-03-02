@@ -133,17 +133,13 @@ impl POTAHunterLogCSV {
         }
     }
 }
-pub struct UploadPOTACSV {
+pub struct UploadPOTAReference {
     pub data: String,
 }
-pub struct UploadWWFFCSV {
-    pub data: String,
-}
-
-pub struct UploadActivatorCSV {
+pub struct UploadWWFFReference {
     pub data: String,
 }
 
-pub struct UploadHunterCSV {
+pub struct UploadPOTALog {
     pub data: String,
 }

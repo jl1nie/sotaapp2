@@ -21,3 +21,4 @@ shaku.workspace = true
 tokio-cron-scheduler.workspace = true
 tracing.workspace = true
 maidenhead.workspace = true
+fastrand.workspace = true

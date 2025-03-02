@@ -78,8 +78,47 @@ pub struct POTAHunterLog {
     pub qsos: i32,
 }
 
+#[derive(Debug, Clone)]
+pub enum POTALogKind {
+    ActivatorLog,
+    HunterLog,
+}
+
+impl From<POTALogKind> for String {
+    fn from(kind: POTALogKind) -> Self {
+        match kind {
+            POTALogKind::ActivatorLog => "activator".to_string(),
+            POTALogKind::HunterLog => "hunter".to_string(),
+        }
+    }
+}
+
+impl From<String> for POTALogKind {
+    fn from(kind: String) -> Self {
+        match kind.as_str() {
+            "activator" => POTALogKind::ActivatorLog,
+            "hunter" => POTALogKind::HunterLog,
+            _ => panic!("Invalid POTALogKind"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct POTALogUser {
-    pub user_id: UserId,
+    pub user_id: Option<UserId>,
     pub log_id: LogId,
+    pub log_kind: Option<POTALogKind>,
     pub update: NaiveDateTime,
+}
+
+impl POTALogUser {
+    pub fn new(user_id: Option<UserId>) -> Self {
+        let update = Utc::now().naive_utc();
+        Self {
+            user_id,
+            log_id: LogId::new(),
+            log_kind: None,
+            update,
+        }
+    }
 }
