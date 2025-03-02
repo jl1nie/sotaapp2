@@ -245,27 +245,35 @@ pub struct POTASearchResult {
     pub wwff: String,
     pub name: String,
     pub name_j: String,
+    pub locid: Vec<String>,
     pub area: i32,
     pub lon: Option<f64>,
     pub lat: Option<f64>,
     pub atmpt: Option<i32>,
-    pub activ: Option<i32>,
+    pub act: Option<i32>,
     pub date: Option<NaiveDate>,
     pub qsos: Option<i32>,
 }
 
 impl From<POTAReferenceWithLog> for POTASearchResult {
     fn from(pota: POTAReferenceWithLog) -> Self {
+        let locid: Vec<String> = pota
+            .park_locid
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect();
+
         POTASearchResult {
             pota: pota.pota_code,
             wwff: pota.wwff_code,
             name: pota.park_name,
             name_j: pota.park_name_j,
+            locid,
             area: pota.park_area,
             lon: pota.longitude,
             lat: pota.latitude,
             atmpt: pota.attempts,
-            activ: pota.activations,
+            act: pota.activations,
             date: pota.first_qso_date,
             qsos: pota.qsos,
         }

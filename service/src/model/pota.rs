@@ -139,7 +139,9 @@ pub struct UploadPOTAReference {
 pub struct UploadWWFFReference {
     pub data: String,
 }
-
+#[derive(Debug)]
 pub struct UploadPOTALog {
+    pub activator_logid: String,
+    pub hunter_logid: String,
     pub data: String,
 }

@@ -176,7 +176,7 @@ impl POTARepositoryImpl {
         )
         .fetch_one(self.pool.inner_ref())
         .await
-        .map_err(AppError::SpecificOperationError)
+        .map_err(AppError::RowNotFound)
     }
 
     async fn update_logid(
@@ -184,6 +184,7 @@ impl POTARepositoryImpl {
         entry: POTALogUserImpl,
         db: &mut SqliteConnection,
     ) -> AppResult<()> {
+        tracing::info!("update logid {:?}", entry);
         sqlx::query!(
             r#"
                 INSERT INTO pota_log_user (user_id, log_id, "update")
@@ -198,6 +199,7 @@ impl POTARepositoryImpl {
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
+        tracing::info!("update logid {:?} done", entry);
         Ok(())
     }
 
@@ -332,8 +334,7 @@ impl POTARepositoryImpl {
                 FROM pota_references AS p WHERE "#,
             );
         } else {
-            let log_id = log_id.unwrap().raw().to_string();
-            select.push_str(&format!(
+            select.push_str(
                 r#"
                 SELECT
                     p.pota_code AS pota_code,
@@ -353,14 +354,17 @@ impl POTARepositoryImpl {
                     l.first_qso_date AS first_qso_date,
                     l.qsos AS qsos
                 FROM pota_references AS p 
-                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = '{}'
+                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = ?
                 WHERE "#,
-                log_id
-            ));
+            );
         }
         select.push_str(query);
+        let mut sql_query = sqlx::query_as::<_, POTAReferenceWithLogImpl>(&select);
 
-        let sql_query = sqlx::query_as::<_, POTAReferenceWithLogImpl>(&select);
+        if let Some(log_id) = log_id {
+            sql_query = sql_query.bind(log_id);
+        }
+
         let rows: Vec<POTAReferenceWithLogImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await

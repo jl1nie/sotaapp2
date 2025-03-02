@@ -43,8 +43,14 @@ async fn bootstrap() -> Result<()> {
     let firebase = FireAuth::new(config.firebase_api_key.clone());
 
     let cors = match config.cors_origin.clone() {
-        Some(origin) => CorsLayer::new().allow_origin(origin.parse::<HeaderValue>().unwrap()),
-        None => CorsLayer::new().allow_origin(Any),
+        Some(origin) => CorsLayer::new()
+            .allow_origin(origin.parse::<HeaderValue>().unwrap())
+            .allow_headers(Any)
+            .allow_methods(Any),
+        None => CorsLayer::new()
+            .allow_origin(Any)
+            .allow_headers(Any)
+            .allow_methods(Any),
     };
 
     let app = Router::new()
