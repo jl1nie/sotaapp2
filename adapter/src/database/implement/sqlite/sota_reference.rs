@@ -405,7 +405,7 @@ impl SOTARepositoryImpl {
         Ok(rows)
     }
 
-    async fn select_log_by_condition(&self, query: &str) -> AppResult<Vec<SOTALogImpl>> {
+    async fn select_log_by_condition(&self, query: &FindLog) -> AppResult<Vec<SOTALogImpl>> {
         let mut select = r#"
             SELECT
                 user_id,
@@ -422,9 +422,24 @@ impl SOTARepositoryImpl {
             FROM sota_log WHERE "#
             .to_string();
 
-        select.push_str(query);
+        let cond = findlog_query_builder(query);
 
-        let sql_query = sqlx::query_as::<_, SOTALogImpl>(&select);
+        select.push_str(&cond);
+
+        let mut sql_query = sqlx::query_as::<_, SOTALogImpl>(&select);
+
+        if select.contains("time >=") {
+            if let Some(after) = query.after {
+                sql_query = sql_query.bind(after);
+            }
+        };
+
+        if select.contains("time <=") {
+            if let Some(before) = query.before {
+                sql_query = sql_query.bind(before);
+            }
+        }
+
         let rows: Vec<SOTALogImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
@@ -553,8 +568,7 @@ impl SOTARepository for SOTARepositoryImpl {
     }
 
     async fn find_log(&self, query: &FindLog) -> AppResult<Vec<SOTALog>> {
-        let query = findlog_query_builder(query);
-        let results = self.select_log_by_condition(&query).await?;
+        let results = self.select_log_by_condition(query).await?;
         let results = results.into_iter().map(SOTALog::from).collect();
         Ok(results)
     }

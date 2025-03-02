@@ -104,13 +104,13 @@ pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
     }
 
     if is_alert {
-        if let Some(after) = r.issued_after {
-            query.push_str(&format!("start_time >= '{}' AND ", after));
+        if let Some(_after) = r.issued_after {
+            query.push_str("start_time >= ? AND ");
         }
         query.push_str("TRUE ORDER BY start_time ASC ");
     } else {
-        if let Some(after) = r.issued_after {
-            query.push_str(&format!("spot_time >= '{}' AND ", after));
+        if let Some(_after) = r.issued_after {
+            query.push_str("spot_time >= ? AND ");
         }
         query.push_str("TRUE ORDER BY spot_time DESC ");
     }
@@ -134,12 +134,12 @@ pub fn findlog_query_builder(r: &FindLog) -> String {
         query.push_str("my_summit_code IS NULL AND ");
     }
 
-    if let Some(after) = r.after {
-        query.push_str(&format!("time >= '{}' AND ", after));
+    if let Some(_after) = r.after {
+        query.push_str("time >= ? AND ");
     }
 
-    if let Some(before) = r.before {
-        query.push_str(&format!("time <= '{}' AND ", before));
+    if let Some(_before) = r.before {
+        query.push_str("time <= ? AND ");
     }
 
     query.push_str("TRUE ORDER BY time ASC");
