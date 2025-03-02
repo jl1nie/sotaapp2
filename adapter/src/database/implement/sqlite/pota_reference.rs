@@ -184,22 +184,22 @@ impl POTARepositoryImpl {
         entry: POTALogUserImpl,
         db: &mut SqliteConnection,
     ) -> AppResult<()> {
-        tracing::info!("update logid {:?}", entry);
         sqlx::query!(
             r#"
-                INSERT INTO pota_log_user (user_id, log_id, "update")
-                VALUES($1, $2, $3)
+                INSERT INTO pota_log_user (user_id, log_id, log_kind,"update")
+                VALUES($1, $2, $3, $4)
                 ON CONFLICT (log_id) DO UPDATE
-                SET "update" = EXCLUDED."update"
+                SET "update" = EXCLUDED."update",
+                    log_kind = EXCLUDED.log_kind
             "#,
             entry.user_id,
             entry.log_id,
+            entry.log_kind,
             entry.update
         )
         .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
-        tracing::info!("update logid {:?} done", entry);
         Ok(())
     }
 

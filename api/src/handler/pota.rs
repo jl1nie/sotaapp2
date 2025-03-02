@@ -237,7 +237,7 @@ async fn reqeust_shareid(
         .set(
             share_id.to_string(),
             value.clone(),
-            Some(Duration::minutes(1)),
+            Some(Duration::minutes(30)),
         )
         .await;
 

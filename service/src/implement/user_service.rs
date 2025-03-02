@@ -175,7 +175,6 @@ impl UserService for UserServiceImpl {
                 .map(|l| POTAActivatorLogCSV::to_log(log_id, l))
                 .collect();
 
-            tracing::info!("Upload activator log {} entries", newlog.len());
             self.pota_repo.upload_activator_log(newlog).await?;
 
             update_id.log_kind = Some(POTALogKind::ActivatorLog);
@@ -187,7 +186,6 @@ impl UserService for UserServiceImpl {
                 .map(|l| POTAHunterLogCSV::to_log(log_id, l))
                 .collect();
 
-            tracing::info!("Upload hunter log {} entries", newlog.len());
             self.pota_repo.upload_hunter_log(newlog).await?;
 
             update_id.log_kind = Some(POTALogKind::HunterLog);
