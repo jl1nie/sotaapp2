@@ -1,8 +1,6 @@
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use domain::model::id::{LogId, UserId};
-use domain::model::pota::{
-    POTAActivatorLog, POTAHunterLog, POTALogUser, POTAReference, POTAReferenceWithLog,
-};
+use domain::model::pota::{PotaActLog, PotaHuntLog, PotaLogHist, PotaRefLog, PotaReference};
 use sqlx::FromRow;
 
 #[derive(Debug)]
@@ -14,7 +12,7 @@ impl ParkCode {
 }
 
 #[derive(Debug, FromRow)]
-pub struct POTAReferenceImpl {
+pub struct PotaReferenceRow {
     pub pota_code: String,
     pub wwff_code: String,
     pub park_name: String,
@@ -30,9 +28,9 @@ pub struct POTAReferenceImpl {
     pub update: DateTime<Utc>,
 }
 
-impl From<POTAReference> for POTAReferenceImpl {
-    fn from(r: POTAReference) -> Self {
-        POTAReferenceImpl {
+impl From<PotaReference> for PotaReferenceRow {
+    fn from(r: PotaReference) -> Self {
+        PotaReferenceRow {
             pota_code: r.pota_code,
             wwff_code: r.wwff_code,
             park_name: r.park_name,
@@ -51,7 +49,7 @@ impl From<POTAReference> for POTAReferenceImpl {
 }
 
 #[derive(Debug, FromRow)]
-pub struct POTAReferenceWithLogImpl {
+pub struct PotaRefLogRow {
     pub pota_code: String,
     pub wwff_code: String,
     pub park_name: String,
@@ -70,9 +68,9 @@ pub struct POTAReferenceWithLogImpl {
     pub qsos: Option<i32>,
 }
 
-impl From<POTAReferenceWithLogImpl> for POTAReferenceWithLog {
-    fn from(r: POTAReferenceWithLogImpl) -> Self {
-        POTAReferenceWithLog {
+impl From<PotaRefLogRow> for PotaRefLog {
+    fn from(r: PotaRefLogRow) -> Self {
+        PotaRefLog {
             pota_code: r.pota_code,
             wwff_code: r.wwff_code,
             park_name: r.park_name,
@@ -93,9 +91,9 @@ impl From<POTAReferenceWithLogImpl> for POTAReferenceWithLog {
     }
 }
 
-impl From<POTAReferenceImpl> for POTAReference {
-    fn from(r: POTAReferenceImpl) -> Self {
-        POTAReference {
+impl From<PotaReferenceRow> for PotaReference {
+    fn from(r: PotaReferenceRow) -> Self {
+        PotaReference {
             pota_code: r.pota_code,
             wwff_code: r.wwff_code,
             park_name: r.park_name,
@@ -115,25 +113,25 @@ impl From<POTAReferenceImpl> for POTAReference {
 
 #[derive(Debug, sqlx::Type)]
 #[repr(i32)]
-pub enum POTALogType {
+pub enum PotaLogType {
     ActivatorLog = 1,
     HunterLog = 2,
 }
-impl TryFrom<i32> for POTALogType {
+impl TryFrom<i32> for PotaLogType {
     type Error = ();
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
-            1 => Ok(POTALogType::ActivatorLog),
-            2 => Ok(POTALogType::HunterLog),
+            1 => Ok(PotaLogType::ActivatorLog),
+            2 => Ok(PotaLogType::HunterLog),
             _ => Err(()),
         }
     }
 }
 
 #[derive(Debug, FromRow)]
-pub struct POTALogImpl {
+pub struct PotaLogRow {
     pub log_id: LogId,
-    pub log_type: POTALogType,
+    pub log_type: PotaLogType,
     pub dx_entity: String,
     pub location: String,
     pub hasc: String,
@@ -145,11 +143,11 @@ pub struct POTALogImpl {
     pub qsos: i32,
 }
 
-impl From<POTAActivatorLog> for POTALogImpl {
-    fn from(l: POTAActivatorLog) -> Self {
-        POTALogImpl {
+impl From<PotaActLog> for PotaLogRow {
+    fn from(l: PotaActLog) -> Self {
+        PotaLogRow {
             log_id: l.log_id,
-            log_type: POTALogType::ActivatorLog,
+            log_type: PotaLogType::ActivatorLog,
             dx_entity: l.dx_entity,
             location: l.location,
             hasc: l.hasc,
@@ -163,11 +161,11 @@ impl From<POTAActivatorLog> for POTALogImpl {
     }
 }
 
-impl From<POTAHunterLog> for POTALogImpl {
-    fn from(l: POTAHunterLog) -> Self {
-        POTALogImpl {
+impl From<PotaHuntLog> for PotaLogRow {
+    fn from(l: PotaHuntLog) -> Self {
+        PotaLogRow {
             log_id: l.log_id,
-            log_type: POTALogType::HunterLog,
+            log_type: PotaLogType::HunterLog,
             dx_entity: l.dx_entity,
             location: l.location,
             hasc: l.hasc,
@@ -182,15 +180,15 @@ impl From<POTAHunterLog> for POTALogImpl {
 }
 
 #[derive(Debug, FromRow)]
-pub struct POTALogUserImpl {
+pub struct PotaLogHistRow {
     pub user_id: UserId,
     pub log_id: LogId,
     pub update: NaiveDateTime,
 }
 
-impl From<POTALogUser> for POTALogUserImpl {
-    fn from(l: POTALogUser) -> Self {
-        POTALogUserImpl {
+impl From<PotaLogHist> for PotaLogHistRow {
+    fn from(l: PotaLogHist) -> Self {
+        PotaLogHistRow {
             user_id: l.user_id,
             log_id: l.log_id,
             update: l.update,

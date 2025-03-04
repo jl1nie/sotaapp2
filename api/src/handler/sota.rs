@@ -22,13 +22,13 @@ use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt}
 use service::services::{AdminService, UserService};
 
 use crate::model::{
-    activation::ActivationResponse,
-    alerts::AlertResponse,
+    activation::ActivationView,
+    alerts::AlertView,
     param::{build_findref_query, GetParam},
-    spots::SpotResponse,
+    spots::SpotView,
 };
 
-use crate::model::sota::{PagenatedResponse, SOTARefResponse, UpdateRefRequest};
+use crate::model::sota::{PagenatedResponse, SotaRefView, UpdateRefRequest};
 
 async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -154,7 +154,7 @@ async fn delete_sota_reference(
 async fn show_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(summit_code): Path<String>,
-) -> AppResult<Json<SOTARefResponse>> {
+) -> AppResult<Json<SotaRefView>> {
     let query = FindRefBuilder::default()
         .sota()
         .sota_code(summit_code)
@@ -166,7 +166,7 @@ async fn show_sota_reference(
 async fn show_all_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<PagenatedResponse<SOTARefResponse>>> {
+) -> AppResult<Json<PagenatedResponse<SotaRefView>>> {
     let mut query = FindRefBuilder::default().sota();
     if param.limit.is_some() {
         query = query.limit(param.limit.unwrap());
@@ -184,7 +184,7 @@ async fn show_all_sota_reference(
 async fn search_sota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<SOTARefResponse>>> {
+) -> AppResult<Json<Vec<SotaRefView>>> {
     let query = FindRefBuilder::default().sota();
     let query = build_findref_query(param, query)?;
 
@@ -194,7 +194,7 @@ async fn search_sota_reference(
         .sota
         .unwrap_or(vec![])
         .into_iter()
-        .map(SOTARefResponse::from)
+        .map(SotaRefView::from)
         .collect();
     Ok(Json(res))
 }
@@ -202,7 +202,7 @@ async fn search_sota_reference(
 async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .sota()
@@ -212,7 +212,7 @@ async fn show_sota_spots(
     let spots: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            ActivationResponse::from((k, v.into_iter().map(SpotResponse::from).collect::<Vec<_>>()))
+            ActivationView::from((k, v.into_iter().map(SpotView::from).collect::<Vec<_>>()))
         })
         .collect();
     Ok(Json(spots))
@@ -221,7 +221,7 @@ async fn show_sota_spots(
 async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .sota()
@@ -231,10 +231,7 @@ async fn show_sota_alerts(
     let alerts: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            ActivationResponse::from((
-                k,
-                v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
-            ))
+            ActivationView::from((k, v.into_iter().map(AlertView::from).collect::<Vec<_>>()))
         })
         .collect();
     Ok(Json(alerts))

@@ -33,14 +33,14 @@ use adapter::database::implement::sqlite::{
     aprslog::{AprsLogRepositoryImpl, AprsLogRepositoryImplParameters},
     healthcheck::{HealthCheckRepositryImpl, HealthCheckRepositryImplParameters},
     locator::{LocatorRepositryImpl, LocatorRepositryImplParameters},
-    pota_reference::{POTARepositoryImpl, POTARepositoryImplParameters},
-    sota_reference::{SOTARepositoryImpl, SOTARepositoryImplParameters},
+    pota_reference::{PotaRepositoryImpl, PotaRepositoryImplParameters},
+    sota_reference::{SotaRepositoryImpl, SotaRepositoryImplParameters},
 };
 
 module! {
     pub AppRegistry {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
-        SOTARepositoryImpl,POTARepositoryImpl,
+        SotaRepositoryImpl,PotaRepositoryImpl,
         LocatorRepositryImpl,GeoMagRepositryImpl,AprsRepositryImpl,AprsLogRepositoryImpl,
         HealthCheckRepositryImpl],
         providers = [],
@@ -50,10 +50,10 @@ module! {
 impl AppRegistry {
     pub fn new(config: &AppConfig, pool: ConnectionPool, aprs: AprsIS, geomag: GeoMag) -> Self {
         AppRegistry::builder()
-            .with_component_parameters::<SOTARepositoryImpl>(SOTARepositoryImplParameters {
+            .with_component_parameters::<SotaRepositoryImpl>(SotaRepositoryImplParameters {
                 pool: pool.clone(),
             })
-            .with_component_parameters::<POTARepositoryImpl>(POTARepositoryImplParameters {
+            .with_component_parameters::<PotaRepositoryImpl>(PotaRepositoryImplParameters {
                 pool: pool.clone(),
             })
             .with_component_parameters::<ActivationRepositryImpl>(

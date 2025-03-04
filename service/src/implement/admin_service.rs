@@ -10,11 +10,11 @@ use common::utils::csv_reader;
 
 use domain::model::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
 use domain::model::locator::MunicipalityCenturyCode;
-use domain::model::pota::{POTAReference, ParkCode};
-use domain::model::sota::{SOTAReference, SummitCode};
+use domain::model::pota::{ParkCode, PotaReference};
+use domain::model::sota::{SotaReference, SummitCode};
 use domain::repository::{
-    healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::POTARepository,
-    sota::SOTARepository,
+    healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::PotaRepository,
+    sota::SotaRepository,
 };
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
@@ -28,16 +28,16 @@ use crate::services::AdminService;
 #[shaku(interface = AdminService)]
 pub struct AdminServiceImpl {
     #[shaku(inject)]
-    sota_repo: Arc<dyn SOTARepository>,
+    sota_repo: Arc<dyn SotaRepository>,
     #[shaku(inject)]
-    pota_repo: Arc<dyn POTARepository>,
+    pota_repo: Arc<dyn PotaRepository>,
     #[shaku(inject)]
     check_repo: Arc<dyn HealthCheckRepositry>,
     #[shaku(inject)]
     loc_repo: Arc<dyn LocatorRepositry>,
 }
 
-fn is_valid_summit(r: &SOTAReference) -> bool {
+fn is_valid_summit(r: &SotaReference) -> bool {
     let today = Local::now().date_naive();
     today <= r.valid_to && today >= r.valid_from
 }
@@ -51,7 +51,7 @@ impl AdminService for AdminServiceImpl {
         let csv: Vec<SOTASummitCSV> = csv_reader(data, false, 2)?;
         let req: Vec<_> = csv
             .into_iter()
-            .map(SOTAReference::from)
+            .map(SotaReference::from)
             .filter(is_valid_summit)
             .collect();
 
@@ -67,7 +67,7 @@ impl AdminService for AdminServiceImpl {
         &self,
         UploadSOTASummit { data }: UploadSOTASummit,
     ) -> AppResult<()> {
-        let partial_equal = |r: &SOTAReference, other: &SOTAReference| {
+        let partial_equal = |r: &SotaReference, other: &SotaReference| {
             r.summit_code == other.summit_code
                 && r.association_name == other.association_name
                 && r.region_name == other.region_name
@@ -87,7 +87,7 @@ impl AdminService for AdminServiceImpl {
 
         let new_hash: HashMap<_, _> = csv
             .into_iter()
-            .map(SOTAReference::from)
+            .map(SotaReference::from)
             .filter(is_valid_summit)
             .map(|r| (r.summit_code.clone(), r))
             .collect();
@@ -165,7 +165,7 @@ impl AdminService for AdminServiceImpl {
 
     async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
         let requests: Vec<POTACSVFile> = csv_reader(data, false, 1)?;
-        let newref = requests.into_iter().map(POTAReference::from).collect();
+        let newref = requests.into_iter().map(PotaReference::from).collect();
         self.pota_repo
             .delete_reference(DeleteRef::DeleteAll)
             .await?;
@@ -186,18 +186,18 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn show_sota_reference(&self, event: FindRef) -> AppResult<SOTAReference> {
+    async fn show_sota_reference(&self, event: FindRef) -> AppResult<SotaReference> {
         Ok(self.sota_repo.show_reference(&event).await?)
     }
 
     async fn show_all_sota_references(
         &self,
         event: FindRef,
-    ) -> AppResult<PagenatedResult<SOTAReference>> {
+    ) -> AppResult<PagenatedResult<SotaReference>> {
         Ok(self.sota_repo.show_all_references(&event).await?)
     }
 
-    async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
+    async fn update_sota_reference(&self, references: Vec<SotaReference>) -> AppResult<()> {
         self.sota_repo.update_reference(references).await?;
         Ok(())
     }
@@ -207,18 +207,18 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn show_pota_reference(&self, event: FindRef) -> AppResult<POTAReference> {
+    async fn show_pota_reference(&self, event: FindRef) -> AppResult<PotaReference> {
         Ok(self.pota_repo.show_reference(&event).await?)
     }
 
     async fn show_all_pota_references(
         &self,
         event: FindRef,
-    ) -> AppResult<PagenatedResult<POTAReference>> {
+    ) -> AppResult<PagenatedResult<PotaReference>> {
         Ok(self.pota_repo.show_all_references(&event).await?)
     }
 
-    async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()> {
+    async fn update_pota_reference(&self, references: Vec<PotaReference>) -> AppResult<()> {
         self.pota_repo.update_reference(references).await?;
         Ok(())
     }

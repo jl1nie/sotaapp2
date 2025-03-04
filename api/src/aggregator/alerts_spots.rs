@@ -8,8 +8,8 @@ use domain::model::activation::{Alert, Spot};
 use registry::AppRegistry;
 use service::services::AdminPeriodicService;
 
-use crate::model::alerts::{POTAAlert, SOTAAlert};
-use crate::model::spots::{POTASpot, SOTASpot};
+use crate::model::alerts::{PotaAlert, SotaAlert};
+use crate::model::spots::{PotaSpot, SotaSpot};
 
 pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> AppResult<()> {
     let service: &dyn AdminPeriodicService = registry.resolve_ref();
@@ -18,7 +18,7 @@ pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> A
     let response = reqwest::get(&endpoint)
         .await
         .map_err(AppError::GetError)?
-        .json::<Vec<SOTAAlert>>()
+        .json::<Vec<SotaAlert>>()
         .await
         .map_err(AppError::GetError)?;
 
@@ -31,7 +31,7 @@ pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> A
     let response = reqwest::get(&endpoint)
         .await
         .map_err(AppError::GetError)?
-        .json::<Vec<POTAAlert>>()
+        .json::<Vec<PotaAlert>>()
         .await
         .map_err(AppError::GetError)?;
 
@@ -53,7 +53,7 @@ pub async fn update_spots(config: &AppConfig, registry: &Arc<AppRegistry>) -> Ap
     let response = reqwest::get(&endpoint)
         .await
         .map_err(AppError::GetError)?
-        .json::<Vec<SOTASpot>>()
+        .json::<Vec<SotaSpot>>()
         .await
         .map_err(AppError::GetError)?;
 
@@ -66,7 +66,7 @@ pub async fn update_spots(config: &AppConfig, registry: &Arc<AppRegistry>) -> Ap
     let response = reqwest::get(&endpoint)
         .await
         .map_err(AppError::GetError)?
-        .json::<Vec<POTASpot>>()
+        .json::<Vec<PotaSpot>>()
         .await
         .map_err(AppError::GetError)?;
 

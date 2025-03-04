@@ -9,7 +9,7 @@ use domain::model::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SOTAAlert {
+pub struct SotaAlert {
     pub id: i32,
     #[serde(rename = "userID")]
     pub user_id: i32,
@@ -26,8 +26,8 @@ pub struct SOTAAlert {
     pub epoch: String,
 }
 
-impl From<SOTAAlert> for AppResult<Alert> {
-    fn from(a: SOTAAlert) -> Self {
+impl From<SotaAlert> for AppResult<Alert> {
+    fn from(a: SotaAlert) -> Self {
         let date_activated =
             DateTime::parse_from_rfc3339(&a.date_activated).map_err(AppError::ParseError)?;
         let date_activated = date_activated.with_timezone(&Utc);
@@ -52,7 +52,7 @@ impl From<SOTAAlert> for AppResult<Alert> {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct POTAAlert {
+pub struct PotaAlert {
     pub scheduled_activities_id: i32,
     pub scheduler_user_id: i32,
     pub activator: String,
@@ -69,8 +69,8 @@ pub struct POTAAlert {
     pub comments: String,
 }
 
-impl From<POTAAlert> for AppResult<Alert> {
-    fn from(a: POTAAlert) -> Self {
+impl From<PotaAlert> for AppResult<Alert> {
+    fn from(a: PotaAlert) -> Self {
         let tmformat = "%Y-%m-%d %H:%M";
 
         let start = a.start_date + " " + &a.start_time;
@@ -102,7 +102,7 @@ impl From<POTAAlert> for AppResult<Alert> {
 }
 
 #[derive(Debug, Serialize)]
-pub struct AlertResponse {
+pub struct AlertView {
     pub program: String,
     pub alert_id: i32,
     pub user_id: i32,
@@ -119,7 +119,7 @@ pub struct AlertResponse {
     pub poster: Option<String>,
 }
 
-impl From<Alert> for AlertResponse {
+impl From<Alert> for AlertView {
     fn from(a: Alert) -> Self {
         Self {
             program: a.program.into(),

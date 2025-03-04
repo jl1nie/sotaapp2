@@ -4,7 +4,7 @@ use domain::model::AwardProgram;
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
-pub struct AlertImpl {
+pub struct AlertRow {
     pub program: AwardProgram,
     pub alert_id: i32,
     pub user_id: i32,
@@ -21,7 +21,7 @@ pub struct AlertImpl {
     pub poster: Option<String>,
 }
 
-impl From<Alert> for AlertImpl {
+impl From<Alert> for AlertRow {
     fn from(value: Alert) -> Self {
         let Alert {
             program,
@@ -58,9 +58,9 @@ impl From<Alert> for AlertImpl {
     }
 }
 
-impl From<AlertImpl> for Alert {
-    fn from(value: AlertImpl) -> Self {
-        let AlertImpl {
+impl From<AlertRow> for Alert {
+    fn from(value: AlertRow) -> Self {
+        let AlertRow {
             program,
             alert_id,
             user_id,
@@ -96,7 +96,7 @@ impl From<AlertImpl> for Alert {
 }
 
 #[derive(Debug, FromRow)]
-pub struct SpotImpl {
+pub struct SpotRow {
     pub program: AwardProgram,
     pub spot_id: i32,
     pub reference: String,
@@ -111,7 +111,7 @@ pub struct SpotImpl {
     pub comment: Option<String>,
 }
 
-impl From<Spot> for SpotImpl {
+impl From<Spot> for SpotRow {
     fn from(value: Spot) -> Self {
         let Spot {
             program,
@@ -144,9 +144,9 @@ impl From<Spot> for SpotImpl {
     }
 }
 
-impl From<SpotImpl> for Spot {
-    fn from(value: SpotImpl) -> Self {
-        let SpotImpl {
+impl From<SpotRow> for Spot {
+    fn from(value: SpotRow) -> Self {
+        let SpotRow {
             program,
             spot_id,
             reference,

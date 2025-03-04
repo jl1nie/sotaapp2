@@ -20,14 +20,14 @@ use service::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
 use service::services::{AdminService, UserService};
 
 use crate::model::{
-    activation::ActivationResponse,
-    alerts::AlertResponse,
+    activation::ActivationView,
+    alerts::AlertView,
     param::{build_findref_query, GetParam},
-    pota::POTARefResponseWithLog,
-    spots::SpotResponse,
+    pota::POTARefLogView,
+    spots::SpotView,
 };
 
-use crate::model::pota::{POTARefResponse, PagenatedResponse, UpdateRefRequest};
+use crate::model::pota::{PagenatedResponse, PotaRefView, UpdateRefRequest};
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -109,7 +109,7 @@ async fn delete_pota_reference(
 async fn show_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Path(park_code): Path<String>,
-) -> AppResult<Json<POTARefResponse>> {
+) -> AppResult<Json<PotaRefView>> {
     let query = FindRefBuilder::default()
         .pota()
         .pota_code(park_code)
@@ -121,7 +121,7 @@ async fn show_pota_reference(
 async fn show_all_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<PagenatedResponse<POTARefResponse>>> {
+) -> AppResult<Json<PagenatedResponse<PotaRefView>>> {
     let mut query = FindRefBuilder::default().pota();
     if param.limit.is_some() {
         query = query.limit(param.limit.unwrap());
@@ -139,7 +139,7 @@ async fn show_all_pota_reference(
 async fn find_pota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<POTARefResponseWithLog>>> {
+) -> AppResult<Json<Vec<POTARefLogView>>> {
     let query = FindRefBuilder::default().pota();
     let query = build_findref_query(param, query)?;
 
@@ -149,7 +149,7 @@ async fn find_pota_reference(
         .pota
         .unwrap_or(vec![])
         .into_iter()
-        .map(POTARefResponseWithLog::from)
+        .map(POTARefLogView::from)
         .collect();
     Ok(Json(res))
 }
@@ -157,7 +157,7 @@ async fn find_pota_reference(
 async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
@@ -167,7 +167,7 @@ async fn show_pota_spots(
     let spots: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            ActivationResponse::from((k, v.into_iter().map(SpotResponse::from).collect::<Vec<_>>()))
+            ActivationView::from((k, v.into_iter().map(SpotView::from).collect::<Vec<_>>()))
         })
         .collect();
     Ok(Json(spots))
@@ -176,7 +176,7 @@ async fn show_pota_spots(
 async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
         .pota()
@@ -186,10 +186,7 @@ async fn show_pota_alerts(
     let alerts: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            ActivationResponse::from((
-                k,
-                v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
-            ))
+            ActivationView::from((k, v.into_iter().map(AlertView::from).collect::<Vec<_>>()))
         })
         .collect();
     Ok(Json(alerts))

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use common::{config::AppConfig, error::AppResult};
 use domain::model::{activation::Alert, activation::Spot, event::DeleteAct};
 use domain::repository::{
-    activation::ActivationRepositry, aprs::AprsRepositry, sota::SOTARepository,
+    activation::ActivationRepositry, aprs::AprsRepositry, sota::SotaRepository,
 };
 
 use crate::services::AdminPeriodicService;
@@ -23,7 +23,7 @@ pub struct AdminPeriodicServiceImpl {
     #[shaku(inject)]
     pub aprs_log_repo: Arc<dyn AprsLogRepository>,
     #[shaku(inject)]
-    pub sota_repo: Arc<dyn SOTARepository>,
+    pub sota_repo: Arc<dyn SotaRepository>,
 
     config: AppConfig,
 }

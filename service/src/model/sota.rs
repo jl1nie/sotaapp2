@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use common::utils::{call_to_operator, maidenhead};
 use domain::model::{
     id::UserId,
-    sota::{SOTALog, SOTAReference},
+    sota::{SotaLog, SotaReference},
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -29,8 +29,8 @@ pub struct SOTASummitCSV {
     pub activation_call: Option<String>,
 }
 
-impl From<SOTASummitCSV> for SOTAReference {
-    fn from(csv: SOTASummitCSV) -> SOTAReference {
+impl From<SOTASummitCSV> for SotaReference {
+    fn from(csv: SOTASummitCSV) -> SotaReference {
         let SOTASummitCSV {
             summit_code,
             association_name,
@@ -105,7 +105,7 @@ pub struct SOTALogCSV {
 }
 
 impl SOTALogCSV {
-    pub fn to_log(user_id: UserId, value: SOTALogCSV) -> SOTALog {
+    pub fn to_log(user_id: UserId, value: SOTALogCSV) -> SotaLog {
         let SOTALogCSV {
             version,
             my_callsign,
@@ -137,7 +137,7 @@ impl SOTALogCSV {
 
         let operator = call_to_operator(&my_callsign);
         let update = Utc::now();
-        SOTALog {
+        SotaLog {
             user_id,
             my_callsign,
             operator,

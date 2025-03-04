@@ -5,7 +5,7 @@ use shaku::Component;
 use sqlx::SqliteConnection;
 
 use crate::database::connect::ConnectionPool;
-use crate::database::model::aprslog::AprsLogImpl;
+use crate::database::model::aprslog::AprsLogRow;
 use common::error::{AppError, AppResult};
 use domain::model::aprslog::AprsLog;
 use domain::repository::aprs::AprsLogRepository;
@@ -17,9 +17,9 @@ pub struct AprsLogRepositoryImpl {
 }
 
 impl AprsLogRepositoryImpl {
-    async fn select_by_call(&self, callsign: &str, ssid: u32) -> AppResult<Vec<AprsLogImpl>> {
+    async fn select_by_call(&self, callsign: &str, ssid: u32) -> AppResult<Vec<AprsLogRow>> {
         let result = sqlx::query_as!(
-            AprsLogImpl,
+            AprsLogRow,
             r#"
                 SELECT
                     time,
@@ -44,9 +44,9 @@ impl AprsLogRepositoryImpl {
         Ok(result)
     }
 
-    async fn select_by_time(&self, after: &NaiveDateTime) -> AppResult<Vec<AprsLogImpl>> {
+    async fn select_by_time(&self, after: &NaiveDateTime) -> AppResult<Vec<AprsLogRow>> {
         let result = sqlx::query_as!(
-            AprsLogImpl,
+            AprsLogRow,
             r#"
                 SELECT
                     time,
@@ -70,7 +70,7 @@ impl AprsLogRepositoryImpl {
         Ok(result)
     }
 
-    async fn insert(&self, log: AprsLogImpl, db: &mut SqliteConnection) -> AppResult<()> {
+    async fn insert(&self, log: AprsLogRow, db: &mut SqliteConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO aprs_log (

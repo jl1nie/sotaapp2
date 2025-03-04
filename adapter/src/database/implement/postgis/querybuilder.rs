@@ -1,4 +1,4 @@
-use domain::model::common::event::{FindAct, FindRef};
+use domain::model::event::{FindAct, FindRef};
 use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
 
 pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {

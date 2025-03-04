@@ -11,15 +11,15 @@ use registry::{AppRegistry, AppState};
 use service::services::UserService;
 
 use crate::model::{
-    activation::ActivationResponse, alerts::AlertResponse, aprslog::AprsLogResponse,
-    param::GetParam, spots::SpotResponse,
+    activation::ActivationView, alerts::AlertView, aprslog::AprsLogView, param::GetParam,
+    spots::SpotView,
 };
 
 async fn show_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     param: GetParam,
     mut query: FindActBuilder,
-) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     if let Some(callsign) = param.by_call {
         if callsign.starts_with("null") {
             query = query.group_by_callsign(None)
@@ -47,7 +47,7 @@ async fn show_spots(
     let spots: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            ActivationResponse::from((k, v.into_iter().map(SpotResponse::from).collect::<Vec<_>>()))
+            ActivationView::from((k, v.into_iter().map(SpotView::from).collect::<Vec<_>>()))
         })
         .collect();
     Ok(Json(spots))
@@ -57,7 +57,7 @@ async fn show_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     param: GetParam,
     mut query: FindActBuilder,
-) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     if let Some(callsign) = param.by_call {
         if callsign.starts_with("null") {
             query = query.group_by_callsign(None)
@@ -85,10 +85,7 @@ async fn show_alerts(
     let alerts: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
-            ActivationResponse::from((
-                k,
-                v.into_iter().map(AlertResponse::from).collect::<Vec<_>>(),
-            ))
+            ActivationView::from((k, v.into_iter().map(AlertView::from).collect::<Vec<_>>()))
         })
         .collect();
     Ok(Json(alerts))
@@ -97,7 +94,7 @@ async fn show_alerts(
 async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     let query = FindActBuilder::default().sota();
     show_spots(user_service, param, query).await
 }
@@ -105,7 +102,7 @@ async fn show_sota_spots(
 async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     let query = FindActBuilder::default().pota();
     show_spots(user_service, param, query).await
 }
@@ -113,7 +110,7 @@ async fn show_pota_spots(
 async fn show_all_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<SpotResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     let query = FindActBuilder::default();
     show_spots(user_service, param, query).await
 }
@@ -121,7 +118,7 @@ async fn show_all_spots(
 async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     let query = FindActBuilder::default().sota();
     show_alerts(user_service, param, query).await
 }
@@ -129,7 +126,7 @@ async fn show_sota_alerts(
 async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     let query = FindActBuilder::default().pota();
     show_alerts(user_service, param, query).await
 }
@@ -137,7 +134,7 @@ async fn show_pota_alerts(
 async fn show_all_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<ActivationResponse<AlertResponse>>>> {
+) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     let query = FindActBuilder::default();
     show_alerts(user_service, param, query).await
 }
@@ -145,7 +142,7 @@ async fn show_all_alerts(
 async fn show_aprs_log(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<AprsLogResponse>>> {
+) -> AppResult<Json<Vec<AprsLogView>>> {
     let mut request = FindAprs {
         callsign: None,
         after: None,
@@ -161,7 +158,7 @@ async fn show_aprs_log(
         .find_aprslog(request)
         .await?
         .into_iter()
-        .map(AprsLogResponse::from)
+        .map(AprsLogView::from)
         .collect::<Vec<_>>();
 
     Ok(Json(result))

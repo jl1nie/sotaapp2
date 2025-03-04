@@ -4,12 +4,12 @@ use domain::model::event::GroupBy;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ActivationResponse<T> {
+pub struct ActivationView<T> {
     key: Option<String>,
     values: Vec<T>,
 }
 
-impl<T> From<(GroupBy, Vec<T>)> for ActivationResponse<T> {
+impl<T> From<(GroupBy, Vec<T>)> for ActivationView<T> {
     fn from(g: (GroupBy, Vec<T>)) -> Self {
         match g.0 {
             GroupBy::Callsign(callsign) => Self {

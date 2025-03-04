@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use derive_new::new;
 
 use crate::model::{id::LogId, AwardProgram};
-use crate::model::{pota::POTAReferenceWithLog, sota::SOTAReference};
+use crate::model::{pota::PotaRefLog, sota::SotaReference};
 
 #[derive(new, Debug)]
 pub struct BoundingBox {
@@ -170,8 +170,8 @@ impl FindRefBuilder {
 
 #[derive(Default)]
 pub struct FindResult {
-    pub sota: Option<Vec<SOTAReference>>,
-    pub pota: Option<Vec<POTAReferenceWithLog>>,
+    pub sota: Option<Vec<SotaReference>>,
+    pub pota: Option<Vec<PotaRefLog>>,
 }
 
 #[derive(Default, Debug)]

@@ -22,16 +22,16 @@ use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::repository::{
     activation::ActivationRepositry, aprs::AprsLogRepository, geomag::GeoMagRepositry,
-    locator::LocatorRepositry, pota::POTARepository, sota::SOTARepository,
+    locator::LocatorRepositry, pota::PotaRepository, sota::SotaRepository,
 };
 
 #[derive(Component)]
 #[shaku(interface = UserService)]
 pub struct UserServiceImpl {
     #[shaku(inject)]
-    sota_repo: Arc<dyn SOTARepository>,
+    sota_repo: Arc<dyn SotaRepository>,
     #[shaku(inject)]
-    pota_repo: Arc<dyn POTARepository>,
+    pota_repo: Arc<dyn PotaRepository>,
     #[shaku(inject)]
     act_repo: Arc<dyn ActivationRepositry>,
     #[shaku(inject)]

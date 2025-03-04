@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
 use domain::model::event::PagenatedResult;
-use domain::model::sota::SOTAReference;
+use domain::model::sota::SotaReference;
 use domain::model::Maidenhead;
 
 #[derive(Debug, Deserialize)]
@@ -31,7 +31,7 @@ pub struct CreateRefRequest {
     pub activation_call: Option<String>,
 }
 
-impl From<CreateRefRequest> for Vec<SOTAReference> {
+impl From<CreateRefRequest> for Vec<SotaReference> {
     fn from(value: CreateRefRequest) -> Self {
         let CreateRefRequest {
             summit_code,
@@ -55,7 +55,7 @@ impl From<CreateRefRequest> for Vec<SOTAReference> {
             activation_date,
             activation_call,
         } = value;
-        vec![SOTAReference {
+        vec![SotaReference {
             summit_code,
             association_name,
             region_name,
@@ -106,7 +106,7 @@ pub struct UpdateRefRequest {
     pub activation_call: Option<String>,
 }
 
-impl From<UpdateRefRequest> for Vec<SOTAReference> {
+impl From<UpdateRefRequest> for Vec<SotaReference> {
     fn from(value: UpdateRefRequest) -> Self {
         let UpdateRefRequest {
             summit_code,
@@ -130,7 +130,7 @@ impl From<UpdateRefRequest> for Vec<SOTAReference> {
             activation_date,
             activation_call,
         } = value;
-        let request = SOTAReference {
+        let request = SotaReference {
             summit_code,
             association_name,
             region_name,
@@ -159,7 +159,7 @@ impl From<UpdateRefRequest> for Vec<SOTAReference> {
 
 #[derive(Debug, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct SOTARefResponse {
+pub struct SotaRefView {
     pub summit_code: String,
     pub association_name: String,
     pub region_name: String,
@@ -178,10 +178,10 @@ pub struct SOTARefResponse {
     pub activation_call: Option<String>,
 }
 
-impl From<SOTAReference> for SOTARefResponse {
+impl From<SotaReference> for SotaRefView {
     #[allow(unused_variables)]
-    fn from(value: SOTAReference) -> Self {
-        let SOTAReference {
+    fn from(value: SotaReference) -> Self {
+        let SotaReference {
             summit_code,
             association_name,
             region_name,
@@ -226,10 +226,10 @@ impl From<SOTAReference> for SOTARefResponse {
     }
 }
 
-impl From<(Maidenhead, SOTAReference)> for SOTARefResponse {
+impl From<(Maidenhead, SotaReference)> for SotaRefView {
     #[allow(unused_variables)]
-    fn from((maidenhead, value): (Maidenhead, SOTAReference)) -> Self {
-        let SOTAReference {
+    fn from((maidenhead, value): (Maidenhead, SotaReference)) -> Self {
+        let SotaReference {
             summit_code,
             association_name,
             region_name,
@@ -283,8 +283,8 @@ pub struct PagenatedResponse<SOTAReference> {
     pub results: Vec<SOTAReference>,
 }
 
-impl From<PagenatedResult<SOTAReference>> for PagenatedResponse<SOTARefResponse> {
-    fn from(pagenated: PagenatedResult<SOTAReference>) -> Self {
+impl From<PagenatedResult<SotaReference>> for PagenatedResponse<SotaRefView> {
+    fn from(pagenated: PagenatedResult<SotaReference>) -> Self {
         PagenatedResponse {
             total: pagenated.total,
             limit: pagenated.limit,
@@ -292,7 +292,7 @@ impl From<PagenatedResult<SOTAReference>> for PagenatedResponse<SOTARefResponse>
             results: pagenated
                 .results
                 .into_iter()
-                .map(SOTARefResponse::from)
+                .map(SotaRefView::from)
                 .collect(),
         }
     }
@@ -300,7 +300,7 @@ impl From<PagenatedResult<SOTAReference>> for PagenatedResponse<SOTARefResponse>
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SOTASearchResult {
+pub struct SotaSearchView {
     pub code: String,
     pub name: String,
     pub name_j: Option<String>,
@@ -311,9 +311,9 @@ pub struct SOTASearchResult {
     pub count: i32,
 }
 
-impl From<SOTAReference> for SOTASearchResult {
-    fn from(value: SOTAReference) -> Self {
-        let SOTAReference {
+impl From<SotaReference> for SotaSearchView {
+    fn from(value: SotaReference) -> Self {
+        let SotaReference {
             summit_code,
             summit_name,
             summit_name_j,

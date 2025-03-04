@@ -1,26 +1,26 @@
 use serde::Serialize;
 
-use super::pota::{POTARefResponseWithLog, POTASearchResult};
-use super::sota::{SOTARefResponse, SOTASearchResult};
+use super::pota::{POTARefLogView, PotaSearchView};
+use super::sota::{SotaRefView, SotaSearchView};
 use domain::model::event::FindResult;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
-    pub sota: Option<Vec<SOTASearchResult>>,
-    pub pota: Option<Vec<POTASearchResult>>,
+    pub sota: Option<Vec<SotaSearchView>>,
+    pub pota: Option<Vec<PotaSearchView>>,
 }
 impl From<FindResult> for SearchResponse {
     fn from(FindResult { sota, pota }: FindResult) -> Self {
         Self {
             sota: if let Some(sota) = sota {
-                let res = sota.into_iter().map(SOTASearchResult::from).collect();
+                let res = sota.into_iter().map(SotaSearchView::from).collect();
                 Some(res)
             } else {
                 None
             },
             pota: if let Some(pota) = pota {
-                let res = pota.into_iter().map(POTASearchResult::from).collect();
+                let res = pota.into_iter().map(PotaSearchView::from).collect();
                 Some(res)
             } else {
                 None
@@ -32,20 +32,20 @@ impl From<FindResult> for SearchResponse {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchFullResponse {
-    pub sota: Option<Vec<SOTARefResponse>>,
-    pub pota: Option<Vec<POTARefResponseWithLog>>,
+    pub sota: Option<Vec<SotaRefView>>,
+    pub pota: Option<Vec<POTARefLogView>>,
 }
 impl From<FindResult> for SearchFullResponse {
     fn from(FindResult { sota, pota }: FindResult) -> Self {
         Self {
             sota: if let Some(sota) = sota {
-                let res = sota.into_iter().map(SOTARefResponse::from).collect();
+                let res = sota.into_iter().map(SotaRefView::from).collect();
                 Some(res)
             } else {
                 None
             },
             pota: if let Some(pota) = pota {
-                let res = pota.into_iter().map(POTARefResponseWithLog::from).collect();
+                let res = pota.into_iter().map(POTARefLogView::from).collect();
                 Some(res)
             } else {
                 None

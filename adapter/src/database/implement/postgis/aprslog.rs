@@ -1,10 +1,12 @@
+use aprs_message::AprsCallsign;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use serde_json::error::Category;
 use shaku::Component;
 use sqlx::SqliteConnection;
 
 use crate::database::connect::ConnectionPool;
-use crate::database::model::aprslog::AprsLogImpl;
+use crate::database::model::aprslog::AprsLogRow;
 use common::error::{AppError, AppResult};
 use domain::model::aprslog::AprsLog;
 use domain::repository::aprs::AprsLogRepository;
@@ -18,7 +20,7 @@ pub struct AprsLogRepositoryImpl {
 impl AprsLogRepositoryImpl {
     async fn select_by_call(&self, callsign: &str) -> AppResult<Vec<AprsLogImpl>> {
         let result = sqlx::query_as!(
-            AprsLogImpl,
+            AprsLogRow,
             r#"
                 SELECT
                     time,
@@ -42,7 +44,7 @@ impl AprsLogRepositoryImpl {
 
     async fn select_by_time(&self, after: &NaiveDateTime) -> AppResult<Vec<AprsLogImpl>> {
         let result = sqlx::query_as!(
-            AprsLogImpl,
+            AprsLogRow,
             r#"
                 SELECT
                     time,
@@ -64,7 +66,7 @@ impl AprsLogRepositoryImpl {
         Ok(result)
     }
 
-    async fn insert(&self, log: AprsLogImpl, db: &mut SqliteConnection) -> AppResult<()> {
+    async fn insert(&self, log: AprsLogRow, db: &mut SqliteConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO aprs_log (
@@ -110,8 +112,9 @@ impl AprsLogRepositoryImpl {
 
 #[async_trait]
 impl AprsLogRepository for AprsLogRepositoryImpl {
-    async fn get_aprs_log_by_callsign(&self, callsign: &str) -> AppResult<Vec<AprsLog>> {
-        let result = self.select_by_call(callsign).await?;
+    async fn get_aprs_log_by_callsign(&self, callsign: &AprsCallsign) -> AppResult<Vec<AprsLog>> {
+        let callsign = callsign.callsign;
+        let result = self.select_by_call(&callsign).await?;
         let mut logs = Vec::new();
         for log in result {
             logs.push(log.into());

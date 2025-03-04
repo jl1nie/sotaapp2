@@ -3,7 +3,7 @@ use domain::model::Maidenhead;
 use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
-use domain::model::pota::{POTAReference, POTAReferenceWithLog};
+use domain::model::pota::{PotaRefLog, PotaReference};
 use domain::model::{event::PagenatedResult, id::UserId};
 
 #[derive(Debug, Deserialize)]
@@ -22,7 +22,7 @@ pub struct CreateRefRequest {
     pub latitude: Option<f64>,
 }
 
-impl From<CreateRefRequest> for Vec<POTAReference> {
+impl From<CreateRefRequest> for Vec<PotaReference> {
     fn from(value: CreateRefRequest) -> Self {
         let CreateRefRequest {
             pota_code,
@@ -38,7 +38,7 @@ impl From<CreateRefRequest> for Vec<POTAReference> {
             latitude,
         } = value;
         let update: DateTime<Utc> = Utc::now();
-        vec![POTAReference {
+        vec![PotaReference {
             pota_code,
             wwff_code,
             park_name,
@@ -58,15 +58,15 @@ impl From<CreateRefRequest> for Vec<POTAReference> {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PagenatedResponse<POTAReference> {
+pub struct PagenatedResponse<PotaReference> {
     pub total: i64,
     pub limit: i32,
     pub offset: i32,
-    pub results: Vec<POTAReference>,
+    pub results: Vec<PotaReference>,
 }
 
-impl From<PagenatedResult<POTAReference>> for PagenatedResponse<POTARefResponse> {
-    fn from(pagenated: PagenatedResult<POTAReference>) -> Self {
+impl From<PagenatedResult<PotaReference>> for PagenatedResponse<PotaRefView> {
+    fn from(pagenated: PagenatedResult<PotaReference>) -> Self {
         PagenatedResponse {
             total: pagenated.total,
             limit: pagenated.limit,
@@ -74,7 +74,7 @@ impl From<PagenatedResult<POTAReference>> for PagenatedResponse<POTARefResponse>
             results: pagenated
                 .results
                 .into_iter()
-                .map(POTARefResponse::from)
+                .map(PotaRefView::from)
                 .collect(),
         }
     }
@@ -96,7 +96,7 @@ pub struct UpdateRefRequest {
     pub latitude: Option<f64>,
 }
 
-impl From<UpdateRefRequest> for Vec<POTAReference> {
+impl From<UpdateRefRequest> for Vec<PotaReference> {
     fn from(value: UpdateRefRequest) -> Self {
         let UpdateRefRequest {
             pota_code,
@@ -112,7 +112,7 @@ impl From<UpdateRefRequest> for Vec<POTAReference> {
             latitude,
         } = value;
         let update: DateTime<Utc> = Utc::now();
-        vec![POTAReference {
+        vec![PotaReference {
             pota_code,
             wwff_code,
             park_name,
@@ -131,7 +131,7 @@ impl From<UpdateRefRequest> for Vec<POTAReference> {
 }
 
 #[derive(Debug)]
-pub struct POTAActivatorLog {
+pub struct PotaActivatorLog {
     pub user_id: UserId,
     pub dx_entity: String,
     pub location: String,
@@ -146,7 +146,7 @@ pub struct POTAActivatorLog {
 }
 
 #[derive(Debug)]
-pub struct POTAHunterLog {
+pub struct PotaHunterLog {
     pub user_id: UserId,
     pub dx_entity: String,
     pub location: String,
@@ -160,7 +160,7 @@ pub struct POTAHunterLog {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct POTARefResponse {
+pub struct PotaRefView {
     pub pota_code: String,
     pub wwff_code: String,
     pub park_name: String,
@@ -175,9 +175,9 @@ pub struct POTARefResponse {
     pub maidenhead: Maidenhead,
 }
 
-impl From<POTAReference> for POTARefResponse {
-    fn from(pota: POTAReference) -> Self {
-        POTARefResponse {
+impl From<PotaReference> for PotaRefView {
+    fn from(pota: PotaReference) -> Self {
+        PotaRefView {
             pota_code: pota.pota_code,
             wwff_code: pota.wwff_code,
             park_name: pota.park_name,
@@ -196,7 +196,7 @@ impl From<POTAReference> for POTARefResponse {
 
 #[derive(Debug, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct POTARefResponseWithLog {
+pub struct POTARefLogView {
     pub pota_code: String,
     pub wwff_code: String,
     pub park_name: String,
@@ -215,9 +215,9 @@ pub struct POTARefResponseWithLog {
     pub qsos: Option<i32>,
 }
 
-impl From<POTAReferenceWithLog> for POTARefResponseWithLog {
-    fn from(pota: POTAReferenceWithLog) -> Self {
-        POTARefResponseWithLog {
+impl From<PotaRefLog> for POTARefLogView {
+    fn from(pota: PotaRefLog) -> Self {
+        POTARefLogView {
             pota_code: pota.pota_code,
             wwff_code: pota.wwff_code,
             park_name: pota.park_name,
@@ -240,7 +240,7 @@ impl From<POTAReferenceWithLog> for POTARefResponseWithLog {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct POTASearchResult {
+pub struct PotaSearchView {
     pub pota: String,
     pub wwff: String,
     pub name: String,
@@ -254,9 +254,9 @@ pub struct POTASearchResult {
     pub qsos: Option<i32>,
 }
 
-impl From<POTAReferenceWithLog> for POTASearchResult {
-    fn from(pota: POTAReferenceWithLog) -> Self {
-        POTASearchResult {
+impl From<PotaRefLog> for PotaSearchView {
+    fn from(pota: PotaRefLog) -> Self {
+        PotaSearchView {
             pota: pota.pota_code,
             wwff: pota.wwff_code,
             name: pota.park_name,
