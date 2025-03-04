@@ -272,17 +272,18 @@ impl SotaRepositoryImpl {
     }
 
     async fn delete_log(&self, d: DeleteLog, db: &mut SqliteConnection) -> AppResult<()> {
-        let before = d.before;
-        sqlx::query!(
-            r#"
+        if let Some(before) = d.before {
+            sqlx::query!(
+                r#"
                 DELETE FROM sota_log
                 WHERE time < $1
             "#,
-            before,
-        )
-        .execute(&mut *db)
-        .await
-        .map_err(AppError::SpecificOperationError)?;
+                before,
+            )
+            .execute(&mut *db)
+            .await
+            .map_err(AppError::SpecificOperationError)?;
+        }
         Ok(())
     }
 
@@ -404,7 +405,7 @@ impl SotaRepositoryImpl {
         Ok(rows)
     }
 
-    async fn select_log_by_condition(&self, query: &str) -> AppResult<Vec<SotaLogRow>> {
+    async fn select_log_by_condition(&self, query: &FindLog) -> AppResult<Vec<SotaLogRow>> {
         let mut select = r#"
             SELECT
                 user_id,
@@ -421,9 +422,24 @@ impl SotaRepositoryImpl {
             FROM sota_log WHERE "#
             .to_string();
 
-        select.push_str(query);
+        let cond = findlog_query_builder(query);
 
-        let sql_query = sqlx::query_as::<_, SotaLogRow>(&select);
+        select.push_str(&cond);
+
+        let mut sql_query = sqlx::query_as::<_, SotaLogRow>(&select);
+
+        if select.contains("time >=") {
+            if let Some(after) = query.after {
+                sql_query = sql_query.bind(after);
+            }
+        };
+
+        if select.contains("time <=") {
+            if let Some(before) = query.before {
+                sql_query = sql_query.bind(before);
+            }
+        }
+
         let rows: Vec<SotaLogRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
@@ -552,8 +568,7 @@ impl SotaRepository for SotaRepositoryImpl {
     }
 
     async fn find_log(&self, query: &FindLog) -> AppResult<Vec<SotaLog>> {
-        let query = findlog_query_builder(query);
-        let results = self.select_log_by_condition(&query).await?;
+        let results = self.select_log_by_condition(query).await?;
         let results = results.into_iter().map(SotaLog::from).collect();
         Ok(results)
     }

@@ -18,7 +18,7 @@ use domain::repository::{
 };
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
-use crate::model::pota::{POTACSVFile, UploadPOTACSV};
+use crate::model::pota::{POTACSVFile, UploadPOTAReference};
 use crate::model::sota::{SOTASumitOptCSV, SOTASummitCSV};
 use crate::model::sota::{UploadSOTASummit, UploadSOTASummitOpt};
 
@@ -163,7 +163,10 @@ impl AdminService for AdminServiceImpl {
         Ok(())
     }
 
-    async fn import_pota_park_list(&self, UploadPOTACSV { data }: UploadPOTACSV) -> AppResult<()> {
+    async fn import_pota_park_list(
+        &self,
+        UploadPOTAReference { data }: UploadPOTAReference,
+    ) -> AppResult<()> {
         let requests: Vec<POTACSVFile> = csv_reader(data, false, 1)?;
         let newref = requests.into_iter().map(PotaReference::from).collect();
         self.pota_repo

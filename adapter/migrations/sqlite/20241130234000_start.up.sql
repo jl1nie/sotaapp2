@@ -66,7 +66,6 @@ CREATE INDEX IF NOT EXISTS idx_pota_references_coordinate ON pota_references (lo
 
 CREATE TABLE IF NOT EXISTS pota_log (
     log_id UUID NOT NULL,
-    log_type INTEGER NOT NULL,
     dx_entity VARCHAR(255) NOT NULL,
     "location" VARCHAR(255) NOT NULL,
     hasc VARCHAR(255) NOT NULL,
@@ -82,9 +81,11 @@ CREATE TABLE IF NOT EXISTS pota_log (
 CREATE INDEX IF NOT EXISTS idx_pota_log ON pota_log (log_id,pota_code);
 
 CREATE TABLE IF NOT EXISTS pota_log_user (
-    user_id  VARCHAR(255),
+    user_id  UUID,
     log_id UUID NOT NULL,
-    "update" DATETIME NOT NULL
+    log_kind VARCHAR(255),
+    "update" DATETIME NOT NULL,
+    PRIMARY KEY(log_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pota_log_user ON pota_log_user (user_id, log_id, "update");

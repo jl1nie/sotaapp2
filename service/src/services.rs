@@ -17,7 +17,7 @@ use domain::model::pota::{ParkCode, PotaReference};
 use domain::model::sota::{SotaReference, SummitCode};
 
 use crate::model::locator::UploadMuniCSV;
-use crate::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
+use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
 use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 
 #[async_trait]
@@ -33,6 +33,7 @@ pub trait UserService: Send + Sync + Interface {
 
     async fn upload_sota_csv(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
     async fn delete_sota_log(&self, user_id: UserId) -> AppResult<()>;
+
     async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
@@ -46,7 +47,7 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
     async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
     async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<()>;
-    async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
+    async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
     async fn show_all_sota_references(
