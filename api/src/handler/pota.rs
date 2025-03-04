@@ -25,7 +25,8 @@ use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
     param::{build_findref_query, GetParam},
-    pota::POTARefLogView,
+    pota::PotaLogHistView,
+    pota::PotaRefLogView,
     spots::SpotView,
 };
 
@@ -63,7 +64,7 @@ async fn upload_pota_log(
     user_service: Inject<AppRegistry, dyn UserService>,
     Path((activator_logid, hunter_logid)): Path<(String, String)>,
     mut multipart: Multipart,
-) -> AppResult<Json<POTALogUserResponse>> {
+) -> AppResult<Json<PotaLogHistView>> {
     if let Some(field) = multipart.next_field().await.unwrap() {
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
@@ -86,7 +87,7 @@ async fn upload_pota_log(
 async fn get_pota_logid(
     user_service: Inject<AppRegistry, dyn UserService>,
     Path(log_id): Path<String>,
-) -> AppResult<Json<POTALogUserResponse>> {
+) -> AppResult<Json<PotaLogHistView>> {
     let log_id = LogId::from_str(&log_id)?;
 
     let loguser = user_service.find_logid(log_id).await?;
@@ -156,7 +157,7 @@ async fn show_all_pota_reference(
 async fn find_pota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
-) -> AppResult<Json<Vec<POTARefLogView>>> {
+) -> AppResult<Json<Vec<PotaRefLogView>>> {
     let query = FindRefBuilder::default().pota();
     let query = build_findref_query(param, query)?;
 
@@ -166,7 +167,7 @@ async fn find_pota_reference(
         .pota
         .unwrap_or(vec![])
         .into_iter()
-        .map(POTARefLogView::from)
+        .map(PotaRefLogView::from)
         .collect();
 
     Ok(Json(res))

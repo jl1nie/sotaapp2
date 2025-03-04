@@ -5,7 +5,7 @@ use shaku::Interface;
 use crate::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
 use crate::model::id::LogId;
 use crate::model::pota::{
-    POTAActivatorLog, POTAHunterLog, POTALogUser, POTAReference, POTAReferenceWithLog, ParkCode,
+    ParkCode, PotaActLog, PotaHuntLog, PotaLogHist, PotaRefLog, PotaReference,
 };
 
 #[async_trait]
@@ -25,6 +25,6 @@ pub trait PotaRepository: Send + Sync + Interface {
     async fn upload_hunter_log(&self, logs: Vec<PotaHuntLog>) -> AppResult<()>;
     async fn delete_log(&self, query: DeleteLog) -> AppResult<()>;
 
-    async fn find_logid(&self, query: LogId) -> AppResult<POTALogUser>;
-    async fn update_logid(&self, log: POTALogUser) -> AppResult<()>;
+    async fn find_logid(&self, query: LogId) -> AppResult<PotaLogHist>;
+    async fn update_logid(&self, log: PotaLogHist) -> AppResult<()>;
 }

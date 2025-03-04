@@ -198,9 +198,9 @@ impl From<PotaLogHist> for PotaLogHistRow {
     }
 }
 
-impl From<POTALogUserImpl> for POTALogUser {
-    fn from(l: POTALogUserImpl) -> Self {
-        POTALogUser {
+impl From<PotaLogHistRow> for PotaLogHist {
+    fn from(l: PotaLogHistRow) -> Self {
+        PotaLogHist {
             user_id: l.user_id,
             log_id: l.log_id,
             log_kind: l.log_kind.map(|k| k.into()),

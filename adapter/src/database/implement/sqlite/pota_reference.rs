@@ -6,19 +6,14 @@ use sqlx::SqliteConnection;
 use common::error::{AppError, AppResult};
 
 use domain::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
-use domain::model::pota::{ParkCode, PotaActLog, PotaHuntLog, PotaRefLog, PotaReference};
 use domain::model::pota::{
-    POTAActivatorLog, POTAHunterLog, POTALogUser, POTAReference, POTAReferenceWithLog, ParkCode,
+    ParkCode, PotaActLog, PotaHuntLog, PotaLogHist, PotaRefLog, PotaReference,
 };
 use domain::model::AwardProgram::POTA;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;
-use crate::database::model::pota::{PotaLogRow, PotaRefLogRow, PotaReferenceRow};
-use crate::database::model::pota::{
-    POTALogImpl, POTALogUserImpl, POTAReferenceImpl, POTAReferenceWithLogImpl,
-};
-
+use crate::database::model::pota::{PotaLogHistRow, PotaLogRow, PotaRefLogRow, PotaReferenceRow};
 use domain::repository::pota::PotaRepository;
 
 #[derive(Component)]
@@ -167,9 +162,9 @@ impl PotaRepositoryImpl {
         Ok(())
     }
 
-    async fn select_logid(&self, log_id: LogId) -> AppResult<POTALogUserImpl> {
+    async fn select_logid(&self, log_id: LogId) -> AppResult<PotaLogHistRow> {
         sqlx::query_as!(
-            POTALogUserImpl,
+            PotaLogHistRow,
             r#"
                 SELECT user_id as "user_id: UserId", log_id as "log_id: LogId", log_kind, "update" 
                 FROM pota_log_user WHERE log_id = $1
@@ -183,7 +178,7 @@ impl PotaRepositoryImpl {
 
     async fn update_logid(
         &self,
-        entry: POTALogUserImpl,
+        entry: PotaLogHistRow,
         db: &mut SqliteConnection,
     ) -> AppResult<()> {
         sqlx::query!(
@@ -361,15 +356,13 @@ impl PotaRepositoryImpl {
             );
         }
         select.push_str(query);
-        let mut sql_query = sqlx::query_as::<_, POTAReferenceWithLogImpl>(&select);
+        let mut sql_query = sqlx::query_as::<_, PotaRefLogRow>(&select);
 
         if let Some(log_id) = log_id {
             sql_query = sql_query.bind(log_id);
         }
 
-        let sql_query = sqlx::query_as::<_, PotaRefLogRow>(&select);
         let rows: Vec<PotaRefLogRow> = sql_query
-        let rows: Vec<POTAReferenceWithLogImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::RowNotFound)?;
@@ -502,19 +495,19 @@ impl PotaRepository for PotaRepositoryImpl {
         Ok(())
     }
 
-    async fn find_logid(&self, query: LogId) -> AppResult<POTALogUser> {
+    async fn find_logid(&self, query: LogId) -> AppResult<PotaLogHist> {
         let result = self.select_logid(query).await?;
         Ok(result.into())
     }
 
-    async fn update_logid(&self, log: POTALogUser) -> AppResult<()> {
+    async fn update_logid(&self, log: PotaLogHist) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
             .begin()
             .await
             .map_err(AppError::TransactionError)?;
-        self.update_logid(POTALogUserImpl::from(log), &mut tx)
+        self.update_logid(PotaLogHistRow::from(log), &mut tx)
             .await?;
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())

@@ -104,14 +104,14 @@ impl From<String> for POTALogKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct POTALogUser {
+pub struct PotaLogHist {
     pub user_id: Option<UserId>,
     pub log_id: LogId,
     pub log_kind: Option<POTALogKind>,
     pub update: NaiveDateTime,
 }
 
-impl POTALogUser {
+impl PotaLogHist {
     pub fn new(user_id: Option<UserId>) -> Self {
         let update = Utc::now().naive_utc();
         Self {

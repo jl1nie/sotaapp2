@@ -106,7 +106,7 @@ async fn upload_log(
         let reqs = UploadSOTALog { data };
 
         return user_service
-            .upload_sota_csv(user_id, reqs)
+            .upload_sota_log(user_id, reqs)
             .await
             .map(|_| StatusCode::CREATED);
     }

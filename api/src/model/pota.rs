@@ -3,8 +3,7 @@ use domain::model::Maidenhead;
 use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
-use domain::model::pota::{PotaRefLog, PotaReference};
-use domain::model::pota::{POTALogUser, POTAReference, POTAReferenceWithLog};
+use domain::model::pota::{PotaLogHist, PotaRefLog, PotaReference};
 use domain::model::{event::PagenatedResult, id::UserId};
 
 #[derive(Debug, Deserialize)]
@@ -197,7 +196,7 @@ impl From<PotaReference> for PotaRefView {
 
 #[derive(Debug, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct POTARefLogView {
+pub struct PotaRefLogView {
     pub pota_code: String,
     pub wwff_code: String,
     pub park_name: String,
@@ -216,9 +215,9 @@ pub struct POTARefLogView {
     pub qsos: Option<i32>,
 }
 
-impl From<PotaRefLog> for POTARefLogView {
+impl From<PotaRefLog> for PotaRefLogView {
     fn from(pota: PotaRefLog) -> Self {
-        POTARefLogView {
+        PotaRefLogView {
             pota_code: pota.pota_code,
             wwff_code: pota.wwff_code,
             park_name: pota.park_name,
@@ -258,16 +257,13 @@ pub struct PotaSearchView {
 
 impl From<PotaRefLog> for PotaSearchView {
     fn from(pota: PotaRefLog) -> Self {
-        PotaSearchView {
-impl From<POTAReferenceWithLog> for POTASearchResult {
-    fn from(pota: POTAReferenceWithLog) -> Self {
         let locid: Vec<String> = pota
             .park_locid
             .split(',')
             .map(|s| s.trim().to_string())
             .collect();
 
-        POTASearchResult {
+        PotaSearchView {
             pota: pota.pota_code,
             wwff: pota.wwff_code,
             name: pota.park_name,
@@ -286,20 +282,20 @@ impl From<POTAReferenceWithLog> for POTASearchResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct POTALogUserResponse {
+pub struct PotaLogHistView {
     pub log_id: String,
     pub log_kind: String,
     pub last_update: NaiveDate,
 }
 
-impl From<POTALogUser> for POTALogUserResponse {
-    fn from(log: POTALogUser) -> Self {
+impl From<PotaLogHist> for PotaLogHistView {
+    fn from(log: PotaLogHist) -> Self {
         let log_kind = match log.log_kind {
             Some(kind) => kind.into(),
             None => "none".to_string(),
         };
 
-        POTALogUserResponse {
+        PotaLogHistView {
             log_id: log.log_id.into(),
             log_kind,
             last_update: log.update.date(),

@@ -156,8 +156,7 @@ impl ActivationRepositryImpl {
 
         select.push_str(&cond);
 
-        let sql_query = sqlx::query_as::<_, AlertRow>(&select);
-        let mut sql_query = sqlx::query_as::<_, AlertImpl>(&select);
+        let mut sql_query = sqlx::query_as::<_, AlertRow>(&select);
 
         if let Some(after) = query.issued_after {
             sql_query = sql_query.bind(after);
@@ -193,15 +192,13 @@ impl ActivationRepositryImpl {
 
         select.push_str(&cond);
 
-        let sql_query = sqlx::query_as::<_, SpotRow>(&select);
-        let rows: Vec<SpotRow> = sql_query
-        let mut sql_query = sqlx::query_as::<_, SpotImpl>(&select);
+        let mut sql_query = sqlx::query_as::<_, SpotRow>(&select);
 
         if let Some(after) = query.issued_after {
             sql_query = sql_query.bind(after);
         }
 
-        let rows: Vec<SpotImpl> = sql_query
+        let rows: Vec<SpotRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::RowNotFound)?;
