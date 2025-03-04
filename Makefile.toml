@@ -190,7 +190,7 @@ extend = "set-env-local"
 install_crate = { crate_name = "sqlx-cli", binary = "sqlx", test_arg = "--help", version = "0.8.2" }
 script = '''
 #!/bin/bash
-until sqlx migrate run --source adapter/migrations/sqlite; do
+until sqlx migrate $@ --source adapter/migrations/sqlite; do
     sleep 1
 done
 '''

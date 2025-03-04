@@ -13,7 +13,7 @@ impl SummitCode {
 }
 
 #[derive(Debug, Clone)]
-pub struct SOTAReference {
+pub struct SotaReference {
     pub summit_code: String,
     pub association_name: String,
     pub region_name: String,
@@ -38,7 +38,7 @@ pub struct SOTAReference {
 }
 
 #[derive(Debug, Clone)]
-pub struct SOTALog {
+pub struct SotaLog {
     pub user_id: UserId,
     pub my_callsign: String,
     pub operator: String,

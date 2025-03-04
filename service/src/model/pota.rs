@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
 use domain::model::id::LogId;
-use domain::model::pota::{POTAActivatorLog, POTAHunterLog, POTAReference};
+use domain::model::pota::{PotaActLog, PotaHuntLog, PotaReference};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -21,7 +21,7 @@ pub struct POTACSVFile {
     pub latitude: Option<f64>,
 }
 
-impl From<POTACSVFile> for POTAReference {
+impl From<POTACSVFile> for PotaReference {
     fn from(value: POTACSVFile) -> Self {
         let POTACSVFile {
             pota_code,
@@ -70,7 +70,7 @@ pub struct POTAActivatorLogCSV {
 }
 
 impl POTAActivatorLogCSV {
-    pub fn to_log(log_id: LogId, value: POTAActivatorLogCSV) -> POTAActivatorLog {
+    pub fn to_log(log_id: LogId, value: POTAActivatorLogCSV) -> PotaActLog {
         let POTAActivatorLogCSV {
             dx_entity,
             location,
@@ -83,7 +83,7 @@ impl POTAActivatorLogCSV {
             qsos,
         } = value;
         let first_qso_date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d").unwrap();
-        POTAActivatorLog {
+        PotaActLog {
             log_id,
             dx_entity,
             location,
@@ -110,7 +110,7 @@ pub struct POTAHunterLogCSV {
     pub qsos: i32,
 }
 impl POTAHunterLogCSV {
-    pub fn to_log(log_id: LogId, value: POTAHunterLogCSV) -> POTAHunterLog {
+    pub fn to_log(log_id: LogId, value: POTAHunterLogCSV) -> PotaHuntLog {
         let POTAHunterLogCSV {
             dx_entity,
             location,
@@ -121,7 +121,7 @@ impl POTAHunterLogCSV {
             qsos,
         } = value;
         let first_qso_date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d").unwrap();
-        POTAHunterLog {
+        PotaHuntLog {
             log_id,
             dx_entity,
             location,

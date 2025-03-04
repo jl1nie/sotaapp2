@@ -3,7 +3,7 @@ use serde::Serialize;
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CenturyCodeResponse {
+pub struct CenturyCodeView {
     pub muni_code: i32,
     pub prefecture: String,
     pub municipality: String,
@@ -16,8 +16,8 @@ pub struct CenturyCodeResponse {
     pub maidenhead: Option<String>,
 }
 
-impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
-    fn from(mcc: MunicipalityCenturyCode) -> CenturyCodeResponse {
+impl From<MunicipalityCenturyCode> for CenturyCodeView {
+    fn from(mcc: MunicipalityCenturyCode) -> CenturyCodeView {
         let MunicipalityCenturyCode {
             muni_code,
             prefecture,
@@ -29,7 +29,7 @@ impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
                 jcc_code,
                 ward_code,
                 jcc_text,
-            } => CenturyCodeResponse {
+            } => CenturyCodeView {
                 muni_code,
                 prefecture,
                 municipality,
@@ -45,7 +45,7 @@ impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
                 jcg_code,
                 jcg_text,
                 hamlog_code,
-            } => CenturyCodeResponse {
+            } => CenturyCodeView {
                 muni_code,
                 prefecture,
                 municipality,
@@ -63,11 +63,11 @@ impl From<MunicipalityCenturyCode> for CenturyCodeResponse {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MapcodeResponse {
+pub struct MapcodeView {
     pub mapcode: String,
 }
 
-impl From<String> for MapcodeResponse {
+impl From<String> for MapcodeView {
     fn from(mapcode: String) -> Self {
         Self { mapcode }
     }

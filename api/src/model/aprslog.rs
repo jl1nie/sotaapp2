@@ -5,7 +5,7 @@ use domain::model::aprslog::{AprsLog, AprsState};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AprsLogResponse {
+pub struct AprsLogView {
     pub time: NaiveDateTime,
     pub callsign: String,
     pub ssid: i32,
@@ -16,8 +16,8 @@ pub struct AprsLogResponse {
     pub latitude: f64,
 }
 
-impl From<AprsLog> for AprsLogResponse {
-    fn from(l: AprsLog) -> AprsLogResponse {
+impl From<AprsLog> for AprsLogView {
+    fn from(l: AprsLog) -> AprsLogView {
         let AprsLog {
             callsign,
             destination,
@@ -32,7 +32,7 @@ impl From<AprsLog> for AprsLogResponse {
             AprsState::OnSummit { time, distance, .. } => (time, "OnSummit", distance),
             AprsState::Descending { time, distance } => (time, "Descending", distance),
         };
-        AprsLogResponse {
+        AprsLogView {
             time,
             callsign: callsign.callsign,
             ssid: callsign.ssid.unwrap_or_default() as i32,

@@ -13,8 +13,8 @@ use domain::model::event::{
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
-use domain::model::pota::{POTAReference, ParkCode};
-use domain::model::sota::{SOTAReference, SummitCode};
+use domain::model::pota::{ParkCode, PotaReference};
+use domain::model::sota::{SotaReference, SummitCode};
 
 use crate::model::locator::UploadMuniCSV;
 use crate::model::pota::{UploadActivatorCSV, UploadHunterCSV, UploadPOTACSV};
@@ -48,20 +48,20 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<()>;
     async fn import_pota_park_list(&self, event: UploadPOTACSV) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
-    async fn show_sota_reference(&self, query: FindRef) -> AppResult<SOTAReference>;
+    async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
     async fn show_all_sota_references(
         &self,
         query: FindRef,
-    ) -> AppResult<PagenatedResult<SOTAReference>>;
+    ) -> AppResult<PagenatedResult<SotaReference>>;
 
-    async fn update_sota_reference(&self, references: Vec<SOTAReference>) -> AppResult<()>;
+    async fn update_sota_reference(&self, references: Vec<SotaReference>) -> AppResult<()>;
     async fn delete_sota_reference(&self, query: DeleteRef<SummitCode>) -> AppResult<()>;
-    async fn show_pota_reference(&self, query: FindRef) -> AppResult<POTAReference>;
+    async fn show_pota_reference(&self, query: FindRef) -> AppResult<PotaReference>;
     async fn show_all_pota_references(
         &self,
         query: FindRef,
-    ) -> AppResult<PagenatedResult<POTAReference>>;
-    async fn update_pota_reference(&self, references: Vec<POTAReference>) -> AppResult<()>;
+    ) -> AppResult<PagenatedResult<PotaReference>>;
+    async fn update_pota_reference(&self, references: Vec<PotaReference>) -> AppResult<()>;
     async fn delete_pota_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
     async fn health_check(&self) -> AppResult<bool>;
 }

@@ -1,11 +1,11 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use domain::model::id::UserId;
-use domain::model::sota::{SOTALog, SOTAReference};
+use domain::model::sota::{SotaLog, SotaReference};
 use sqlx::types::Uuid;
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
-pub struct SOTAReferenceImpl {
+pub struct SotaReferenceRow {
     pub summit_code: String,
     pub association_name: String,
     pub region_name: String,
@@ -29,9 +29,9 @@ pub struct SOTAReferenceImpl {
     pub activation_call: Option<String>,
 }
 
-impl From<SOTAReference> for SOTAReferenceImpl {
-    fn from(s: SOTAReference) -> Self {
-        let SOTAReference {
+impl From<SotaReference> for SotaReferenceRow {
+    fn from(s: SotaReference) -> Self {
+        let SotaReference {
             summit_code,
             association_name,
             region_name,
@@ -79,9 +79,9 @@ impl From<SOTAReference> for SOTAReferenceImpl {
         }
     }
 }
-impl From<SOTAReferenceImpl> for SOTAReference {
-    fn from(s: SOTAReferenceImpl) -> Self {
-        let SOTAReferenceImpl {
+impl From<SotaReferenceRow> for SotaReference {
+    fn from(s: SotaReferenceRow) -> Self {
+        let SotaReferenceRow {
             summit_code,
             association_name,
             region_name,
@@ -131,7 +131,7 @@ impl From<SOTAReferenceImpl> for SOTAReference {
 }
 
 #[derive(Debug, FromRow)]
-pub struct SOTALogImpl {
+pub struct SotaLogRow {
     pub user_id: Uuid,
     pub my_callsign: String,
     pub operator: String,
@@ -145,9 +145,9 @@ pub struct SOTALogImpl {
     pub update: DateTime<Utc>,
 }
 
-impl From<SOTALog> for SOTALogImpl {
-    fn from(value: SOTALog) -> Self {
-        let SOTALog {
+impl From<SotaLog> for SotaLogRow {
+    fn from(value: SotaLog) -> Self {
+        let SotaLog {
             user_id,
             my_callsign,
             operator,
@@ -176,9 +176,9 @@ impl From<SOTALog> for SOTALogImpl {
     }
 }
 
-impl From<SOTALogImpl> for SOTALog {
-    fn from(value: SOTALogImpl) -> Self {
-        let SOTALogImpl {
+impl From<SotaLogRow> for SotaLog {
+    fn from(value: SotaLogRow) -> Self {
+        let SotaLogRow {
             user_id,
             my_callsign,
             operator,

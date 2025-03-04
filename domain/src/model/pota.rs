@@ -16,7 +16,7 @@ impl ParkCode {
 }
 
 #[derive(Debug)]
-pub struct POTAReference {
+pub struct PotaReference {
     pub pota_code: String,
     pub wwff_code: String,
     pub park_name: String,
@@ -33,7 +33,7 @@ pub struct POTAReference {
 }
 
 #[derive(Debug)]
-pub struct POTAReferenceWithLog {
+pub struct PotaRefLog {
     pub pota_code: String,
     pub wwff_code: String,
     pub park_name: String,
@@ -53,7 +53,7 @@ pub struct POTAReferenceWithLog {
 }
 
 #[derive(Debug)]
-pub struct POTAActivatorLog {
+pub struct PotaActLog {
     pub log_id: LogId,
     pub dx_entity: String,
     pub location: String,
@@ -67,7 +67,7 @@ pub struct POTAActivatorLog {
 }
 
 #[derive(Debug)]
-pub struct POTAHunterLog {
+pub struct PotaHuntLog {
     pub log_id: LogId,
     pub dx_entity: String,
     pub location: String,
@@ -78,7 +78,7 @@ pub struct POTAHunterLog {
     pub qsos: i32,
 }
 
-pub struct POTALogUser {
+pub struct PotaLogHist {
     pub user_id: UserId,
     pub log_id: LogId,
     pub update: NaiveDateTime,

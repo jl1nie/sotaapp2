@@ -38,7 +38,7 @@ axum-extra = { version = "0.10.0", features = [
     "multipart",
 ] }
 
-aprs-message = {git = "https://github.com/jl1nie/aprs-message.git"}
+aprs-message = { git = "https://github.com/jl1nie/aprs-message.git" }
 maidenhead = "0.1.0"
 geographiclib-rs = "0.2.4"
 tower = "0.5.2"
@@ -85,6 +85,5 @@ tower-http.workspace = true
 shaku_axum.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-aprs-message.workspace =true
+aprs-message.workspace = true
 firebase-auth-sdk.workspace = true
-

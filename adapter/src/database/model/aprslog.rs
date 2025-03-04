@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use domain::model::aprslog::{AprsLog, AprsState};
 
 #[derive(Debug, sqlx::FromRow)]
-pub struct AprsLogImpl {
+pub struct AprsLogRow {
     pub time: NaiveDateTime,
     pub callsign: String,
     pub ssid: i64,
@@ -15,8 +15,8 @@ pub struct AprsLogImpl {
     pub latitude: f64,
 }
 
-impl From<AprsLogImpl> for AprsLog {
-    fn from(aprs_log: AprsLogImpl) -> Self {
+impl From<AprsLogRow> for AprsLog {
+    fn from(aprs_log: AprsLogRow) -> Self {
         let state = match aprs_log.state {
             0 => AprsState::Approaching {
                 time: aprs_log.time,
@@ -60,7 +60,7 @@ impl From<AprsLogImpl> for AprsLog {
     }
 }
 
-impl From<AprsLog> for AprsLogImpl {
+impl From<AprsLog> for AprsLogRow {
     fn from(aprs_log: AprsLog) -> Self {
         let (state, time, distance, message) = match aprs_log.state {
             AprsState::Approaching { time, distance } => (0, time, distance, None),
@@ -77,7 +77,7 @@ impl From<AprsLog> for AprsLogImpl {
             } => (3, time, distance, message),
             AprsState::Descending { time, distance } => (4, time, distance, None),
         };
-        AprsLogImpl {
+        AprsLogRow {
             time,
             callsign: aprs_log.callsign.callsign,
             ssid: aprs_log.callsign.ssid.unwrap_or(0) as i64,

@@ -6,7 +6,7 @@ use sqlx::FromRow;
 pub enum CenturyCodeImpl {}
 
 #[derive(Debug, FromRow)]
-pub struct MunicipalityCenturyCodeImpl {
+pub struct MunicipalityCenturyCodeRow {
     pub muni_code: i64,
     pub prefecture: String,
     pub municipality: String,
@@ -18,7 +18,7 @@ pub struct MunicipalityCenturyCodeImpl {
     pub hamlog_code: Option<String>,
 }
 
-impl From<MunicipalityCenturyCode> for MunicipalityCenturyCodeImpl {
+impl From<MunicipalityCenturyCode> for MunicipalityCenturyCodeRow {
     fn from(m: MunicipalityCenturyCode) -> Self {
         match m.code {
             CenturyCode::JCC {
@@ -55,8 +55,8 @@ impl From<MunicipalityCenturyCode> for MunicipalityCenturyCodeImpl {
     }
 }
 
-impl From<MunicipalityCenturyCodeImpl> for MunicipalityCenturyCode {
-    fn from(m: MunicipalityCenturyCodeImpl) -> Self {
+impl From<MunicipalityCenturyCodeRow> for MunicipalityCenturyCode {
+    fn from(m: MunicipalityCenturyCodeRow) -> Self {
         if m.jcc_code.is_some() {
             MunicipalityCenturyCode {
                 muni_code: m.muni_code as i32,

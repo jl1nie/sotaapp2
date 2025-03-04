@@ -10,7 +10,7 @@ use domain::repository::activation::ActivationRepositry;
 
 use super::querybuilder::findact_query_builder;
 use crate::database::connect::ConnectionPool;
-use crate::database::model::activation::{AlertImpl, SpotImpl};
+use crate::database::model::activation::{AlertRow, SpotRow};
 
 #[derive(Component)]
 #[shaku(interface = ActivationRepositry)]
@@ -19,7 +19,7 @@ pub struct ActivationRepositryImpl {
 }
 
 impl ActivationRepositryImpl {
-    async fn update_alert_impl(&self, a: AlertImpl, db: &mut SqliteConnection) -> AppResult<()> {
+    async fn update_alert_impl(&self, a: AlertRow, db: &mut SqliteConnection) -> AppResult<()> {
         let program = a.program.as_i32();
         sqlx::query!(
             r#"
@@ -63,7 +63,7 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn update_spot_impl(&self, s: SpotImpl, db: &mut SqliteConnection) -> AppResult<()> {
+    async fn update_spot_impl(&self, s: SpotRow, db: &mut SqliteConnection) -> AppResult<()> {
         let program = s.program.as_i32();
         sqlx::query!(
             r#"
@@ -154,9 +154,9 @@ impl ActivationRepositryImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, AlertImpl>(&select);
+        let sql_query = sqlx::query_as::<_, AlertRow>(&select);
 
-        let rows: Vec<AlertImpl> = sql_query
+        let rows: Vec<AlertRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
@@ -184,8 +184,8 @@ impl ActivationRepositryImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, SpotImpl>(&select);
-        let rows: Vec<SpotImpl> = sql_query
+        let sql_query = sqlx::query_as::<_, SpotRow>(&select);
+        let rows: Vec<SpotRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
@@ -205,8 +205,7 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in alerts.into_iter().enumerate() {
-            self.update_alert_impl(AlertImpl::from(r.1), &mut tx)
-                .await?;
+            self.update_alert_impl(AlertRow::from(r.1), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
@@ -221,7 +220,7 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in spots.into_iter().enumerate() {
-            self.update_spot_impl(SpotImpl::from(r.1), &mut tx).await?;
+            self.update_spot_impl(SpotRow::from(r.1), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())

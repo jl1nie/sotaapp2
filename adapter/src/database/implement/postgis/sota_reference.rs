@@ -3,23 +3,23 @@ use shaku::Component;
 use sqlx::PgConnection;
 
 use common::error::{AppError, AppResult};
-use domain::model::common::event::{DeleteRef, FindRef, PagenatedResult};
-use domain::model::common::AwardProgram::SOTA;
-use domain::model::sota::{SOTAReference, SummitCode};
+use domain::model::event::{DeleteRef, FindRef, PagenatedResult};
+use domain::model::sota::{SotaReference, SummitCode};
+use domain::model::AwardProgram::SOTA;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;
-use crate::database::model::sota::SOTAReferenceImpl;
-use domain::repository::sota::SOTARepository;
+use crate::database::model::sota::SotaReferenceRow;
+use domain::repository::sota::SotaRepository;
 
 #[derive(Component)]
-#[shaku(interface = SOTARepository)]
-pub struct SOTARepositoryImpl {
+#[shaku(interface = SotaRepository)]
+pub struct SotaRepositoryImpl {
     pool: ConnectionPool,
 }
 
-impl SOTARepositoryImpl {
-    async fn create(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
+impl SotaRepositoryImpl {
+    async fn create(&self, r: SotaReferenceRow, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO sota_references(
@@ -74,7 +74,7 @@ impl SOTARepositoryImpl {
         Ok(())
     }
 
-    async fn update(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update(&self, r: SotaReferenceRow, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 UPDATE sota_references SET
@@ -127,7 +127,7 @@ impl SOTARepositoryImpl {
         Ok(())
     }
 
-    async fn upsert_partial(&self, r: SOTAReferenceImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn upsert_partial(&self, r: SotaReferenceRow, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO sota_references (
@@ -227,7 +227,7 @@ impl SOTARepositoryImpl {
         Ok(())
     }
 
-    async fn select(&self, query: &str) -> AppResult<SOTAReferenceImpl> {
+    async fn select(&self, query: &str) -> AppResult<SotaReferenceRow> {
         let mut select = r#"
             SELECT
                 summit_code,
@@ -256,15 +256,15 @@ impl SOTARepositoryImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
-        let row: SOTAReferenceImpl = sql_query
+        let sql_query = sqlx::query_as::<_, SotaReferenceRow>(&select);
+        let row: SotaReferenceRow = sql_query
             .fetch_one(self.pool.inner_ref())
             .await
             .map_err(AppError::RowNotFound)?;
         Ok(row)
     }
 
-    async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<SOTAReferenceImpl>)> {
+    async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<SotaReferenceRow>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
             .fetch_one(self.pool.inner_ref())
             .await
@@ -299,15 +299,15 @@ impl SOTARepositoryImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
-        let rows: Vec<SOTAReferenceImpl> = sql_query
+        let sql_query = sqlx::query_as::<_, SotaReferenceRow>(&select);
+        let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::RowNotFound)?;
         Ok((total, rows))
     }
 
-    async fn select_by_condition(&self, query: &str) -> AppResult<Vec<SOTAReferenceImpl>> {
+    async fn select_by_condition(&self, query: &str) -> AppResult<Vec<SotaReferenceRow>> {
         let mut select = r#"
             SELECT
                 summit_code,
@@ -336,8 +336,8 @@ impl SOTARepositoryImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, SOTAReferenceImpl>(&select);
-        let rows: Vec<SOTAReferenceImpl> = sql_query
+        let sql_query = sqlx::query_as::<_, SotaReferenceRow>(&select);
+        let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::RowNotFound)?;
@@ -346,8 +346,8 @@ impl SOTARepositoryImpl {
 }
 
 #[async_trait]
-impl SOTARepository for SOTARepositoryImpl {
-    async fn create_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
+impl SotaRepository for SotaRepositoryImpl {
+    async fn create_reference(&self, references: Vec<SotaReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -356,7 +356,7 @@ impl SOTARepository for SOTARepositoryImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in references.into_iter().enumerate() {
-            self.create(SOTAReferenceImpl::from(r.1), &mut tx).await?;
+            self.create(SotaReferenceRow::from(r.1), &mut tx).await?;
             if r.0 % 500 == 0 {
                 tracing::info!("insert sota {} rescords", r.0);
             }
@@ -374,7 +374,7 @@ impl SOTARepository for SOTARepositoryImpl {
     async fn show_all_references(
         &self,
         event: &FindRef,
-    ) -> AppResult<PagenatedResult<SOTAReference>> {
+    ) -> AppResult<PagenatedResult<SotaReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
         let query = findref_query_builder(SOTA, event);
@@ -383,11 +383,11 @@ impl SOTARepository for SOTARepositoryImpl {
             total,
             limit,
             offset,
-            results: results.into_iter().map(SOTAReference::from).collect(),
+            results: results.into_iter().map(SotaReference::from).collect(),
         })
     }
 
-    async fn update_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
+    async fn update_reference(&self, references: Vec<SotaReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -398,13 +398,13 @@ impl SOTARepository for SOTARepositoryImpl {
         tracing::info!("update sota {} rescords", references.len());
 
         for r in references.into_iter() {
-            self.update(SOTAReferenceImpl::from(r), &mut tx).await?;
+            self.update(SotaReferenceRow::from(r), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 
-    async fn upsert_reference(&self, references: Vec<SOTAReference>) -> AppResult<()> {
+    async fn upsert_reference(&self, references: Vec<SotaReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -413,7 +413,7 @@ impl SOTARepository for SOTARepositoryImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in references.into_iter().enumerate() {
-            self.upsert_partial(SOTAReferenceImpl::from(r.1), &mut tx)
+            self.upsert_partial(SotaReferenceRow::from(r.1), &mut tx)
                 .await?;
             if r.0 % 500 == 0 {
                 tracing::info!("upsert partial sota {} rescords", r.0);
@@ -438,10 +438,10 @@ impl SOTARepository for SOTARepositoryImpl {
         Ok(())
     }
 
-    async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SOTAReference>> {
+    async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SotaReference>> {
         let query = findref_query_builder(SOTA, event);
         let results = self.select_by_condition(&query).await?;
-        let results = results.into_iter().map(SOTAReference::from).collect();
+        let results = results.into_iter().map(SotaReference::from).collect();
         Ok(results)
     }
 }

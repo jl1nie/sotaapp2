@@ -8,7 +8,7 @@ use domain::model::AwardProgram;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SOTASpot {
+pub struct SotaSpot {
     pub id: i32,
     #[serde(rename = "userID")]
     pub user_id: i32,
@@ -25,8 +25,8 @@ pub struct SOTASpot {
     pub highlight_color: Option<String>,
 }
 
-impl From<SOTASpot> for AppResult<Spot> {
-    fn from(s: SOTASpot) -> Self {
+impl From<SotaSpot> for AppResult<Spot> {
+    fn from(s: SotaSpot) -> Self {
         let naive = NaiveDateTime::parse_from_str(&s.time_stamp, "%Y-%m-%dT%H:%M:%S")
             .map_err(AppError::ParseError)?;
         let spot_time = Utc.from_local_datetime(&naive).unwrap();
@@ -49,7 +49,7 @@ impl From<SOTASpot> for AppResult<Spot> {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct POTASpot {
+pub struct PotaSpot {
     pub spot_id: i32,
     pub activator: String,
     pub frequency: String,
@@ -71,8 +71,8 @@ pub struct POTASpot {
     pub expire: i32,
 }
 
-impl From<POTASpot> for AppResult<Spot> {
-    fn from(s: POTASpot) -> Self {
+impl From<PotaSpot> for AppResult<Spot> {
+    fn from(s: PotaSpot) -> Self {
         let naive = NaiveDateTime::parse_from_str(&s.spot_time, "%Y-%m-%dT%H:%M:%S")
             .map_err(AppError::ParseError)?;
         let spot_time = Utc.from_local_datetime(&naive).unwrap();
@@ -95,7 +95,7 @@ impl From<POTASpot> for AppResult<Spot> {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SpotResponse {
+pub struct SpotView {
     pub program: String,
     pub spot_id: i32,
     pub reference: String,
@@ -109,7 +109,7 @@ pub struct SpotResponse {
     pub comment: Option<String>,
 }
 
-impl From<Spot> for SpotResponse {
+impl From<Spot> for SpotView {
     fn from(s: Spot) -> Self {
         Self {
             program: s.program.into(),

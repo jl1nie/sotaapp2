@@ -4,13 +4,13 @@ use sqlx::PgConnection;
 
 use common::error::{AppError, AppResult};
 
-use domain::model::common::activation::{Alert, Spot};
-use domain::model::common::event::{DeleteAct, FindAct};
+use domain::model::activation::{Alert, Spot};
+use domain::model::event::{DeleteAct, FindAct};
 use domain::repository::activation::ActivationRepositry;
 
 use super::querybuilder::findact_query_builder;
 use crate::database::connect::ConnectionPool;
-use crate::database::model::activation::{AlertImpl, SpotImpl};
+use crate::database::model::activation::{AlertRow, SpotRow};
 
 #[derive(Component)]
 #[shaku(interface = ActivationRepositry)]
@@ -19,11 +19,11 @@ pub struct ActivationRepositryImpl {
 }
 
 impl ActivationRepositryImpl {
-    async fn update_alert_impl(&self, a: AlertImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update_alert_impl(&self, a: AlertRow, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO alerts (program, alert_id, user_id, reference, reference_detail, 
-                                   "location", activator, activator_name, operator, tart_time, end_time, frequencies,comment,poster)
+                                   "location", activator, activator_name, operator, start_time, end_time, frequencies,comment,poster)
                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 ON CONFLICT (program, alert_id ) DO UPDATE             
                 SET program = EXCLUDED.program,
@@ -34,7 +34,7 @@ impl ActivationRepositryImpl {
                     "location" = EXCLUDED."location",
                     activator = EXCLUDED. activator,
                     activator_name = EXCLUDED.activator_name,
-                    operator = EXCLUDE.operator,
+                    operator = EXCLUDED.operator,
                     start_time = EXCLUDED.start_time,
                     end_time = EXCLUDED.end_time,
                     frequencies = EXCLUDED.frequencies,
@@ -62,7 +62,7 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn update_spot_impl(&self, s: SpotImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update_spot_impl(&self, s: SpotRow, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO spots (program, spot_id, reference, reference_detail, activator, activator_name, operator, spot_time, frequency, mode, spotter,comment) 
@@ -74,7 +74,7 @@ impl ActivationRepositryImpl {
                     reference_detail = EXCLUDED.reference_detail,
                     activator = EXCLUDED.activator,
                     activator_name = EXCLUDED.activator_name,
-                    operator = EXCLUDE.operator,
+                    operator = EXCLUDED.operator,
                     spot_time = EXCLUDED.spot_time,
                     frequency = EXCLUDED.frequency,
                     mode = EXCLUDED.mode,
@@ -152,9 +152,9 @@ impl ActivationRepositryImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, AlertImpl>(&select);
+        let sql_query = sqlx::query_as::<_, AlertRow>(&select);
 
-        let rows: Vec<AlertImpl> = sql_query
+        let rows: Vec<AlertRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
@@ -182,8 +182,8 @@ impl ActivationRepositryImpl {
 
         select.push_str(query);
 
-        let sql_query = sqlx::query_as::<_, SpotImpl>(&select);
-        let rows: Vec<SpotImpl> = sql_query
+        let sql_query = sqlx::query_as::<_, SpotRow>(&select);
+        let rows: Vec<SpotRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
@@ -203,8 +203,7 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in alerts.into_iter().enumerate() {
-            self.update_alert_impl(AlertImpl::from(r.1), &mut tx)
-                .await?;
+            self.update_alert_impl(AlertRow::from(r.1), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
@@ -219,7 +218,7 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in spots.into_iter().enumerate() {
-            self.update_spot_impl(SpotImpl::from(r.1), &mut tx).await?;
+            self.update_spot_impl(SpotRow::from(r.1), &mut tx).await?;
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())

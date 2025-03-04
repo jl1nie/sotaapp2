@@ -10,7 +10,7 @@ use common::error::{AppError, AppResult};
 use domain::model::locator::MunicipalityCenturyCode;
 
 use crate::database::connect::ConnectionPool;
-use crate::database::model::locator::MunicipalityCenturyCodeImpl;
+use crate::database::model::locator::MunicipalityCenturyCodeRow;
 use domain::repository::locator::LocatorRepositry;
 
 #[derive(Component)]
@@ -21,7 +21,7 @@ pub struct LocatorRepositryImpl {
 }
 
 impl LocatorRepositryImpl {
-    async fn update(&self, m: MunicipalityCenturyCodeImpl, db: &mut PgConnection) -> AppResult<()> {
+    async fn update(&self, m: MunicipalityCenturyCodeRow, db: &mut PgConnection) -> AppResult<()> {
         sqlx::query!(
             r#"
                 INSERT INTO municipality_century_codes(muni_code, prefecture, municipality, jcc_code, ward_code, jcc_text, jcg_code, jcg_text, hamlog_code)
@@ -58,7 +58,7 @@ impl LocatorRepositryImpl {
         muni_code: i32,
     ) -> AppResult<MunicipalityCenturyCode> {
         let results = sqlx::query_as!(
-            MunicipalityCenturyCodeImpl,
+            MunicipalityCenturyCodeRow,
             r#"
                 SELECT muni_code, prefecture, municipality, jcc_code, ward_code, jcc_text, jcg_code, jcg_text, hamlog_code
                 FROM municipality_century_codes
@@ -84,7 +84,7 @@ impl LocatorRepositry for LocatorRepositryImpl {
             .map_err(AppError::TransactionError)?;
 
         for r in table.into_iter().enumerate() {
-            self.update(MunicipalityCenturyCodeImpl::from(r.1), &mut tx)
+            self.update(MunicipalityCenturyCodeRow::from(r.1), &mut tx)
                 .await?;
             if r.0 % 100 == 0 {
                 tracing::info!("insert db {} rescords", r.0);
