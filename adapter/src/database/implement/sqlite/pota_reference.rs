@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use domain::model::id::LogId;
+use domain::model::id::{LogId, UserId};
 use shaku::Component;
 use sqlx::SqliteConnection;
 
@@ -7,11 +7,17 @@ use common::error::{AppError, AppResult};
 
 use domain::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
 use domain::model::pota::{ParkCode, PotaActLog, PotaHuntLog, PotaRefLog, PotaReference};
+use domain::model::pota::{
+    POTAActivatorLog, POTAHunterLog, POTALogUser, POTAReference, POTAReferenceWithLog, ParkCode,
+};
 use domain::model::AwardProgram::POTA;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;
 use crate::database::model::pota::{PotaLogRow, PotaRefLogRow, PotaReferenceRow};
+use crate::database::model::pota::{
+    POTALogImpl, POTALogUserImpl, POTAReferenceImpl, POTAReferenceWithLogImpl,
+};
 
 use domain::repository::pota::PotaRepository;
 
@@ -131,11 +137,10 @@ impl PotaRepositoryImpl {
         let log_id = r.log_id.raw();
         sqlx::query!(
             r#"
-                INSERT INTO pota_log (log_id, log_type, dx_entity, location, hasc, pota_code, park_name, first_qso_date, attempts, activations, qsos)
-                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                INSERT INTO pota_log (log_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, attempts, activations, qsos)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 ON CONFLICT (log_id, pota_code) DO UPDATE
-                SET log_type = EXCLUDED.log_type,
-                    dx_entity = EXCLUDED.dx_entity,
+                SET dx_entity = EXCLUDED.dx_entity,
                     location = EXCLUDED.location,
                     hasc = EXCLUDED.hasc,
                     pota_code = EXCLUDED.pota_code,
@@ -146,7 +151,6 @@ impl PotaRepositoryImpl {
                     qsos = EXCLUDED.qsos
             "#,
             log_id,
-            r.log_type,
             r.dx_entity,
             r.location,
             r.hasc,
@@ -163,31 +167,79 @@ impl PotaRepositoryImpl {
         Ok(())
     }
 
-    async fn delete_log(&self, d: DeleteLog, db: &mut SqliteConnection) -> AppResult<()> {
-        tracing::info!("delete log before: {}", d.before);
-        let before = d.before;
-        sqlx::query!(
+    async fn select_logid(&self, log_id: LogId) -> AppResult<POTALogUserImpl> {
+        sqlx::query_as!(
+            POTALogUserImpl,
             r#"
-                DELETE FROM pota_log
-                WHERE log_id IN (SELECT log_id FROM pota_log_user WHERE "update" < $1)
+                SELECT user_id as "user_id: UserId", log_id as "log_id: LogId", log_kind, "update" 
+                FROM pota_log_user WHERE log_id = $1
             "#,
-            before,
+            log_id
         )
-        .execute(&mut *db)
+        .fetch_one(self.pool.inner_ref())
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(AppError::RowNotFound)
+    }
 
+    async fn update_logid(
+        &self,
+        entry: POTALogUserImpl,
+        db: &mut SqliteConnection,
+    ) -> AppResult<()> {
         sqlx::query!(
             r#"
-            DELETE FROM pota_log_user
-            WHERE "update" < $1
-        "#,
-            before,
+                INSERT INTO pota_log_user (user_id, log_id, log_kind,"update")
+                VALUES($1, $2, $3, $4)
+                ON CONFLICT (log_id) DO UPDATE
+                SET "update" = EXCLUDED."update",
+                    log_kind = EXCLUDED.log_kind
+            "#,
+            entry.user_id,
+            entry.log_id,
+            entry.log_kind,
+            entry.update
         )
-        .execute(&mut *db)
+        .execute(db)
         .await
         .map_err(AppError::SpecificOperationError)?;
+        Ok(())
+    }
 
+    async fn delete_log(&self, d: DeleteLog, db: &mut SqliteConnection) -> AppResult<()> {
+        if let Some(before) = d.before {
+            sqlx::query!(
+                r#"
+                DELETE FROM pota_log
+                WHERE log_id IN (SELECT log_id FROM pota_log_user WHERE "update" < $1);
+                DELETE FROM pota_log_user
+                WHERE "update" < $2;
+            "#,
+                before,
+                before
+            )
+            .execute(&mut *db)
+            .await
+            .map_err(AppError::SpecificOperationError)?;
+            return Ok(());
+        }
+
+        if let Some(log_id) = d.log_id {
+            let log_id = log_id.raw();
+            sqlx::query!(
+                r#"
+                DELETE FROM pota_log
+                WHERE log_id = $1;
+                DELETE FROM pota_log_user
+                WHERE log_id = $2;
+            "#,
+                log_id,
+                log_id
+            )
+            .execute(&mut *db)
+            .await
+            .map_err(AppError::SpecificOperationError)?;
+            return Ok(());
+        }
         Ok(())
     }
 
@@ -284,8 +336,7 @@ impl PotaRepositoryImpl {
                 FROM pota_references AS p WHERE "#,
             );
         } else {
-            let log_id = log_id.unwrap().raw().to_string();
-            select.push_str(&format!(
+            select.push_str(
                 r#"
                 SELECT
                     p.pota_code AS pota_code,
@@ -305,15 +356,20 @@ impl PotaRepositoryImpl {
                     l.first_qso_date AS first_qso_date,
                     l.qsos AS qsos
                 FROM pota_references AS p 
-                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = '{}'
+                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = ?
                 WHERE "#,
-                log_id
-            ));
+            );
         }
         select.push_str(query);
+        let mut sql_query = sqlx::query_as::<_, POTAReferenceWithLogImpl>(&select);
+
+        if let Some(log_id) = log_id {
+            sql_query = sql_query.bind(log_id);
+        }
 
         let sql_query = sqlx::query_as::<_, PotaRefLogRow>(&select);
         let rows: Vec<PotaRefLogRow> = sql_query
+        let rows: Vec<POTAReferenceWithLogImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
             .map_err(AppError::RowNotFound)?;
@@ -442,6 +498,24 @@ impl PotaRepository for PotaRepositoryImpl {
             .await
             .map_err(AppError::TransactionError)?;
         self.delete_log(query, &mut tx).await?;
+        tx.commit().await.map_err(AppError::TransactionError)?;
+        Ok(())
+    }
+
+    async fn find_logid(&self, query: LogId) -> AppResult<POTALogUser> {
+        let result = self.select_logid(query).await?;
+        Ok(result.into())
+    }
+
+    async fn update_logid(&self, log: POTALogUser) -> AppResult<()> {
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+        self.update_logid(POTALogUserImpl::from(log), &mut tx)
+            .await?;
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }

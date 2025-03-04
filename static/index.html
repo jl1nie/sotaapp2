@@ -47,18 +47,23 @@
         <button id="upload-pota-button" type="submit">Upload</button>
     </form>
 
-    <h4>Upload POTA Activator Log </h4>
-    <form id="upload-activator" method="post" enctype="multipart/form-data">
-        <input id="upload-activator-file" type="file" name="file">
-        <button id="upload-activator-button" type="submit">Upload</button>
+    <h4>Upload POTA Log </h4>
+    <form id="upload-pota-log" method="post" enctype="multipart/form-data">
+        <input id="upload-pota-log-file" type="file" name="file">
+        <button id="upload-pota-log-button" type="submit">Upload</button>
     </form>
 
-    <h4>Upload POTA Hunter Log </h4>
-    <form id="upload-hunter" method="post" enctype="multipart/form-data">
-        <input id="upload-hunter-file" type="file" name="file">
-        <button id="upload-hunter-button" type="submit">Upload</button>
+    <h4>Find LogId </h4>
+    <form id="find-log-id" method="get">
+        <input id="find-log-id-value" type="text" name="log_id">
+        <button id="find-log-id-button" type="submit">Find</button>
     </form>
 
+    <h4>Delete LogId </h4>
+    <form id="delete-log-id" method="get">
+        <input id="delete-log-id-value" type="text" name="log_id">
+        <button id="delete-log-id-button" type="submit">Delete</button>
+    </form>
 
     <h4>Import JCC-JCG list </h4>
     <form id="upload-jcc" method="post" enctype="multipart/form-data">
@@ -185,9 +190,11 @@
     <div id="result"></div>
 
     <script>
+        const uid = "538b548f-12db-4230-b48d-46d8842b2da9";
+        var logid = "none";
+      
         const url = new URL(document.documentURI);
         const baseurl = `${url.protocol}//${url.host}/api/v2`;
-        const uid = "538b548f-12db-4230-b48d-46d8842b2da9"
         const sotasearch = baseurl + '/sota/summits/search';
         const sotalist = baseurl + '/sota/summits';
         const importsota = baseurl + '/sota/import';
@@ -198,9 +205,8 @@
         const potasearch = baseurl + '/pota/parks/search';
         const potalist = baseurl + '/pota/parks';
         const importpota = baseurl + '/pota/import';
-        const uploadactivator = baseurl + '/pota/upload/activator';
-        const uploadhunter = baseurl + '/pota/upload/hunter';
-
+        const uploadpotalog = baseurl + '/pota/log';
+       
         const locatejcc = baseurl + '/locator/jcc-jcg';
         const importjcc = baseurl + '/locator/jcc-jcg/import';
         const mapcode = baseurl + '/locator/mapcode';
@@ -225,15 +231,17 @@
                 .then(response => {
                     if (response.ok) {
                         console.log('Success:', response.status);
-                        resultDiv.textContent = 'Upload done: ' + response.status;
+                        resultDiv.textContent = 'Upload done: ' + response;
                     } else {
                         console.error('Error:', response.status);
                         resultDiv.textContent = 'Error: ' + response.status;
+                        console.log(response);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     resultDiv.textContent = 'Error: ' + response.status;
+                    console.log(response);
                 })
                 .finally(() => {
                     button.disabled = false;
@@ -327,18 +335,11 @@
                 uploadFile(importpota, 'upload-pota-file', 'upload-pota-button');
             });
 
-        document.getElementById('upload-activator')
+        document.getElementById('upload-pota-log')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                let eid = encodeURIComponent(uid);
-                uploadFile(uploadactivator + `/${eid}`, 'upload-activator-file', 'upload-activator-button');
-            });
-
-        document.getElementById('upload-hunter')
-            .addEventListener('submit', function (event) {
-                event.preventDefault();
-                let eid = encodeURIComponent(uid);
-                uploadFile(uploadhunter + `/${eid}`, 'upload-hunter-file', 'upload-hunter-button');
+                let eid = encodeURIComponent(logid);
+                uploadFile(uploadpotalog + `/${eid}`, 'upload-pota-log-file', 'upload-pota-log-button');
             });
 
         document.getElementById('upload-jcc')

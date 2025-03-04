@@ -9,6 +9,7 @@ use adapter::{
     aprs::{AprsRepositryImpl, AprsRepositryImplParameters},
     database::connect::ConnectionPool,
     geomag::{GeoMag, GeoMagRepositryImpl, GeoMagRepositryImplParameters},
+    minikvs::{MiniKvs, MiniKvsRepositryImpl, MiniKvsRepositryImplParameters},
 };
 
 use service::implement::{
@@ -42,13 +43,20 @@ module! {
         components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
         SotaRepositoryImpl,PotaRepositoryImpl,
         LocatorRepositryImpl,GeoMagRepositryImpl,AprsRepositryImpl,AprsLogRepositoryImpl,
+        MiniKvsRepositryImpl,
         HealthCheckRepositryImpl],
         providers = [],
     }
 }
 
 impl AppRegistry {
-    pub fn new(config: &AppConfig, pool: ConnectionPool, aprs: AprsIS, geomag: GeoMag) -> Self {
+    pub fn new(
+        config: &AppConfig,
+        pool: ConnectionPool,
+        aprs: AprsIS,
+        geomag: GeoMag,
+        kvs: MiniKvs,
+    ) -> Self {
         AppRegistry::builder()
             .with_component_parameters::<SotaRepositoryImpl>(SotaRepositoryImplParameters {
                 pool: pool.clone(),
@@ -80,6 +88,9 @@ impl AppRegistry {
             })
             .with_component_parameters::<AprsRepositryImpl>(AprsRepositryImplParameters {
                 aprs: aprs.clone(),
+            })
+            .with_component_parameters::<MiniKvsRepositryImpl>(MiniKvsRepositryImplParameters {
+                kvs: kvs.clone(),
             })
             .with_component_parameters::<HealthCheckRepositryImpl>(
                 HealthCheckRepositryImplParameters { pool: pool.clone() },

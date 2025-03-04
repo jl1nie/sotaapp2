@@ -42,6 +42,7 @@ impl AdminPeriodicServiceImpl {
         if spots.is_empty() {
             message = "No Spots.".to_string();
         } else {
+            tracing::info!("Spots found:{:?}", spots);
             for s in spots {
                 write!(
                     &mut message,

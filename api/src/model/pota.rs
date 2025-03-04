@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
 use domain::model::pota::{PotaRefLog, PotaReference};
+use domain::model::pota::{POTALogUser, POTAReference, POTAReferenceWithLog};
 use domain::model::{event::PagenatedResult, id::UserId};
 
 #[derive(Debug, Deserialize)]
@@ -245,11 +246,12 @@ pub struct PotaSearchView {
     pub wwff: String,
     pub name: String,
     pub name_j: String,
+    pub locid: Vec<String>,
     pub area: i32,
     pub lon: Option<f64>,
     pub lat: Option<f64>,
     pub atmpt: Option<i32>,
-    pub activ: Option<i32>,
+    pub act: Option<i32>,
     pub date: Option<NaiveDate>,
     pub qsos: Option<i32>,
 }
@@ -257,17 +259,50 @@ pub struct PotaSearchView {
 impl From<PotaRefLog> for PotaSearchView {
     fn from(pota: PotaRefLog) -> Self {
         PotaSearchView {
+impl From<POTAReferenceWithLog> for POTASearchResult {
+    fn from(pota: POTAReferenceWithLog) -> Self {
+        let locid: Vec<String> = pota
+            .park_locid
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect();
+
+        POTASearchResult {
             pota: pota.pota_code,
             wwff: pota.wwff_code,
             name: pota.park_name,
             name_j: pota.park_name_j,
+            locid,
             area: pota.park_area,
             lon: pota.longitude,
             lat: pota.latitude,
             atmpt: pota.attempts,
-            activ: pota.activations,
+            act: pota.activations,
             date: pota.first_qso_date,
             qsos: pota.qsos,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct POTALogUserResponse {
+    pub log_id: String,
+    pub log_kind: String,
+    pub last_update: NaiveDate,
+}
+
+impl From<POTALogUser> for POTALogUserResponse {
+    fn from(log: POTALogUser) -> Self {
+        let log_kind = match log.log_kind {
+            Some(kind) => kind.into(),
+            None => "none".to_string(),
+        };
+
+        POTALogUserResponse {
+            log_id: log.log_id.into(),
+            log_kind,
+            last_update: log.update.date(),
         }
     }
 }

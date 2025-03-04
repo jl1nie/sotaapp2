@@ -181,8 +181,9 @@ impl From<PotaHuntLog> for PotaLogRow {
 
 #[derive(Debug, FromRow)]
 pub struct PotaLogHistRow {
-    pub user_id: UserId,
+    pub user_id: Option<UserId>,
     pub log_id: LogId,
+    pub log_kind: Option<String>,
     pub update: NaiveDateTime,
 }
 
@@ -191,6 +192,18 @@ impl From<PotaLogHist> for PotaLogHistRow {
         PotaLogHistRow {
             user_id: l.user_id,
             log_id: l.log_id,
+            log_kind: l.log_kind.map(|k| k.into()),
+            update: l.update,
+        }
+    }
+}
+
+impl From<POTALogUserImpl> for POTALogUser {
+    fn from(l: POTALogUserImpl) -> Self {
+        POTALogUser {
+            user_id: l.user_id,
+            log_id: l.log_id,
+            log_kind: l.log_kind.map(|k| k.into()),
             update: l.update,
         }
     }

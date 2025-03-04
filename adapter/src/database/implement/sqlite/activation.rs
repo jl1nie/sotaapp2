@@ -132,7 +132,7 @@ impl ActivationRepositryImpl {
         Ok(())
     }
 
-    async fn select_alerts_by_condition(&self, query: &str) -> AppResult<Vec<Alert>> {
+    async fn select_alerts_by_condition(&self, query: &FindAct) -> AppResult<Vec<Alert>> {
         let mut select = r#"
             SELECT
                 program,
@@ -152,9 +152,16 @@ impl ActivationRepositryImpl {
             FROM alerts WHERE "#
             .to_string();
 
-        select.push_str(query);
+        let cond = findact_query_builder(true, query);
+
+        select.push_str(&cond);
 
         let sql_query = sqlx::query_as::<_, AlertRow>(&select);
+        let mut sql_query = sqlx::query_as::<_, AlertImpl>(&select);
+
+        if let Some(after) = query.issued_after {
+            sql_query = sql_query.bind(after);
+        }
 
         let rows: Vec<AlertRow> = sql_query
             .fetch_all(self.pool.inner_ref())
@@ -164,7 +171,7 @@ impl ActivationRepositryImpl {
         Ok(rows.into_iter().map(Alert::from).collect())
     }
 
-    async fn select_spots_by_condition(&self, query: &str) -> AppResult<Vec<Spot>> {
+    async fn select_spots_by_condition(&self, query: &FindAct) -> AppResult<Vec<Spot>> {
         let mut select = r#"
             SELECT
                 program,
@@ -182,13 +189,22 @@ impl ActivationRepositryImpl {
             FROM spots WHERE "#
             .to_string();
 
-        select.push_str(query);
+        let cond = findact_query_builder(false, query);
+
+        select.push_str(&cond);
 
         let sql_query = sqlx::query_as::<_, SpotRow>(&select);
         let rows: Vec<SpotRow> = sql_query
+        let mut sql_query = sqlx::query_as::<_, SpotImpl>(&select);
+
+        if let Some(after) = query.issued_after {
+            sql_query = sql_query.bind(after);
+        }
+
+        let rows: Vec<SpotImpl> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(AppError::RowNotFound)?;
 
         Ok(rows.into_iter().map(Spot::from).collect())
     }
@@ -252,14 +268,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
     }
 
     async fn find_alerts(&self, event: &FindAct) -> AppResult<Vec<Alert>> {
-        let query = findact_query_builder(true, event);
-        let results = self.select_alerts_by_condition(&query).await?;
+        let results = self.select_alerts_by_condition(event).await?;
         Ok(results)
     }
 
     async fn find_spots(&self, event: &FindAct) -> AppResult<Vec<Spot>> {
-        let query = findact_query_builder(false, event);
-        let results = self.select_spots_by_condition(&query).await?;
+        let results = self.select_spots_by_condition(event).await?;
         Ok(results)
     }
 }
