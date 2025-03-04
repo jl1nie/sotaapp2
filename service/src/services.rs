@@ -13,7 +13,7 @@ use domain::model::event::{
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
-use domain::model::pota::{ParkCode, PotaReference};
+use domain::model::pota::{ParkCode, PotaLogHist, PotaReference};
 use domain::model::sota::{SotaReference, SummitCode};
 
 use crate::model::locator::UploadMuniCSV;
@@ -27,11 +27,11 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
     async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>>;
 
-    async fn upload_activator_csv(&self, lod_id: LogId, event: UploadActivatorCSV)
-        -> AppResult<()>;
-    async fn upload_hunter_csv(&self, log_id: LogId, event: UploadHunterCSV) -> AppResult<()>;
+    async fn upload_pota_log(&self, event: UploadPOTALog) -> AppResult<PotaLogHist>;
+    async fn delete_pota_log(&self, log_id: LogId) -> AppResult<()>;
+    async fn find_logid(&self, log_id: LogId) -> AppResult<PotaLogHist>;
 
-    async fn upload_sota_csv(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
+    async fn upload_sota_log(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
     async fn delete_sota_log(&self, user_id: UserId) -> AppResult<()>;
 
     async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;

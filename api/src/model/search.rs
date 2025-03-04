@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::pota::{POTARefLogView, PotaSearchView};
+use super::pota::{PotaRefLogView, PotaSearchView};
 use super::sota::{SotaRefView, SotaSearchView};
 use domain::model::event::FindResult;
 
@@ -33,7 +33,7 @@ impl From<FindResult> for SearchResponse {
 #[serde(rename_all = "camelCase")]
 pub struct SearchFullResponse {
     pub sota: Option<Vec<SotaRefView>>,
-    pub pota: Option<Vec<POTARefLogView>>,
+    pub pota: Option<Vec<PotaRefLogView>>,
 }
 impl From<FindResult> for SearchFullResponse {
     fn from(FindResult { sota, pota }: FindResult) -> Self {
@@ -45,7 +45,7 @@ impl From<FindResult> for SearchFullResponse {
                 None
             },
             pota: if let Some(pota) = pota {
-                let res = pota.into_iter().map(POTARefLogView::from).collect();
+                let res = pota.into_iter().map(PotaRefLogView::from).collect();
                 Some(res)
             } else {
                 None

@@ -19,7 +19,7 @@ use domain::model::event::{DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindR
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
-use domain::model::pota::{POTALogKind, POTALogUser};
+use domain::model::pota::{POTALogKind, PotaLogHist};
 use domain::repository::{
     activation::ActivationRepositry, aprs::AprsLogRepository, geomag::GeoMagRepositry,
     locator::LocatorRepositry, pota::PotaRepository, sota::SotaRepository,
@@ -136,7 +136,7 @@ impl UserService for UserServiceImpl {
             hunter_logid,
             data,
         }: UploadPOTALog,
-    ) -> AppResult<POTALogUser> {
+    ) -> AppResult<PotaLogHist> {
         let logid = if data.contains("Attempts") {
             tracing::info!("Upload activator log");
             activator_logid
@@ -157,11 +157,11 @@ impl UserService for UserServiceImpl {
                     ..Default::default()
                 };
                 self.pota_repo.delete_log(query).await?;
-                *id = POTALogUser::new(None);
+                *id = PotaLogHist::new(None);
                 self.pota_repo.update_logid(id.clone()).await?;
             }
         } else {
-            update_id = Ok(POTALogUser::new(None));
+            update_id = Ok(PotaLogHist::new(None));
         }
 
         let mut update_id = update_id?;
@@ -203,7 +203,7 @@ impl UserService for UserServiceImpl {
         Ok(update_id)
     }
 
-    async fn find_logid(&self, log_id: LogId) -> AppResult<POTALogUser> {
+    async fn find_logid(&self, log_id: LogId) -> AppResult<PotaLogHist> {
         self.pota_repo.find_logid(log_id).await
     }
 
@@ -217,7 +217,7 @@ impl UserService for UserServiceImpl {
         Ok(())
     }
 
-    async fn upload_sota_csv(
+    async fn upload_sota_log(
         &self,
         user_id: UserId,
         UploadSOTALog { data }: UploadSOTALog,
