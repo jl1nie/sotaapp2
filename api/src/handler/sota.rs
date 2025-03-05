@@ -241,7 +241,6 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         .route("/log", delete(delete_log))
         .route("/log", get(show_progress))
         .route("/update", post(update_summit_list))
-        .route("/summits/{summit_code}", get(show_sota_reference))
         .route("/summits/{summit_code}", put(update_sota_reference))
         .route("/summits/{summit_code}", delete(delete_sota_reference))
         .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
@@ -250,6 +249,7 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         .route("/spots", get(show_sota_spots))
         .route("/alerts", get(show_sota_alerts))
         .route("/summits", get(show_all_sota_reference))
+        .route("/summits/{summit_code}", get(show_sota_reference))
         .route("/summits/search", get(search_sota_reference));
 
     let routers = Router::new().merge(protected).merge(public);
