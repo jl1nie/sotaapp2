@@ -17,8 +17,6 @@ pub async fn auth_middle(
     mut req: Request<axum::body::Body>,
     next: Next,
 ) -> Result<impl IntoResponse, StatusCode> {
-    tracing::info!("auth req {:?}", req);
-
     let token = req
         .headers()
         .get(header::AUTHORIZATION)
