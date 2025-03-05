@@ -51,6 +51,7 @@ pub mod connect {
         let dbname = cfg.database.replace("sqlite:", "");
         let database_path = Path::new(&dbname);
         let pool = ConnectionPool(SqlitePool::connect_lazy(&cfg.database)?);
+        let mut force_migrate = false;
 
         if cfg.init_database {
             tracing::info!("Drop database file {}", database_path.display());
@@ -65,9 +66,10 @@ pub mod connect {
                 database_path.display()
             );
             let _file = fs::File::create(database_path)?;
+            force_migrate = true;
         };
 
-        if cfg.run_migration {
+        if cfg.run_migration || force_migrate {
             tracing::info!("Running migrations...");
             m.run(pool.inner_ref()).await?;
             tracing::info!("done.");

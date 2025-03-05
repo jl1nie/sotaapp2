@@ -1,7 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use domain::model::id::UserId;
 use domain::model::sota::{SotaLog, SotaReference};
-use sqlx::types::Uuid;
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
@@ -132,7 +131,7 @@ impl From<SotaReferenceRow> for SotaReference {
 
 #[derive(Debug, FromRow)]
 pub struct SotaLogRow {
-    pub user_id: Uuid,
+    pub user_id: String,
     pub my_callsign: String,
     pub operator: String,
     pub my_summit_code: Option<String>,

@@ -3,7 +3,7 @@ use adapter::{
     geomag::connect_geomag_with, minikvs::MiniKvs,
 };
 use anyhow::{Error, Result};
-use axum::{http::HeaderValue, Extension, Router};
+use axum::{http::HeaderValue, Router};
 use common::config::AppConfig;
 use firebase_auth_sdk::FireAuth;
 use std::net::{IpAddr, SocketAddr};
@@ -54,10 +54,9 @@ async fn bootstrap() -> Result<()> {
     };
 
     let app = Router::new()
-        .merge(v2::routes())
+        .merge(v2::routes(firebase))
         .with_state(app_state)
         .layer(cors)
-        .layer(Extension(firebase))
         .nest_service("/admin-console", ServeDir::new("static"));
 
     let ip_addr: IpAddr = config.host.parse().expect("Invalid IP Address");

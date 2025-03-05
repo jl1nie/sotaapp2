@@ -12,7 +12,7 @@ use crate::model::sota::{SOTALogCSV, UploadSOTALog};
 use crate::services::UserService;
 use common::config::AppConfig;
 use common::error::AppResult;
-use common::utils::{call_to_operator, csv_reader};
+use common::utils::csv_reader;
 use domain::model::activation::{Alert, Spot};
 use domain::model::aprslog::AprsLog;
 use domain::model::event::{DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy};
@@ -229,7 +229,7 @@ impl UserService for UserServiceImpl {
 
         let newlog: Vec<_> = requests
             .into_iter()
-            .map(|l| SOTALogCSV::to_log(user_id, l))
+            .map(|l| SOTALogCSV::to_log(user_id.clone(), l))
             .filter(|l| l.time >= from && l.time < to)
             .collect();
         self.sota_repo.upload_log(newlog).await?;
@@ -266,24 +266,17 @@ impl UserService for UserServiceImpl {
         }
 
         let mut chase_summit_hash = HashMap::new();
-        let mut chase_operator_hash = HashMap::new();
         let mut chase_callsign_hash = HashMap::new();
 
         for c in chase_log {
             let my_operator = c.operator.clone();
             let his_summit_code = c.his_summit_code.unwrap();
-            let his_operator = call_to_operator(&c.his_callsign);
             let his_callsign = c.his_callsign.clone();
 
             let chase_count = chase_summit_hash
                 .entry(c.operator)
                 .or_insert(HashSet::new());
             chase_count.insert(his_summit_code);
-
-            let chase_op_count = chase_operator_hash
-                .entry(my_operator.clone())
-                .or_insert(HashSet::new());
-            chase_op_count.insert(his_operator);
 
             let chase_call_count = chase_callsign_hash
                 .entry(my_operator.clone())
@@ -294,12 +287,12 @@ impl UserService for UserServiceImpl {
         let act_result: Vec<_> = act_hash
             .into_iter()
             .filter(|&(_, count)| count >= 10)
-            .map(|((call, summit), count)| (call, format!("{} {} qsos", summit, count)))
+            .map(|((call, summit), count)| (call, (count, summit)))
             .collect();
 
         let mut act_hash = HashMap::new();
-        for (call, summit) in act_result {
-            act_hash.entry(call).or_insert(Vec::new()).push(summit);
+        for (call, result) in act_result {
+            act_hash.entry(call).or_insert(Vec::new()).push(result);
         }
 
         let act_result: Vec<_> = act_hash
@@ -308,15 +301,15 @@ impl UserService for UserServiceImpl {
             .collect();
 
         response.push_str(&format!("集計期間 {} - {}\n", after, before));
-
-        for a in act_result {
+        for mut a in act_result {
             response.push_str(&format!(
                 "アクティベータ：{} activate {} summits ",
                 a.0,
                 a.1.len()
             ));
+            a.1.sort_by(|a, b| b.0.cmp(&a.0));
             for s in a.1 {
-                response.push_str(&format!("{} ", s));
+                response.push_str(&format!("{} {}qsos, ", s.1, s.0));
             }
             response.push('\n');
         }
@@ -328,13 +321,6 @@ impl UserService for UserServiceImpl {
             .map(|(call, h)| (call, format!("{} summits", h.len())))
             .collect();
 
-        let chase_op10: Vec<_> = chase_operator_hash
-            .clone()
-            .into_iter()
-            .filter(|(_, h)| h.len() >= 10)
-            .map(|(call, h)| (call, format!("{} operators", h.len())))
-            .collect();
-
         let chase_call10: Vec<_> = chase_callsign_hash
             .clone()
             .into_iter()
@@ -342,19 +328,10 @@ impl UserService for UserServiceImpl {
             .map(|(call, h)| (call, format!("{} stations", h.len())))
             .collect();
 
-        for op in chase_op10 {
-            if let Some((_, summit)) = chase_summit10.iter().find(|&item| item.0 == op.0) {
-                response.push_str(&format!(
-                    "チェイサー10x10(operator) {} {} {}\n",
-                    op.0, op.1, summit
-                ));
-            }
-        }
-
         for call in chase_call10 {
             if let Some((_, summit)) = chase_summit10.iter().find(|&item| item.0 == call.0) {
                 response.push_str(&format!(
-                    "チェイサー10x10(callsign) {} {} {}\n",
+                    "チェイサー10x10 {} {} {}\n",
                     call.0, call.1, summit
                 ));
             }

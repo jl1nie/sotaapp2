@@ -1,9 +1,11 @@
 use axum::{
     extract::{Multipart, Query},
     http::StatusCode,
+    middleware,
     routing::{get, post},
     Json, Router,
 };
+use firebase_auth_sdk::FireAuth;
 use shaku_axum::Inject;
 
 use crate::model::{
@@ -13,9 +15,10 @@ use crate::model::{
 use common::error::{AppError, AppResult};
 use common::utils::maidenhead;
 use registry::{AppRegistry, AppState};
-
 use service::model::locator::UploadMuniCSV;
 use service::services::{AdminService, UserService};
+
+use super::auth::auth_middle;
 
 async fn import_muni_csv(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -56,10 +59,16 @@ async fn find_map_code(
     Ok(Json(mapcode.into()))
 }
 
-pub fn build_locator_routers() -> Router<AppState> {
-    let routers = Router::new()
+pub fn build_locator_routers(auth: &FireAuth) -> Router<AppState> {
+    let protected = Router::new()
         .route("/jcc-jcg/import", post(import_muni_csv))
+        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+
+    let public = Router::new()
         .route("/jcc-jcg", get(find_century_code))
         .route("/mapcode", get(find_map_code));
+
+    let routers = Router::new().merge(protected).merge(public);
+
     Router::new().nest("/locator", routers)
 }

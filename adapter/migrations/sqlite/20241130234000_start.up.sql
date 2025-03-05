@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idex_sota_reference_alt ON sota_references (alt_m DES
 CREATE INDEX IF NOT EXISTS idx_sota_references_coordinate ON sota_references (longitude, latitude);
 
 CREATE TABLE IF NOT EXISTS sota_log (
-    user_id UUID,
+    user_id VARCHAR(255),
     my_callsign VARCHAR(255) NOT NULL,
     operator VARCHAR(255) NOT NULL,
     my_summit_code VARCHAR(255),
@@ -145,7 +145,6 @@ CREATE TABLE IF NOT EXISTS municipality_century_codes(
 CREATE INDEX IF NOT EXISTS idx_municipality_century_codes_muni_code ON municipality_century_codes (muni_code);
 
 CREATE TABLE IF NOT EXISTS aprs_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     time DATETIME NOT NULL,
     callsign VARCHAR(255) NOT NULL,
     ssid INTEGER NOT NULL,

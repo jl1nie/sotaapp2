@@ -3,34 +3,25 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Hash, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Hash, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(transparent)]
-pub struct UserId(uuid::Uuid);
+pub struct UserId(String);
 
 impl UserId {
-    pub fn new() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-    pub fn raw(self) -> uuid::Uuid {
+    pub fn raw(self) -> String {
         self.0
-    }
-}
-
-impl Default for UserId {
-    fn default() -> Self {
-        UserId::new()
     }
 }
 
 impl FromStr for UserId {
     type Err = AppError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(uuid::Uuid::parse_str(s)?))
+        Ok(Self(s.to_string()))
     }
 }
 
-impl From<uuid::Uuid> for UserId {
-    fn from(value: uuid::Uuid) -> Self {
+impl From<String> for UserId {
+    fn from(value: String) -> Self {
         Self(value)
     }
 }
