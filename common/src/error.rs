@@ -54,12 +54,11 @@ impl IntoResponse for AppError {
         let status_code = match self {
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::CSVReadError(e) =>{tracing::error!("CSV Error {:?}",e); StatusCode::UNPROCESSABLE_ENTITY},
-            AppError::EntityNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
-            | AppError::RowNotFound(e) => {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND},
+            AppError::EntityNotFound(e) => {tracing::error!("Not found {:?}",e); StatusCode::NOT_FOUND},
+            AppError::RowNotFound(e) =>  {tracing::error!("Not found {:?}",e);StatusCode::NOT_FOUND}
+            AppError::UuidError(e) =>  {tracing::error!("Not found {:?}",e); StatusCode::NOT_FOUND},
             /* AppError::ValidationError(_) |*/
-                 AppError::ConvertToUuidError(_) => {
-                    StatusCode::BAD_REQUEST
-                },
+            AppError::ConvertToUuidError(_) => { StatusCode::BAD_REQUEST},
             AppError::UnauthenticatedError | AppError::ForbiddenOperation => StatusCode::FORBIDDEN,
             AppError::UnauthorizedError => StatusCode::UNAUTHORIZED,
             e @ (AppError::TransactionError(_)
@@ -71,7 +70,6 @@ impl IntoResponse for AppError {
             | AppError::GetError(_)
             | AppError::JsonError(_)
             | AppError::ParseError(_)
-            | AppError::UuidError(_)
             /* 
             | AppError::KeyValueStoreError(_)
             | AppError::BcryptError(_)

@@ -60,7 +60,9 @@ pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppRes
     }
 
     if param.log_id.is_some() {
-        query = query.log_id(LogId::from_str(&param.log_id.unwrap())?);
+        if let Ok(log_id) = LogId::from_str(&param.log_id.unwrap()) {
+            query = query.log_id(log_id);
+        }
     }
 
     if param.min_area.is_some() {
