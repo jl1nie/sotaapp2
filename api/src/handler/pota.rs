@@ -90,9 +90,7 @@ async fn get_pota_logid(
     Path(log_id): Path<String>,
 ) -> AppResult<Json<PotaLogHistView>> {
     let log_id = LogId::from_str(&log_id)?;
-
     let loguser = user_service.find_logid(log_id).await?;
-
     Ok(Json(loguser.into()))
 }
 
