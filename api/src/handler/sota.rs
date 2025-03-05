@@ -1,26 +1,25 @@
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
+    middleware,
     routing::{delete, get, post, put},
-    Json, Router,
+    Extension, Json, Router,
 };
-
 use chrono::{Duration, TimeZone, Utc};
+use firebase_auth_sdk::FireAuth;
 use shaku_axum::Inject;
-use std::str::FromStr;
 
 use common::error::{AppError, AppResult};
-
 use domain::model::sota::SummitCode;
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindLogBuilder, FindRefBuilder},
     id::UserId,
 };
-
 use registry::{AppRegistry, AppState};
 use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use service::services::{AdminService, UserService};
 
+use crate::model::sota::{PagenatedResponse, SotaRefView, UpdateRefRequest};
 use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
@@ -28,7 +27,7 @@ use crate::model::{
     spots::SpotView,
 };
 
-use crate::model::sota::{PagenatedResponse, SotaRefView, UpdateRefRequest};
+use super::auth::auth_middle;
 
 async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -96,13 +95,12 @@ async fn import_sota_opt_reference(
 
 async fn upload_log(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Path(user_id): Path<String>,
+    Extension(user_id): Extension<UserId>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
     if let Some(field) = multipart.next_field().await.unwrap() {
         let data = field.bytes().await.unwrap();
         let data = String::from_utf8(data.to_vec()).unwrap();
-        let user_id = UserId::from_str(&user_id)?;
         let reqs = UploadSOTALog { data };
 
         return user_service
@@ -115,9 +113,8 @@ async fn upload_log(
 
 async fn delete_log(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Path(user_id): Path<String>,
+    Extension(user_id): Extension<UserId>,
 ) -> AppResult<StatusCode> {
-    let user_id = UserId::from_str(&user_id)?;
     user_service
         .delete_sota_log(user_id)
         .await
@@ -126,9 +123,8 @@ async fn delete_log(
 
 async fn show_progress(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Path(user_id): Path<String>,
+    Extension(user_id): Extension<UserId>,
 ) -> AppResult<Json<String>> {
-    let user_id = UserId::from_str(&user_id)?;
     let mut query = FindLogBuilder::default();
     let from = Utc.with_ymd_and_hms(2024, 7, 1, 0, 0, 0).unwrap();
     let to = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
@@ -237,21 +233,26 @@ async fn show_sota_alerts(
     Ok(Json(alerts))
 }
 
-pub fn build_sota_routers() -> Router<AppState> {
-    let routers = Router::new()
+pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
+    let protected = Router::new()
         .route("/import", post(import_summit_list))
         .route("/import/ja", post(import_sota_opt_reference))
-        .route("/log/{user_id}", post(upload_log))
-        .route("/log/{user_id}", delete(delete_log))
-        .route("/log/{user_id}", get(show_progress))
+        .route("/log", post(upload_log))
+        .route("/log", delete(delete_log))
+        .route("/log", get(show_progress))
         .route("/update", post(update_summit_list))
+        .route("/summits/{summit_code}", get(show_sota_reference))
+        .route("/summits/{summit_code}", put(update_sota_reference))
+        .route("/summits/{summit_code}", delete(delete_sota_reference))
+        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+
+    let public = Router::new()
         .route("/spots", get(show_sota_spots))
         .route("/alerts", get(show_sota_alerts))
         .route("/summits", get(show_all_sota_reference))
-        .route("/summits/search", get(search_sota_reference))
-        .route("/summits/{summit_code}", get(show_sota_reference))
-        .route("/summits/{summit_code}", put(update_sota_reference))
-        .route("/summits/{summit_code}", delete(delete_sota_reference));
+        .route("/summits/search", get(search_sota_reference));
+
+    let routers = Router::new().merge(protected).merge(public);
 
     Router::new().nest("/sota", routers)
 }

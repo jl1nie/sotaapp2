@@ -8,7 +8,7 @@
 </head>
 
 <body>
-        
+
     <hr>
     <h4>Upload SOTA Log </h4>
     <form id="upload-sota-log" method="post" enctype="multipart/form-data">
@@ -152,7 +152,7 @@
 
         <input type="submit" value="送信">
     </form>
-    
+
     <h4>APRS</h4>
     <form id="aprs" method="get">
         <label for="after">Show APRS in :</label>
@@ -160,7 +160,7 @@
 
         <input type="submit" value="送信">
     </form>
-    
+
     <h4>Search JCC/JCG by MuniCd</h4>
     <form id="search-jcc" method="get">
         <label for="lon">Lon:</label>
@@ -192,7 +192,8 @@
     <script>
         const uid = "538b548f-12db-4230-b48d-46d8842b2da9";
         var logid = "none";
-      
+        var authToken = null;
+
         const url = new URL(document.documentURI);
         const baseurl = `${url.protocol}//${url.host}/api/v2`;
         const sotasearch = baseurl + '/sota/summits/search';
@@ -206,7 +207,7 @@
         const potalist = baseurl + '/pota/parks';
         const importpota = baseurl + '/pota/import';
         const uploadpotalog = baseurl + '/pota/log';
-       
+
         const locatejcc = baseurl + '/locator/jcc-jcg';
         const importjcc = baseurl + '/locator/jcc-jcg/import';
         const mapcode = baseurl + '/locator/mapcode';
@@ -216,9 +217,42 @@
         const alertsurl = baseurl + '/activation/alerts';
         const spotsurl = baseurl + '/activation/spots';
         const aprslogurl = baseurl + '/activation/aprslog';
+        ;
 
-        function uploadFile(url, inputid, buttonid) {
-            event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
+        async function getAuthToken() {
+            const email = prompt('Enter your email:');
+            const password = prompt('Enter your password:');
+            const response = await fetch(baseurl + '/auth/signin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            });
+
+            if (!response.ok) {
+                alert("Authorization Failure");
+                throw new Error('Failed to fetch auth token: ' + response.status);
+            }
+
+            const authToken = response.headers.get('Authorization');
+            if (!authToken) {
+                throw new Error('Authorization token not found in response');
+            }
+
+            return authToken;
+        }
+
+        async function uploadFile(url, inputid, buttonid) {
+            event.preventDefault();
+
+            if (!authToken) {
+                authToken = await getAuthToken();
+            }
+
             const fileInput = document.getElementById(inputid);
             const button = document.getElementById(buttonid);
             const resultDiv = document.getElementById('result');
@@ -227,42 +261,52 @@
 
             button.disabled = true;
 
-            fetch(url, { method: 'POST', body: formData })
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + authToken },
+                body: formData
+            })
                 .then(response => {
                     if (response.ok) {
                         console.log('Success:', response.status);
                         resultDiv.textContent = 'Upload done: ' + response;
-                    } else {
-                        console.error('Error:', response.status);
-                        resultDiv.textContent = 'Error: ' + response.status;
-                        console.log(response);
-                    }
+                    } else
+                        throw new Error('HTTP error, status = ' + response.status);
+
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    resultDiv.textContent = 'Error: ' + response.status;
-                    console.log(response);
+                    authToken = null;
+                    console.error('Error:', error.message);
+                    resultDiv.textContent = 'Error: ' + error.message;
                 })
                 .finally(() => {
                     button.disabled = false;
                 })
         };
 
-        function delete_data(url,buttonid) {
-            event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
+        async function delete_data(url, buttonid) {
+            event.preventDefault();
             const button = document.getElementById(buttonid);
             button.disabled = true;
-            fetch(url, { method: 'DELETE'})
+
+            if (!authToken) {
+                authToken = await getAuthToken();
+            }
+
+            fetch(url, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + authToken }
+            })
                 .then(response => {
                     if (response.ok) {
                         console.log('Success:', response.status);
                         resultDiv.textContent = 'DELETE done: ' + response.status;
                     } else {
-                        console.error('Error:', response.status);
-                        resultDiv.textContent = 'Error: ' + response.status;
+                        throw new Error('HTTP error, status = ' + response.status);
                     }
                 })
                 .catch(error => {
+                    authToken = null;
                     console.error('Error:', error);
                     resultDiv.textContent = 'Error: ' + response.status;
                 })
@@ -271,8 +315,8 @@
                 })
         };
 
-        function search(baseurl, param) {
-            event.preventDefault(); // フォームのデフォルトの送信動作を防ぐ 
+        async function search(baseurl, param) {
+            event.preventDefault();
 
             let fullurl = baseurl;
             if (param != '') {
@@ -280,11 +324,16 @@
             }
 
             const resultDiv = document.getElementById('result');
-            fetch(fullurl)
+
+            fetch(fullurl, {
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + authToken }
+            })
                 .then(response => {
                     if (response.ok) { return response.json(); }
-                    else if (response.status === 404) { throw new Error('404 Not Found'); }
-                    else { throw new Error('Network response was not ok'); }
+                    else {
+                        throw new Error('HTTP error, status = ' + response.status);
+                    }
                 })
                 .then(data => {
                     console.log('Success:', data);
@@ -299,18 +348,16 @@
         document.getElementById('upload-sota-log')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                let eid = encodeURIComponent(uid);
-                uploadFile(uploadsotalog + `/${eid}`, 'upload-sota-log-file', 'upload-sota-log-button');
+                uploadFile(uploadsotalog, 'upload-sota-log-file', 'upload-sota-log-button');
             });
 
         document.getElementById('award-progress')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
-                let eid = encodeURIComponent(uid);
-                search(uploadsotalog + `/${eid}`, '');
+                search(uploadsotalog, '');
             });
 
-            
+
         document.getElementById('import-summit')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
@@ -449,7 +496,7 @@
                 let param = `hours_ago=${after}&pat_ref=${pat}`;
                 search(spotsurl, param);
             });
-    
+
         document.getElementById('aprs')
             .addEventListener('submit', function (event) {
                 event.preventDefault();

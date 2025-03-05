@@ -1,26 +1,19 @@
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
+    middleware,
     routing::{delete, get, post, put},
     Json, Router,
 };
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
 use fastrand;
+use firebase_auth_sdk::FireAuth;
 use serde_json::{json, Value};
 use shaku_axum::Inject;
 use std::str::FromStr;
 
-use domain::model::{
-    event::{DeleteRef, FindActBuilder, FindRefBuilder},
-    id::LogId,
-};
-use domain::{model::pota::ParkCode, repository::minikvs::KvsRepositry};
-
-use registry::{AppRegistry, AppState};
-use service::model::pota::{UploadPOTALog, UploadPOTAReference};
-use service::services::{AdminService, UserService};
-
+use crate::model::pota::{PagenatedResponse, PotaRefView, UpdateRefRequest};
 use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
@@ -29,8 +22,16 @@ use crate::model::{
     pota::PotaRefLogView,
     spots::SpotView,
 };
+use domain::model::{
+    event::{DeleteRef, FindActBuilder, FindRefBuilder},
+    id::LogId,
+};
+use domain::{model::pota::ParkCode, repository::minikvs::KvsRepositry};
+use registry::{AppRegistry, AppState};
+use service::model::pota::{UploadPOTALog, UploadPOTAReference};
+use service::services::{AdminService, UserService};
 
-use crate::model::pota::{PagenatedResponse, PotaRefView, UpdateRefRequest};
+use super::auth::auth_middle;
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -253,9 +254,14 @@ async fn obtain_shareid(
     }
 }
 
-pub fn build_pota_routers() -> Router<AppState> {
-    let routers = Router::new()
+pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
+    let protected = Router::new()
         .route("/import", post(import_pota_reference))
+        .route("/parks/{park_code}", put(update_pota_reference))
+        .route("/parks/{park_code}", delete(delete_pota_reference))
+        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+
+    let public = Router::new()
         .route("/log/{act_id}/{hntr_id}", post(upload_pota_log))
         .route("/log/{log_id}", get(get_pota_logid))
         .route("/log/{log_id}", delete(delete_pota_log))
@@ -265,9 +271,9 @@ pub fn build_pota_routers() -> Router<AppState> {
         .route("/alerts", get(show_pota_alerts))
         .route("/parks", get(show_all_pota_reference))
         .route("/parks/search", get(find_pota_reference))
-        .route("/parks/{park_code}", get(show_pota_reference))
-        .route("/parks/{park_code}", put(update_pota_reference))
-        .route("/parks/{park_code}", delete(delete_pota_reference));
+        .route("/parks/{park_code}", get(show_pota_reference));
+
+    let routers = Router::new().merge(protected).merge(public);
 
     Router::new().nest("/pota", routers)
 }
