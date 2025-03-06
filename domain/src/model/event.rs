@@ -1,3 +1,4 @@
+use aprs_message::AprsCallsign;
 use chrono::{DateTime, Utc};
 use derive_new::new;
 
@@ -314,8 +315,9 @@ pub struct DeleteAct {
     pub before: DateTime<Utc>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FindAprs {
-    pub callsign: Option<String>,
+    pub callsign: Option<AprsCallsign>,
+    pub reference: Option<String>,
     pub after: Option<DateTime<Utc>>,
 }

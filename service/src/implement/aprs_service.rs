@@ -6,7 +6,7 @@ use common::utils::calculate_distance;
 use domain::model::{
     activation::Spot,
     aprslog::{AprsLog, AprsState},
-    event::{FindActBuilder, FindRefBuilder},
+    event::{FindActBuilder, FindAprs, FindRefBuilder},
 };
 use regex::Regex;
 use std::collections::HashMap;
@@ -42,7 +42,6 @@ impl AdminPeriodicServiceImpl {
         if spots.is_empty() {
             message = "No Spots.".to_string();
         } else {
-            tracing::info!("Spots found:{:?}", spots);
             for s in spots {
                 write!(
                     &mut message,
@@ -82,7 +81,7 @@ impl AdminPeriodicServiceImpl {
 
     pub async fn process_position(
         &self,
-        from: &AprsCallsign,
+        from: AprsCallsign,
         latitude: f64,
         longitude: f64,
     ) -> AppResult<()> {
@@ -115,7 +114,11 @@ impl AdminPeriodicServiceImpl {
             summit.longitude.unwrap_or_default(),
         );
 
-        let aprslog = self.aprs_log_repo.get_aprs_log_by_callsign(from).await?;
+        let query = FindAprs {
+            callsign: Some(from.clone()),
+            ..Default::default()
+        };
+        let aprslog = self.aprs_log_repo.find_aprs_log(&query).await?;
 
         let time = Utc::now().naive_utc();
         let distance = calculate_distance(latitude, longitude, destlat, destlon).floor();
@@ -178,7 +181,7 @@ impl AdminPeriodicServiceImpl {
                     );
                     /*
                     if destination.starts_with("JA") {
-                        self.aprs_repo.write_message(from, message).await?;
+                        self.aprs_repo.write_message(&from, message).await?;
                     }
                     */
                 }
@@ -194,7 +197,7 @@ impl AdminPeriodicServiceImpl {
                     );
                     /*
                     if destination.starts_with("JA") {
-                        self.aprs_repo.write_message(from, message).await?;
+                        self.aprs_repo.write_message(&from, message).await?;
                     }
                     */
                 }
@@ -217,7 +220,7 @@ impl AdminPeriodicServiceImpl {
                         );
                         /*
                         if destination.starts_with("JA") {
-                            self.aprs_repo.write_message(from, message).await?;
+                            self.aprs_repo.write_message(&from, message).await?;
                         }
                         */
                         new_state
@@ -237,7 +240,7 @@ impl AdminPeriodicServiceImpl {
                         );
                         /*
                         if destination.starts_with("JA") {
-                            self.aprs_repo.write_message(from, message).await?;
+                            self.aprs_repo.write_message(&from, message).await?;
                         }
                         */
                         new_state
@@ -254,7 +257,7 @@ impl AdminPeriodicServiceImpl {
                         );
                         /*
                         if destination.starts_with("JA") {
-                            self.aprs_repo.write_message(from, message).await?;
+                            self.aprs_repo.write_message(&from, message).await?;
                         }
                         */
                         new_state
@@ -271,7 +274,7 @@ impl AdminPeriodicServiceImpl {
 
         let log = AprsLog {
             callsign: AprsCallsign {
-                callsign: from.callsign.clone(),
+                callsign: from.callsign,
                 ssid: from.ssid,
             },
             destination,

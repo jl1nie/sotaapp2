@@ -5,6 +5,7 @@ use common::error::AppResult;
 use shaku::Interface;
 
 use crate::model::aprslog::AprsLog;
+use crate::model::event::FindAprs;
 
 #[async_trait]
 pub trait AprsRepositry: Send + Sync + Interface {
@@ -15,8 +16,7 @@ pub trait AprsRepositry: Send + Sync + Interface {
 }
 #[async_trait]
 pub trait AprsLogRepository: Send + Sync + Interface {
-    async fn get_aprs_log_by_callsign(&self, callsign: &AprsCallsign) -> AppResult<Vec<AprsLog>>;
-    async fn get_aprs_log_by_time(&self, after: &NaiveDateTime) -> AppResult<Vec<AprsLog>>;
+    async fn find_aprs_log(&self, query: &FindAprs) -> AppResult<Vec<AprsLog>>;
     async fn insert_aprs_log(&self, aprs_log: AprsLog) -> AppResult<()>;
     async fn delete_aprs_log(&self, before: &NaiveDateTime) -> AppResult<()>;
 }
