@@ -25,6 +25,12 @@ async fn show_spots(
     param: GetParam,
     mut query: FindActBuilder,
 ) -> AppResult<Json<Value>> {
+    let key = param.to_key();
+    if let Some(val) = kvs_repo.get(&key).await {
+        tracing::info!("show_spots cache hit");
+        return Ok(Json(val));
+    };
+
     if let Some(callsign) = param.by_call {
         if callsign.starts_with("null") {
             query = query.group_by_callsign(None)
@@ -49,11 +55,6 @@ async fn show_spots(
     }
 
     let query = query.build();
-    let key = query.to_key();
-    if let Some(val) = kvs_repo.get(&key).await {
-        tracing::info!("show_spots cache hit");
-        return Ok(Json(val));
-    };
 
     let result = user_service.find_spots(query).await?;
     let spots: Vec<_> = result
@@ -77,6 +78,12 @@ async fn show_alerts(
     param: GetParam,
     mut query: FindActBuilder,
 ) -> AppResult<Json<Value>> {
+    let key = param.to_key();
+    if let Some(val) = kvs_repo.get(&key).await {
+        tracing::info!("show_alerts cache hit");
+        return Ok(Json(val));
+    };
+
     if let Some(callsign) = param.by_call {
         if callsign.starts_with("null") {
             query = query.group_by_callsign(None)
@@ -101,11 +108,6 @@ async fn show_alerts(
     query = query.issued_after(Utc::now() - Duration::hours(hours));
 
     let query = query.build();
-    let key = query.to_key();
-    if let Some(val) = kvs_repo.get(&key).await {
-        tracing::info!("show_alerts cache hit");
-        return Ok(Json(val));
-    };
 
     let result = user_service.find_alerts(query).await?;
     let alerts: Vec<_> = result
@@ -213,16 +215,16 @@ async fn show_aprs_track(
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Value>> {
+    let key = param.to_key();
+    if let Some(val) = kvs_repo.get(&key).await {
+        tracing::info!("show_aprs_track cache hit");
+        return Ok(Json(val));
+    };
+
     let request = FindAprs {
         reference: param.pat_ref,
         callsign: None,
         after: Some(Utc::now() - Duration::hours(param.hours_ago.unwrap_or(24))),
-    };
-
-    let key = request.to_key();
-    if let Some(val) = kvs_repo.get(&key).await {
-        tracing::info!("show_aprs_track cache hit");
-        return Ok(Json(val));
     };
 
     let tracks = user_service.get_aprs_track(request).await?;
