@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 pub mod activation;
 pub mod aprslog;
 pub mod event;
@@ -7,7 +9,7 @@ pub mod locator;
 pub mod pota;
 pub mod sota;
 
-#[derive(PartialEq, Debug, sqlx::Type, Clone)]
+#[derive(PartialEq, Debug, sqlx::Type, Clone, Serialize)]
 #[repr(i32)]
 pub enum AwardProgram {
     SOTA = 0,
