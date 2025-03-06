@@ -1,5 +1,5 @@
+use aprs_message::AprsCallsign;
 use axum::{extract::Query, routing::get, Json, Router};
-
 use chrono::{Duration, Utc};
 use shaku_axum::Inject;
 
@@ -144,14 +144,20 @@ async fn show_aprs_log(
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<AprsLogView>>> {
     let mut request = FindAprs {
+        reference: None,
         callsign: None,
         after: None,
     };
 
-    if param.by_call.is_some() {
-        request.callsign = param.by_call;
-    } else if param.hours_ago.is_some() {
-        request.after = Some(Utc::now() - Duration::hours(param.hours_ago.unwrap()));
+    if let Some(callsign) = param.by_call {
+        request.callsign = Some(AprsCallsign::from(&callsign));
+    } else {
+        if let Some(ago) = param.hours_ago {
+            request.after = Some(Utc::now() - Duration::hours(ago));
+        }
+        if let Some(pat) = param.pat_ref {
+            request.reference = Some(pat);
+        }
     }
 
     let result = user_service

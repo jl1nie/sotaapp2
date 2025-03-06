@@ -94,7 +94,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                 return self.process_message(&callsign, message).await;
             }
             AprsData::AprsPosition {
-                ref callsign,
+                callsign,
                 latitude,
                 longitude,
             } => {

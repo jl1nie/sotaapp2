@@ -7,7 +7,7 @@ use sqlx::SqliteConnection;
 use crate::database::connect::ConnectionPool;
 use crate::database::model::aprslog::AprsLogRow;
 use common::error::{AppError, AppResult};
-use domain::model::aprslog::AprsLog;
+use domain::model::{aprslog::AprsLog, event::FindAprs};
 use domain::repository::aprs::AprsLogRepository;
 
 #[derive(Component)]
@@ -17,7 +17,9 @@ pub struct AprsLogRepositoryImpl {
 }
 
 impl AprsLogRepositoryImpl {
-    async fn select_by_call(&self, callsign: &str, ssid: u32) -> AppResult<Vec<AprsLogRow>> {
+    async fn select_by_callsign(&self, callsign: &AprsCallsign) -> AppResult<Vec<AprsLogRow>> {
+        let ssid = callsign.ssid.unwrap_or_default();
+
         let result = sqlx::query_as!(
             AprsLogRow,
             r#"
@@ -34,7 +36,7 @@ impl AprsLogRepositoryImpl {
                 FROM aprs_log WHERE callsign = $1 AND ssid = $2
                 ORDER BY time DESC
             "#,
-            callsign,
+            callsign.callsign,
             ssid
         )
         .fetch_all(self.pool.inner_ref())
@@ -44,7 +46,11 @@ impl AprsLogRepositoryImpl {
         Ok(result)
     }
 
-    async fn select_by_time(&self, after: &NaiveDateTime) -> AppResult<Vec<AprsLogRow>> {
+    async fn select_by_reference_time(
+        &self,
+        region: &String,
+        after: &NaiveDateTime,
+    ) -> AppResult<Vec<AprsLogRow>> {
         let result = sqlx::query_as!(
             AprsLogRow,
             r#"
@@ -58,10 +64,11 @@ impl AprsLogRepositoryImpl {
                     message,
                     longitude,
                     latitude
-                FROM aprs_log WHERE time > $1
+                FROM aprs_log WHERE time > $1 AND destination LIKE $2
                 ORDER BY time DESC
             "#,
-            after
+            after,
+            region
         )
         .fetch_all(self.pool.inner_ref())
         .await
@@ -117,24 +124,20 @@ impl AprsLogRepositoryImpl {
 
 #[async_trait]
 impl AprsLogRepository for AprsLogRepositoryImpl {
-    async fn get_aprs_log_by_callsign(&self, callsign: &AprsCallsign) -> AppResult<Vec<AprsLog>> {
-        let call = &callsign.callsign;
-        let ssid = callsign.ssid.unwrap_or_default();
-        let result = self.select_by_call(call, ssid).await?;
-        let mut logs = Vec::new();
-        for log in result {
-            logs.push(log.into());
-        }
+    async fn find_aprs_log(&self, query: &FindAprs) -> AppResult<Vec<AprsLog>> {
+        let result = if let Some(ref callsign) = query.callsign {
+            self.select_by_callsign(callsign).await?
+        } else {
+            let after = query.after.unwrap_or_default();
 
-        Ok(logs)
-    }
+            let mut reference = query.reference.clone().unwrap_or_default();
+            reference.push('%');
 
-    async fn get_aprs_log_by_time(&self, after: &NaiveDateTime) -> AppResult<Vec<AprsLog>> {
-        let result = self.select_by_time(after).await?;
-        let mut logs = Vec::new();
-        for log in result {
-            logs.push(log.into());
-        }
+            self.select_by_reference_time(&reference, &after.naive_utc())
+                .await?
+        };
+
+        let logs = result.into_iter().map(AprsLog::from).collect();
 
         Ok(logs)
     }
