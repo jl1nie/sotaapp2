@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use common::error::AppResult;
@@ -7,7 +7,7 @@ use domain::model::{
     id::LogId,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct GetParam {
     pub lon: Option<f64>,
     pub lat: Option<f64>,
@@ -32,6 +32,12 @@ pub struct GetParam {
     pub by_call: Option<String>,
     pub by_ref: Option<String>,
     pub pat_ref: Option<String>,
+}
+
+impl GetParam {
+    pub fn to_key(&self) -> String {
+        serde_json::to_string(&self).unwrap_or_default()
+    }
 }
 
 pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppResult<FindRef> {

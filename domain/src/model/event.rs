@@ -1,7 +1,5 @@
 use aprs_message::AprsCallsign;
 use chrono::{DateTime, Utc};
-use serde::Serialize;
-use serde_json::to_string;
 
 use derive_new::new;
 
@@ -236,28 +234,21 @@ impl FindLogBuilder {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum GroupBy {
     Callsign(Option<String>),
     Reference(Option<String>),
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default)]
 pub struct FindAct {
     pub program: Option<AwardProgram>,
-    #[serde(skip_serializing)]
     pub issued_after: Option<DateTime<Utc>>,
     pub operator: Option<String>,
     pub pattern: Option<String>,
     pub group_by: Option<GroupBy>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
-}
-
-impl FindAct {
-    pub fn to_key(&self) -> String {
-        to_string(self).unwrap_or_else(|_| String::new())
-    }
 }
 
 #[derive(Default)]
@@ -325,16 +316,9 @@ pub struct DeleteAct {
     pub before: DateTime<Utc>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default)]
 pub struct FindAprs {
     pub callsign: Option<AprsCallsign>,
     pub reference: Option<String>,
-    #[serde(skip_serializing)]
     pub after: Option<DateTime<Utc>>,
-}
-
-impl FindAprs {
-    pub fn to_key(&self) -> String {
-        to_string(self).unwrap_or_else(|_| String::new())
-    }
 }
