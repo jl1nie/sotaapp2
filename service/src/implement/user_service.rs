@@ -1,5 +1,6 @@
+use aprs_message::AprsCallsign;
 use async_trait::async_trait;
-use chrono::{TimeZone, Utc};
+use chrono::{Duration, TimeZone, Utc};
 use regex::Regex;
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
@@ -13,8 +14,10 @@ use common::config::AppConfig;
 use common::error::AppResult;
 use common::utils::csv_reader;
 use domain::model::activation::{Alert, Spot};
-use domain::model::aprslog::AprsLog;
-use domain::model::event::{DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy};
+use domain::model::aprslog::{AprsLog, AprsTrack};
+use domain::model::event::{
+    DeleteLog, FindAct, FindActBuilder, FindAprs, FindLog, FindRef, FindResult, GroupBy,
+};
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
@@ -356,7 +359,68 @@ impl UserService for UserServiceImpl {
         Ok(self.geomag_repo.get_geomag().await?)
     }
 
-    async fn find_aprslog(&self, event: FindAprs) -> AppResult<Vec<AprsLog>> {
+    async fn find_aprs_log(&self, event: FindAprs) -> AppResult<Vec<AprsLog>> {
         Ok(self.aprs_log_repo.find_aprs_log(&event).await?)
+    }
+
+    async fn get_aprs_track(&self, event: FindAprs) -> AppResult<Vec<AprsTrack>> {
+        let aprslog = self.find_aprs_log(event).await?;
+
+        let mut track: HashMap<AprsCallsign, Vec<(f64, f64)>> = HashMap::new();
+        let mut lastlog: HashMap<AprsCallsign, AprsLog> = HashMap::new();
+
+        for l in aprslog {
+            let callsign = l.callsign.clone();
+
+            track
+                .entry(callsign.clone())
+                .or_default()
+                .push((l.latitude, l.longitude));
+
+            lastlog.entry(callsign).or_insert(l);
+        }
+
+        let mut result = Vec::new();
+
+        for callsign in track.keys() {
+            let query = FindActBuilder::default()
+                .sota()
+                .operator(&callsign.callsign)
+                .issued_after(Utc::now() - Duration::hours(8))
+                .build();
+            let spot = self.act_repo.find_spots(&query).await?;
+            let log = lastlog.get(callsign).unwrap();
+            let lastseen = Utc.from_utc_datetime(&log.state.time());
+
+            let aprstrack = if let Some(spot) = spot.first() {
+                AprsTrack {
+                    callsign: callsign.clone(),
+                    coordinates: track.get(callsign).unwrap().to_vec(),
+                    summit: spot.reference.clone(),
+                    distance: log.state.distance(),
+                    lastseen,
+                    spot_time: Some(spot.spot_time),
+                    spot_summit: Some(spot.reference.clone()),
+                    spot_freq: Some(spot.frequency.clone()),
+                    spot_mode: Some(spot.mode.clone()),
+                    spot_comment: spot.comment.clone(),
+                }
+            } else {
+                AprsTrack {
+                    callsign: callsign.clone(),
+                    coordinates: track.get(callsign).unwrap().to_vec(),
+                    summit: log.destination.clone(),
+                    distance: log.state.distance(),
+                    lastseen,
+                    spot_time: None,
+                    spot_summit: None,
+                    spot_freq: None,
+                    spot_mode: None,
+                    spot_comment: None,
+                }
+            };
+            result.push(aprstrack);
+        }
+        Ok(result)
     }
 }

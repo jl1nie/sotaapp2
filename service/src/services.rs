@@ -1,12 +1,15 @@
 use async_trait::async_trait;
-use domain::model::aprslog::AprsLog;
 use shaku::Interface;
 use std::collections::HashMap;
 
 use aprs_message::AprsData;
 
+use crate::model::locator::UploadMuniCSV;
+use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
+use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use common::error::AppResult;
 use domain::model::activation::{Alert, Spot};
+use domain::model::aprslog::{AprsLog, AprsTrack};
 use domain::model::event::{
     DeleteRef, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy, PagenatedResult,
 };
@@ -15,10 +18,6 @@ use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{ParkCode, PotaLogHist, PotaReference};
 use domain::model::sota::{SotaReference, SummitCode};
-
-use crate::model::locator::UploadMuniCSV;
-use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
-use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
@@ -38,7 +37,8 @@ pub trait UserService: Send + Sync + Interface {
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;
-    async fn find_aprslog(&self, event: FindAprs) -> AppResult<Vec<AprsLog>>;
+    async fn find_aprs_log(&self, event: FindAprs) -> AppResult<Vec<AprsLog>>;
+    async fn get_aprs_track(&self, event: FindAprs) -> AppResult<Vec<AprsTrack>>;
     async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>>;
 }
 
