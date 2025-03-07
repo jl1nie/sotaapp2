@@ -109,6 +109,20 @@ impl AdminPeriodicServiceImpl {
         let summit = dest[0].clone();
         let destination = summit.summit_code.clone();
 
+        let patstr = self
+            .config
+            .aprs_arrival_mesg_regex
+            .clone()
+            .unwrap_or("$.".to_string());
+        let patref = Regex::new(&patstr);
+
+        let mesg_enabled = patref.is_ok_and(|r| r.is_match(&destination))
+            && !self
+                .config
+                .aprs_exclude_user
+                .as_ref()
+                .map_or(false, |s| s.contains(&from.callsign));
+
         let (destlat, destlon) = (
             summit.latitude.unwrap_or_default(),
             summit.longitude.unwrap_or_default(),
@@ -132,7 +146,7 @@ impl AdminPeriodicServiceImpl {
                 time,
                 distance,
                 message: Some(format!(
-                    "Approaching {}. {}m to go.",
+                    "Approaching {}. {}m remaining.",
                     summit.summit_code, distance
                 )),
             }
@@ -179,11 +193,10 @@ impl AdminPeriodicServiceImpl {
                         from.ssid.unwrap_or_default(),
                         message
                     );
-                    /*
-                    if destination.starts_with("JA") {
+
+                    if mesg_enabled {
                         self.aprs_repo.write_message(&from, message).await?;
                     }
-                    */
                 }
                 AprsState::OnSummit {
                     message: Some(ref message),
@@ -195,11 +208,10 @@ impl AdminPeriodicServiceImpl {
                         from.ssid.unwrap_or_default(),
                         message
                     );
-                    /*
-                    if destination.starts_with("JA") {
+
+                    if mesg_enabled {
                         self.aprs_repo.write_message(&from, message).await?;
                     }
-                    */
                 }
                 _ => {}
             }
@@ -218,11 +230,10 @@ impl AdminPeriodicServiceImpl {
                             from.ssid.unwrap_or_default(),
                             message
                         );
-                        /*
-                        if destination.starts_with("JA") {
+
+                        if mesg_enabled {
                             self.aprs_repo.write_message(&from, message).await?;
                         }
-                        */
                         new_state
                     }
                     _ => old_state,
@@ -238,11 +249,11 @@ impl AdminPeriodicServiceImpl {
                             from.ssid.unwrap_or_default(),
                             message
                         );
-                        /*
-                        if destination.starts_with("JA") {
+
+                        if mesg_enabled {
                             self.aprs_repo.write_message(&from, message).await?;
                         }
-                        */
+
                         new_state
                     }
                     AprsState::OnSummit {
@@ -255,11 +266,11 @@ impl AdminPeriodicServiceImpl {
                             from.ssid.unwrap_or_default(),
                             message
                         );
-                        /*
-                        if destination.starts_with("JA") {
+
+                        if mesg_enabled {
                             self.aprs_repo.write_message(&from, message).await?;
                         }
-                        */
+
                         new_state
                     }
                     _ => new_state,
@@ -282,8 +293,6 @@ impl AdminPeriodicServiceImpl {
             longitude,
             latitude,
         };
-
-        //tracing::info!("APRS Beacon:{:?}", log);
 
         self.aprs_log_repo.insert_aprs_log(log).await?;
 

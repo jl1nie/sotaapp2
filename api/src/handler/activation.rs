@@ -27,7 +27,6 @@ async fn show_spots(
 ) -> AppResult<Json<Value>> {
     let key = param.to_key();
     if let Some(val) = kvs_repo.get(&key).await {
-        tracing::info!("show_spots cache hit");
         return Ok(Json(val));
     };
 
@@ -57,17 +56,21 @@ async fn show_spots(
     let query = query.build();
 
     let result = user_service.find_spots(query).await?;
-    let spots: Vec<_> = result
+    let mut spots: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
             ActivationView::from((k, v.into_iter().map(SpotView::from).collect::<Vec<_>>()))
         })
         .collect();
 
+    spots.sort_by(|a, b| a.key.cmp(&b.key));
+
     let value = serde_json::to_value(spots).unwrap();
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(30)))
         .await;
+
+    tracing::info!("show_spots cache replaced");
 
     Ok(Json(value))
 }
@@ -80,7 +83,6 @@ async fn show_alerts(
 ) -> AppResult<Json<Value>> {
     let key = param.to_key();
     if let Some(val) = kvs_repo.get(&key).await {
-        tracing::info!("show_alerts cache hit");
         return Ok(Json(val));
     };
 
@@ -110,17 +112,21 @@ async fn show_alerts(
     let query = query.build();
 
     let result = user_service.find_alerts(query).await?;
-    let alerts: Vec<_> = result
+    let mut alerts: Vec<_> = result
         .into_iter()
         .map(|(k, v)| {
             ActivationView::from((k, v.into_iter().map(AlertView::from).collect::<Vec<_>>()))
         })
         .collect();
 
+    alerts.sort_by(|a, b| a.key.cmp(&b.key));
+
     let value = serde_json::to_value(alerts).unwrap();
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(180)))
         .await;
+
+    tracing::info!("show_alerts cache replaced");
 
     Ok(Json(value))
 }
@@ -217,7 +223,6 @@ async fn show_aprs_track(
 ) -> AppResult<Json<Value>> {
     let key = param.to_key();
     if let Some(val) = kvs_repo.get(&key).await {
-        tracing::info!("show_aprs_track cache hit");
         return Ok(Json(val));
     };
 
@@ -235,6 +240,8 @@ async fn show_aprs_track(
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(60)))
         .await;
+
+    tracing::info!("show_aprs_track cache replaced");
 
     Ok(Json(value))
 }

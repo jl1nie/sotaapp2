@@ -5,7 +5,7 @@ use domain::model::event::GroupBy;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivationView<T> {
-    key: Option<String>,
+    pub key: Option<String>,
     values: Vec<T>,
 }
 
