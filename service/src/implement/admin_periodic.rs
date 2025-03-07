@@ -25,7 +25,7 @@ pub struct AdminPeriodicServiceImpl {
     #[shaku(inject)]
     pub sota_repo: Arc<dyn SotaRepository>,
 
-    config: AppConfig,
+    pub config: AppConfig,
 }
 
 #[async_trait]
@@ -46,11 +46,11 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
             .map(|a| format!("{}-*", a.operator))
             .collect();
 
-        buddy.push("JL1NIE-*".to_string());
-
-        if !buddy.is_empty() {
-            self.aprs_repo.set_buddy_list(buddy).await?;
+        if let Some(callsign) = self.config.aprs_user.split('-').next() {
+            buddy.push(format!("{}-*", callsign));
         }
+
+        self.aprs_repo.set_buddy_list(buddy).await?;
 
         self.act_repo.update_alerts(alerts).await?;
 
@@ -90,7 +90,6 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                     addressee,
                     message
                 );
-
                 return self.process_message(&callsign, message).await;
             }
             AprsData::AprsPosition {

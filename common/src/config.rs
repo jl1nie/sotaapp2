@@ -32,6 +32,8 @@ pub struct AppConfig {
     pub aprs_host: String,
     pub aprs_user: String,
     pub aprs_password: String,
+    pub aprs_exclude_user: Option<String>,
+    pub aprs_arrival_mesg_regex: Option<String>,
     pub shutdown_tx: watch::Sender<bool>,
     pub shutdown_rx: watch::Receiver<bool>,
 }
@@ -98,6 +100,8 @@ impl AppConfig {
             aprs_host: std::env::var("APRSHOST").expect("APRSHOST"),
             aprs_user: std::env::var("APRSUSER").expect("APRSUSER"),
             aprs_password: std::env::var("APRSPASSWORD").expect("APRSPASSWORD"),
+            aprs_exclude_user: std::env::var("APRS_EXCLUDE_USER").ok(),
+            aprs_arrival_mesg_regex: std::env::var("APRS_ARRIVAL_MESG_REGEX").ok(),
             shutdown_rx,
             shutdown_tx,
         })
