@@ -53,16 +53,16 @@
         <button id="upload-pota-log-button" type="submit">Upload</button>
     </form>
 
-    <h4>Find LogId </h4>
-    <form id="find-log-id" method="get">
-        <input id="find-log-id-value" type="text" name="log_id">
-        <button id="find-log-id-button" type="submit">Find</button>
+    <h4>Upload POTA Legacy Log </h4>
+    <form id="migrate-legacy-log" method="get">
+        <label for="migrate-legacy-log-name">DBName</label>
+        <input id="migrate-legacy-log-name" type="text" name="text" value="sqlite:./jaffpota.db">
+        <input id="migrate-legacy-log-button" type="submit" value="Upload">
     </form>
 
-    <h4>Delete LogId </h4>
-    <form id="delete-log-id" method="get">
-        <input id="delete-log-id-value" type="text" name="log_id">
-        <button id="delete-log-id-button" type="submit">Delete</button>
+    <h4>POTA Log Statistics</h4>
+    <form id="log-stat" method="get">
+        <input id="log-stat-button" type="submit" value="Get">
     </form>
 
     <h4>Import JCC-JCG list </h4>
@@ -207,6 +207,9 @@
         const potalist = baseurl + '/pota/parks';
         const importpota = baseurl + '/pota/import';
         const uploadpotalog = baseurl + '/pota/log';
+        const migratelegacylog = baseurl + '/pota/log-migrate';
+        const potalogstat = baseurl + '/pota/log-stat';
+        
 
         const locatejcc = baseurl + '/locator/jcc-jcg';
         const importjcc = baseurl + '/locator/jcc-jcg/import';
@@ -322,6 +325,10 @@
             if (param != '') {
                 fullurl += `?${param}`;
             }
+            
+            if (!authToken) {
+                authToken = await getAuthToken();
+            }
 
             const resultDiv = document.getElementById('result');
 
@@ -388,6 +395,21 @@
                 let eid = encodeURIComponent(logid);
                 uploadFile(uploadpotalog + `/${eid}`, 'upload-pota-log-file', 'upload-pota-log-button');
             });
+        
+        document.getElementById('migrate-legacy-log')
+            .addEventListener('submit', async function (event) {
+                event.preventDefault();
+                let name = document.getElementById('migrate-legacy-log-name').value;
+                let param = `name=${name}`;
+                search(migratelegacylog, param)
+            });
+
+        document.getElementById('log-stat')
+            .addEventListener('submit', function (event) {
+                event.preventDefault()
+                search(potalogstat, '');
+            });
+
 
         document.getElementById('upload-jcc')
             .addEventListener('submit', function (event) {

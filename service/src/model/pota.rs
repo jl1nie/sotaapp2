@@ -82,7 +82,10 @@ impl POTAActivatorLogCSV {
             activations,
             qsos,
         } = value;
-        let first_qso_date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d").unwrap();
+        let mut date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d");
+        if date.is_err() {
+            date = NaiveDate::parse_from_str(&first_qso_date, "%Y/%m/%d");
+        }
         PotaActLog {
             log_id,
             dx_entity,
@@ -90,7 +93,7 @@ impl POTAActivatorLogCSV {
             hasc,
             pota_code,
             park_name,
-            first_qso_date,
+            first_qso_date: date.unwrap(),
             attempts,
             activations,
             qsos,
@@ -120,7 +123,10 @@ impl POTAHunterLogCSV {
             first_qso_date,
             qsos,
         } = value;
-        let first_qso_date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d").unwrap();
+        let mut date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d");
+        if date.is_err() {
+            date = NaiveDate::parse_from_str(&first_qso_date, "%Y/%m/%d");
+        }
         PotaHuntLog {
             log_id,
             dx_entity,
@@ -128,7 +134,7 @@ impl POTAHunterLogCSV {
             hasc,
             pota_code,
             park_name,
-            first_qso_date,
+            first_qso_date: date.unwrap(),
             qsos,
         }
     }

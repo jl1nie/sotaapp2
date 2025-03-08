@@ -66,11 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_pota_references_coordinate ON pota_references (lo
 
 CREATE TABLE IF NOT EXISTS pota_log (
     log_id UUID NOT NULL,
-    dx_entity VARCHAR(255) NOT NULL,
-    "location" VARCHAR(255) NOT NULL,
-    hasc VARCHAR(255) NOT NULL,
     pota_code VARCHAR(255) NOT NULL,
-    park_name VARCHAR(255) NOT NULL,
     first_qso_date TEXT NOT NULL,
     attempts INTEGER,
     activations INTEGER,
@@ -158,3 +154,7 @@ CREATE TABLE IF NOT EXISTS aprs_log (
 
 CREATE INDEX IF NOT EXISTS idx_aprs_log_timestamp ON aprs_log (time DESC);
 CREATE INDEX IF NOT EXISTS idx_aprs_log_callsign ON aprs_log (callsign);
+
+
+CREATE TABLE IF NOT EXISTS potauser(uuid text,time int, primary key(uuid));
+CREATE TABLE IF NOT EXISTS potalog(uuid text,ref text,type int,hasc text,date text,qso int, attempt int,activate int);

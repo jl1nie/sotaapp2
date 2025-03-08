@@ -62,6 +62,7 @@ impl AppRegistry {
                 pool: pool.clone(),
             })
             .with_component_parameters::<PotaRepositoryImpl>(PotaRepositoryImplParameters {
+                config: config.clone(),
                 pool: pool.clone(),
             })
             .with_component_parameters::<ActivationRepositryImpl>(

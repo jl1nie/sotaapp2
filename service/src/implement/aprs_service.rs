@@ -121,7 +121,7 @@ impl AdminPeriodicServiceImpl {
                 .config
                 .aprs_exclude_user
                 .as_ref()
-                .map_or(false, |s| s.contains(&from.callsign));
+                .is_some_and(|s| s.contains(&from.callsign));
 
         let (destlat, destlon) = (
             summit.latitude.unwrap_or_default(),

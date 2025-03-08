@@ -1,24 +1,31 @@
 use async_trait::async_trait;
-use domain::model::id::{LogId, UserId};
+use chrono::{Days, NaiveDateTime, Utc};
 use shaku::Component;
-use sqlx::SqliteConnection;
+use sqlx::{query_as, SqliteConnection, SqlitePool};
+use std::time::{Duration, Instant};
 
+use common::config::AppConfig;
 use common::error::{AppError, AppResult};
-
-use domain::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
+use domain::model::event::{DeleteLog, DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
+use domain::model::id::{LogId, UserId};
 use domain::model::pota::{
-    ParkCode, PotaActLog, PotaHuntLog, PotaLogHist, PotaRefLog, PotaReference,
+    ParkCode, PotaActLog, PotaHuntLog, PotaLogHist, PotaLogStat, PotaLogStatEnt, PotaRefLog,
+    PotaReference,
 };
 use domain::model::AwardProgram::POTA;
+use domain::repository::pota::PotaRepository;
 
 use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;
-use crate::database::model::pota::{PotaLogHistRow, PotaLogRow, PotaRefLogRow, PotaReferenceRow};
-use domain::repository::pota::PotaRepository;
+use crate::database::model::pota::{
+    PotaLegcayLogHistRow, PotaLegcayLogRow, PotaLogHistRow, PotaLogRow, PotaRefLogRow,
+    PotaReferenceRow,
+};
 
 #[derive(Component)]
 #[shaku(interface = PotaRepository)]
 pub struct PotaRepositoryImpl {
+    config: AppConfig,
     pool: ConnectionPool,
 }
 
@@ -132,25 +139,17 @@ impl PotaRepositoryImpl {
         let log_id = r.log_id.raw();
         sqlx::query!(
             r#"
-                INSERT INTO pota_log (log_id, dx_entity, location, hasc, pota_code, park_name, first_qso_date, attempts, activations, qsos)
-                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                INSERT INTO pota_log (log_id, pota_code, first_qso_date, attempts, activations, qsos)
+                VALUES($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (log_id, pota_code) DO UPDATE
-                SET dx_entity = EXCLUDED.dx_entity,
-                    location = EXCLUDED.location,
-                    hasc = EXCLUDED.hasc,
-                    pota_code = EXCLUDED.pota_code,
-                    park_name = EXCLUDED.park_name,
+                SET pota_code = EXCLUDED.pota_code,
                     first_qso_date = EXCLUDED.first_qso_date,
                     attempts = EXCLUDED.attempts,
                     activations = EXCLUDED.activations,
                     qsos = EXCLUDED.qsos
             "#,
             log_id,
-            r.dx_entity,
-            r.location,
-            r.hasc,
             r.pota_code,
-            r.park_name,
             r.first_qso_date,
             r.attempts,
             r.activations,
@@ -183,7 +182,7 @@ impl PotaRepositoryImpl {
     ) -> AppResult<()> {
         sqlx::query!(
             r#"
-                INSERT INTO pota_log_user (user_id, log_id, log_kind,"update")
+                INSERT INTO pota_log_user (user_id, log_id, log_kind, "update")
                 VALUES($1, $2, $3, $4)
                 ON CONFLICT (log_id) DO UPDATE
                 SET "update" = EXCLUDED."update",
@@ -235,6 +234,178 @@ impl PotaRepositoryImpl {
             .map_err(AppError::SpecificOperationError)?;
             return Ok(());
         }
+        Ok(())
+    }
+
+    async fn log_stat(&self) -> AppResult<PotaLogStat> {
+        let expire = Utc::now() - self.config.pota_log_expire;
+
+        let r = sqlx::query!(r#"SELECT COUNT(log_id) as count FROM pota_log_user"#)
+            .fetch_one(self.pool.inner_ref())
+            .await;
+        let log_uploaded = r.map_or(0, |v| v.count);
+
+        let r = sqlx::query!(
+            r#"SELECT COUNT(log_id) as count FROM pota_log_user WHERE "update" < $1"#,
+            expire
+        )
+        .fetch_one(self.pool.inner_ref())
+        .await;
+        let log_expired = r.map_or(0, |r| r.count);
+
+        let r = sqlx::query!(r#"SELECT COUNT(log_id) as count FROM pota_log"#)
+            .fetch_one(self.pool.inner_ref())
+            .await;
+        let log_entries = r.map_or(0, |v| v.count);
+
+        let (mut longest_id, mut longest_entry, mut log_error) =
+            (Option::<LogId>::None, 0i64, 0i64);
+
+        let r = sqlx::query_as!(
+            PotaLogHistRow,
+            r#"SELECT user_id as "user_id: UserId", log_id as "log_id: LogId", log_kind, "update" 
+            FROM pota_log_user"#
+        )
+        .fetch_all(self.pool.inner_ref())
+        .await;
+
+        if let Ok(logs) = r {
+            for l in logs {
+                let r = sqlx::query!(
+                    r#"SELECT COUNT(log_id) as count FROM pota_log WHERE log_id = $1"#,
+                    l.log_id
+                )
+                .fetch_one(self.pool.inner_ref())
+                .await;
+                if r.is_err() {
+                    log_error += 1;
+                } else {
+                    let loglen = r.unwrap().count;
+                    if loglen == 0 {
+                        log_error += 1;
+                    } else if loglen > longest_entry {
+                        longest_entry = loglen;
+                        longest_id = Some(l.log_id)
+                    }
+                }
+            }
+        }
+
+        let mut query_latency = Duration::from_millis(0);
+        let mut log_history = Vec::new();
+
+        if let Some(logid) = longest_id {
+            let query = FindRefBuilder::default()
+                .pota()
+                .log_id(logid)
+                .bbox(120.0, 20.0, 150.0, 46.0)
+                .build();
+
+            let now = Instant::now();
+            let _res = self.find_reference(&query).await;
+            query_latency = now.elapsed();
+        }
+
+        let end_date = Utc::now().naive_utc();
+
+        let days: Vec<NaiveDateTime> = (0..14)
+            .map(|i| end_date.checked_sub_days(Days::new(i)).unwrap())
+            .collect();
+
+        for day in days {
+            let loglist = sqlx::query!(
+                r#"SELECT log_id as "log_id: LogId" FROM pota_log_user WHERE "update" <= $1"#,
+                day
+            )
+            .fetch_all(self.pool.inner_ref())
+            .await
+            .map_or(Vec::new(), |r| r.into_iter().map(|r| r.log_id).collect());
+
+            let (mut logs, mut users) = (0i64, 0i64);
+            for id in loglist {
+                let r = sqlx::query!(
+                    r#"SELECT COUNT(*) as count FROM pota_log WHERE log_id = $1"#,
+                    id
+                )
+                .fetch_one(self.pool.inner_ref())
+                .await;
+                if let Ok(r) = r {
+                    logs += r.count;
+                    users += 1;
+                }
+            }
+            let time = day.and_utc().to_rfc3339();
+            log_history.push(PotaLogStatEnt { time, users, logs });
+        }
+
+        Ok(PotaLogStat {
+            log_uploaded,
+            log_entries,
+            log_expired,
+            log_error,
+            longest_id: longest_id.unwrap_or_default(),
+            longest_entry,
+            query_latency,
+            log_history,
+        })
+    }
+
+    async fn migrate_legacy(&self, dbname: &str) -> anyhow::Result<()> {
+        let pool = SqlitePool::connect_lazy(dbname)?;
+
+        tracing::info!("Migrate legacy database:{}", dbname);
+
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+
+        let data = query_as!(PotaLegcayLogHistRow, r#"SELECT uuid,time FROM potauser"#)
+            .fetch_all(&pool)
+            .await?;
+
+        tracing::info!("Found {} user records from legacy DB.", data.len());
+
+        for d in data {
+            let row: PotaLogHistRow = d.into();
+            sqlx::query!(
+                r#"INSERT INTO pota_log_user (user_id, log_id, log_kind, "update")
+            VALUES($1, $2, $3, $4)"#,
+                row.user_id,
+                row.log_id,
+                row.log_kind,
+                row.update
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await.map_err(AppError::TransactionError)?;
+
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(AppError::TransactionError)?;
+
+        let data = sqlx::query_as!(PotaLegcayLogRow,
+            r#"SELECT uuid,ref as "pota_code",type as "log_type",date,qso,attempt,activate FROM potalog"#)
+            .fetch_all(&pool).await?;
+
+        tracing::info!("Found {} log records from legacy DB.", data.len());
+
+        for d in data.into_iter().enumerate() {
+            let row: PotaLogRow = d.1.into();
+            sqlx::query!(r#"INSERT INTO pota_log (log_id, pota_code, first_qso_date, attempts, activations, qsos)
+            VALUES($1, $2, $3, $4, $5, $6)"#,
+            row.log_id, row.pota_code, row.first_qso_date,row.attempts, row.activations, row.qsos).execute(&mut *tx).await?;
+            if d.0 % 10000 == 0 {
+                tracing::info!("migrate legacy log {}", d.0);
+            }
+        }
+        tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
     }
 
@@ -492,6 +663,18 @@ impl PotaRepository for PotaRepositoryImpl {
             .map_err(AppError::TransactionError)?;
         self.delete_log(query, &mut tx).await?;
         tx.commit().await.map_err(AppError::TransactionError)?;
+        Ok(())
+    }
+
+    async fn log_statistics(&self) -> AppResult<PotaLogStat> {
+        self.log_stat().await
+    }
+
+    async fn migrate_legacy_log(&self, dbname: String) -> AppResult<()> {
+        let res = self.migrate_legacy(&dbname).await;
+        if res.is_err() {
+            tracing::error!("Legacy DB:{} migration failed.", dbname)
+        }
         Ok(())
     }
 

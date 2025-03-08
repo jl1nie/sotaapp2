@@ -1,6 +1,8 @@
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use domain::model::id::{LogId, UserId};
 use domain::model::pota::{PotaActLog, PotaHuntLog, PotaLogHist, PotaRefLog, PotaReference};
+use std::str::FromStr;
+
 use sqlx::FromRow;
 
 #[derive(Debug)]
@@ -131,12 +133,7 @@ impl TryFrom<i32> for PotaLogType {
 #[derive(Debug, FromRow)]
 pub struct PotaLogRow {
     pub log_id: LogId,
-    pub log_type: PotaLogType,
-    pub dx_entity: String,
-    pub location: String,
-    pub hasc: String,
     pub pota_code: String,
-    pub park_name: String,
     pub first_qso_date: NaiveDate,
     pub attempts: Option<i32>,
     pub activations: Option<i32>,
@@ -147,12 +144,7 @@ impl From<PotaActLog> for PotaLogRow {
     fn from(l: PotaActLog) -> Self {
         PotaLogRow {
             log_id: l.log_id,
-            log_type: PotaLogType::ActivatorLog,
-            dx_entity: l.dx_entity,
-            location: l.location,
-            hasc: l.hasc,
             pota_code: l.pota_code,
-            park_name: l.park_name,
             first_qso_date: l.first_qso_date,
             attempts: Some(l.attempts),
             activations: Some(l.activations),
@@ -165,12 +157,7 @@ impl From<PotaHuntLog> for PotaLogRow {
     fn from(l: PotaHuntLog) -> Self {
         PotaLogRow {
             log_id: l.log_id,
-            log_type: PotaLogType::HunterLog,
-            dx_entity: l.dx_entity,
-            location: l.location,
-            hasc: l.hasc,
             pota_code: l.pota_code,
-            park_name: l.park_name,
             first_qso_date: l.first_qso_date,
             attempts: None,
             activations: None,
@@ -205,6 +192,57 @@ impl From<PotaLogHistRow> for PotaLogHist {
             log_id: l.log_id,
             log_kind: l.log_kind.map(|k| k.into()),
             update: l.update,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+pub struct PotaLegcayLogRow {
+    pub uuid: Option<String>,
+    pub pota_code: Option<String>,
+    pub log_type: Option<i64>,
+    pub date: Option<String>,
+    pub qso: Option<i64>,
+    pub attempt: Option<i64>,
+    pub activate: Option<i64>,
+}
+
+impl From<PotaLegcayLogRow> for PotaLogRow {
+    fn from(value: PotaLegcayLogRow) -> Self {
+        let date = value.date.unwrap();
+        let mut first_qso_date = NaiveDate::parse_from_str(&date, "%Y-%m-%d");
+        if first_qso_date.is_err() {
+            first_qso_date = NaiveDate::parse_from_str(&date, "%Y/%m/%d");
+        }
+        PotaLogRow {
+            log_id: LogId::from_str(&value.uuid.unwrap()).unwrap(),
+            pota_code: value.pota_code.unwrap(),
+            first_qso_date: first_qso_date.unwrap(),
+            attempts: (value.attempt.unwrap() != 0).then_some(value.attempt.unwrap() as i32),
+            activations: (value.activate.unwrap() != 0).then_some(value.activate.unwrap() as i32),
+            qsos: value.qso.unwrap() as i32,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+pub struct PotaLegcayLogHistRow {
+    pub uuid: Option<String>,
+    pub time: Option<i64>,
+}
+
+impl From<PotaLegcayLogHistRow> for PotaLogHistRow {
+    fn from(value: PotaLegcayLogHistRow) -> Self {
+        let epoch = Utc.timestamp_opt(value.time.unwrap(), 0);
+        let update = match epoch {
+            chrono::LocalResult::Single(t) => t.naive_utc(),
+            _ => Utc::now().naive_utc(),
+        };
+        PotaLogHistRow {
+            user_id: None,
+            log_id: LogId::from_str(&value.uuid.unwrap()).unwrap(),
+            log_kind: None,
+            update,
         }
     }
 }
