@@ -13,20 +13,23 @@ use serde_json::{json, Value};
 use shaku_axum::Inject;
 use std::str::FromStr;
 
-use crate::model::pota::{PagenatedResponse, PotaRefView, UpdateRefRequest};
+use crate::model::pota::{
+    PagenatedResponse, PotaLogHistView, PotaLogStatView, PotaRefLogView, PotaRefView,
+    UpdateRefRequest,
+};
 use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
     param::{build_findref_query, GetParam},
-    pota::PotaLogHistView,
-    pota::PotaRefLogView,
     spots::SpotView,
 };
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindRefBuilder},
     id::LogId,
 };
-use domain::{model::pota::ParkCode, repository::minikvs::KvsRepositry};
+use domain::{
+    model::pota::ParkCode, repository::minikvs::KvsRepositry, repository::pota::PotaRepository,
+};
 use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadPOTALog, UploadPOTAReference};
 use service::services::{AdminService, UserService};
@@ -252,11 +255,32 @@ async fn obtain_shareid(
     }
 }
 
+async fn log_stat(
+    pota_repo: Inject<AppRegistry, dyn PotaRepository>,
+) -> AppResult<Json<PotaLogStatView>> {
+    let stat = pota_repo.log_statistics().await?;
+    Ok(Json(stat.into()))
+}
+
+async fn log_migrate(
+    pota_repo: Inject<AppRegistry, dyn PotaRepository>,
+    Query(param): Query<GetParam>,
+) -> AppResult<StatusCode> {
+    if let Some(dbname) = param.name {
+        pota_repo
+            .migrate_legacy_log(dbname)
+            .await
+            .map(|_| StatusCode::OK)?;
+    }
+    Ok(StatusCode::NOT_FOUND)
+}
+
 pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
     let protected = Router::new()
         .route("/import", post(import_pota_reference))
         .route("/parks/{park_code}", put(update_pota_reference))
         .route("/parks/{park_code}", delete(delete_pota_reference))
+        .route("/log-migrate", get(log_migrate))
         .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
 
     let public = Router::new()
@@ -265,6 +289,7 @@ pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
         .route("/log/{log_id}", delete(delete_pota_log))
         .route("/log-share/{act_id}/{hntr_id}", get(reqeust_shareid))
         .route("/log-share/{share_id}", get(obtain_shareid))
+        .route("/log-stat", get(log_stat))
         .route("/spots", get(show_pota_spots))
         .route("/alerts", get(show_pota_alerts))
         .route("/parks", get(show_all_pota_reference))

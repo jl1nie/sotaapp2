@@ -70,8 +70,6 @@ async fn show_spots(
         .set(key, value.clone(), Some(Duration::seconds(30)))
         .await;
 
-    tracing::info!("show_spots cache replaced");
-
     Ok(Json(value))
 }
 
@@ -125,8 +123,6 @@ async fn show_alerts(
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(180)))
         .await;
-
-    tracing::info!("show_alerts cache replaced");
 
     Ok(Json(value))
 }
@@ -240,8 +236,6 @@ async fn show_aprs_track(
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(60)))
         .await;
-
-    tracing::info!("show_aprs_track cache replaced");
 
     Ok(Json(value))
 }

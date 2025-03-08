@@ -1,10 +1,11 @@
 use chrono::{DateTime, NaiveDate, Utc};
+use domain::model::id::{LogId, UserId};
 use domain::model::Maidenhead;
 use serde::{Deserialize, Serialize};
 
 use common::utils::maidenhead;
-use domain::model::pota::{PotaLogHist, PotaRefLog, PotaReference};
-use domain::model::{event::PagenatedResult, id::UserId};
+use domain::model::event::PagenatedResult;
+use domain::model::pota::{PotaLogHist, PotaLogStat, PotaLogStatEnt, PotaRefLog, PotaReference};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -299,6 +300,56 @@ impl From<PotaLogHist> for PotaLogHistView {
             log_id: log.log_id.into(),
             log_kind,
             last_update: log.update.date(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct PotaLogStatEntView {
+    pub time: String,
+    pub users: i64,
+    pub logs: i64,
+}
+
+impl From<PotaLogStatEnt> for PotaLogStatEntView {
+    fn from(stat: PotaLogStatEnt) -> Self {
+        PotaLogStatEntView {
+            time: stat.time,
+            users: stat.users,
+            logs: stat.logs,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct PotaLogStatView {
+    pub log_uploaded: i64,
+    pub log_entries: i64,
+    pub log_expired: i64,
+    pub log_error: i64,
+    pub longest_id: LogId,
+    pub longest_entry: i64,
+    pub query_latency: String,
+    pub log_history: Vec<PotaLogStatEntView>,
+}
+
+impl From<PotaLogStat> for PotaLogStatView {
+    fn from(stat: PotaLogStat) -> Self {
+        let query_latency = format!("{:.2}", stat.query_latency.as_secs_f32() * 1000f32);
+
+        PotaLogStatView {
+            log_uploaded: stat.log_uploaded,
+            log_entries: stat.log_entries,
+            log_expired: stat.log_expired,
+            log_error: stat.log_error,
+            longest_id: stat.longest_id,
+            longest_entry: stat.longest_entry,
+            query_latency,
+            log_history: stat
+                .log_history
+                .into_iter()
+                .map(PotaLogStatEntView::from)
+                .collect(),
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::{
     id::{LogId, UserId},
     Maidenhead,
@@ -121,4 +123,23 @@ impl PotaLogHist {
             update,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct PotaLogStatEnt {
+    pub time: String,
+    pub users: i64,
+    pub logs: i64,
+}
+
+#[derive(Debug)]
+pub struct PotaLogStat {
+    pub log_uploaded: i64,
+    pub log_entries: i64,
+    pub log_expired: i64,
+    pub log_error: i64,
+    pub longest_id: LogId,
+    pub longest_entry: i64,
+    pub query_latency: Duration,
+    pub log_history: Vec<PotaLogStatEnt>,
 }
