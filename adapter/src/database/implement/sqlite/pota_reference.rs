@@ -372,7 +372,10 @@ impl PotaRepositoryImpl {
             let row: PotaLogHistRow = d.into();
             sqlx::query!(
                 r#"INSERT INTO pota_log_user (user_id, log_id, log_kind, "update")
-            VALUES($1, $2, $3, $4)"#,
+                            VALUES($1, $2, $3, $4)
+                            ON CONFLICT (log_id) DO UPDATE
+                            SET "update" = EXCLUDED."update",
+                            log_kind = EXCLUDED.log_kind"#,
                 row.user_id,
                 row.log_id,
                 row.log_kind,
@@ -398,8 +401,17 @@ impl PotaRepositoryImpl {
 
         for d in data.into_iter().enumerate() {
             let row: PotaLogRow = d.1.into();
-            sqlx::query!(r#"INSERT INTO pota_log (log_id, pota_code, first_qso_date, attempts, activations, qsos)
-            VALUES($1, $2, $3, $4, $5, $6)"#,
+            sqlx::query!(
+                 r#"
+                INSERT INTO pota_log (log_id, pota_code, first_qso_date, attempts, activations, qsos)
+                VALUES($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (log_id, pota_code) DO UPDATE
+                SET pota_code = EXCLUDED.pota_code,
+                    first_qso_date = EXCLUDED.first_qso_date,
+                    attempts = EXCLUDED.attempts,
+                    activations = EXCLUDED.activations,
+                    qsos = EXCLUDED.qsos
+            "#,
             row.log_id, row.pota_code, row.first_qso_date,row.attempts, row.activations, row.qsos).execute(&mut *tx).await?;
             if d.0 % 10000 == 0 {
                 tracing::info!("migrate legacy log {}", d.0);
