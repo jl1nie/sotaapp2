@@ -4,60 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload</title>
+    <title>Admin Consle</title>
 </head>
 
 <body>
+    <h2> SOTA/POTA Reference Table Maintenance</h2>
 
-    <hr>
-    <h4>Upload SOTA Log </h4>
-    <form id="upload-sota-log" method="post" enctype="multipart/form-data">
-        <input id="upload-sota-log-file" type="file" name="file">
-        <button id="upload-sota-log-button" type="submit">Upload</button>
-    </form>
-
-    <h4>Analyze SOTA Log</h4>
-    <form id="award-progress" method="get">
-        <input type="submit" value="送信">
-    </form>
-
-    <hr>
-
-    <h4>Import SOTA Summits list </h4>
-    <form id="import-summit" method="post" enctype="multipart/form-data">
-        <input id="import-summit-file" type="file" name="file">
-        <button id="import-summit-button" type="submit">Upload</button>
-    </form>
-
-    <h4>Update SOTA Summits list </h4>
-    <form id="import-activation" method="post" enctype="multipart/form-data">
-        <input id="import-activation-file" type="file" name="file">
-        <button id="import-activation-button" type="submit">Upload</button>
-    </form>
-
-    <h4>Import SOTA JA Summits list </h4>
-    <form id="upload-ja-summit" method="post" enctype="multipart/form-data">
-        <input id="upload-ja-summit-file" type="file" name="file">
-        <button id="upload-ja-summit-button" type="submit">Upload</button>
-    </form>
-
-    <h4>Import POTA Park list </h4>
+    <h4>Upload POTA Park list </h4>
     <form id="upload-pota" method="post" enctype="multipart/form-data">
         <input id="upload-pota-file" type="file" name="file">
         <button id="upload-pota-button" type="submit">Upload</button>
     </form>
 
-    <h4>Upload POTA Log </h4>
-    <form id="upload-pota-log" method="post" enctype="multipart/form-data">
-        <input id="upload-pota-log-file" type="file" name="file">
-        <button id="upload-pota-log-button" type="submit">Upload</button>
+    <h4>Upload SOTA Summits list </h4>
+    <form id="import-summit" method="post" enctype="multipart/form-data">
+        <input id="import-summit-file" type="file" name="file">
+        <button id="import-summit-button" type="submit">Upload</button>
     </form>
 
-    <h4>Upload POTA Legacy Log </h4>
+    <h4>Upload SOTA JA Summits list </h4>
+    <form id="upload-ja-summit" method="post" enctype="multipart/form-data">
+        <input id="upload-ja-summit-file" type="file" name="file">
+        <button id="upload-ja-summit-button" type="submit">Upload</button>
+    </form>
+
+    <hr>
+    <h2> JCC/JCG Table Maintenance</h2>
+    <h4>Upload JCC-JCG list </h4>
+    <form id="upload-jcc" method="post" enctype="multipart/form-data">
+        <input id="upload-jcc-file" type="file" name="file">
+        <button id="upload-jcc-button" type="submit">Upload</button>
+    </form>
+
+    <hr>
+    <h2> Migration Tool </h2>
+    <h4>Migrate POTA legacy DB <div style="color: red;"> (DANGER!)</div>
+    </h4>
     <form id="migrate-legacy-log" method="get">
         <label for="migrate-legacy-log-name">DBName</label>
-        <input id="migrate-legacy-log-name" type="text" name="text" value="sqlite:./jaffpota.db">
-        <input id="migrate-legacy-log-button" type="submit" value="Upload">
+        <input id="migrate-legacy-log-name" type="text" name="text" value="sqlite:(NeedRewrite)/jaffpota.db">
+        <input id="migrate-legacy-log-button" type="submit" value="Migrate">
     </form>
 
     <h4>POTA Log Statistics</h4>
@@ -65,12 +51,21 @@
         <input id="log-stat-button" type="submit" value="Get">
     </form>
 
-    <h4>Import JCC-JCG list </h4>
-    <form id="upload-jcc" method="post" enctype="multipart/form-data">
-        <input id="upload-jcc-file" type="file" name="file">
-        <button id="upload-jcc-button" type="submit">Upload</button>
+    <hr>
+    <!--
+    <h4>Update SOTA Summits list </h4>
+    <form id="import-activation" method="post" enctype="multipart/form-data">
+        <input id="import-activation-file" type="file" name="file">
+        <button id="import-activation-button" type="submit">Upload</button>
     </form>
 
+    <h4>Upload POTA Log </h4>
+    <form id="upload-pota-log" method="post" enctype="multipart/form-data">
+        <input id="upload-pota-log-file" type="file" name="file">
+        <button id="upload-pota-log-button" type="submit">Upload</button>
+    </form>
+-->
+    <h2> Search Tools </h2>
     <h4>Reference list</h4>
     <form id="reflist" method="get">
         <label for="prog-reflist">Program:</label>
@@ -86,7 +81,7 @@
         <input type="submit" value="送信">
     </form>
 
-    <h4>Search by Ref_id</h4>
+    <h4>Search by code</h4>
     <form id="search-refid" method="get">
         <label for="prog-refid">Program:</label>
         <select id="prog-refid" name="prog-refid">
@@ -98,7 +93,7 @@
         <input type="submit" value="送信">
     </form>
 
-    <h4>Search Location</h4>
+    <h4>Search by location</h4>
     <form id="search-location" method="get">
         <label for="min_lon">Min Lon:</label>
         <input type="text" id="min_lon" name="min_lon" value="138.860"><br><br>
@@ -124,7 +119,7 @@
         <input type="submit" value="送信">
     </form>
 
-    <h4>Search Location by distance</h4>
+    <h4>Search by location and distance</h4>
     <form id="search-location-dist" method="get">
         <label for="lon">Lon:</label>
         <input type="text" id="lon" name="lon" value="138.7277"><br><br>
@@ -186,8 +181,23 @@
         <input type="text" id="limit" name="limit" value="10"><br><br>
     </form>
 
-    <h4>JSON Result</h4>
+    <!--
+    <hr>
+    <h4>Upload SOTA Log </h4>
+        <form id="upload-sota-log" method="post" enctype="multipart/form-data">
+        <input id="upload-sota-log-file" type="file" name="file">
+        <button id="upload-sota-log-button" type="submit">Upload</button>
+    </form>
+
+    <h4>Analyze SOTA Log</h4>
+        <form id="award-progress" method="get">
+        <input type="submit" value="送信">
+    </form>
+    -->
+
+    <h4>Search Result(JSON)</h4>
     <div id="result"></div>
+
 
     <script>
         const uid = "538b548f-12db-4230-b48d-46d8842b2da9";
@@ -209,7 +219,7 @@
         const uploadpotalog = baseurl + '/pota/log';
         const migratelegacylog = baseurl + '/pota/log-migrate';
         const potalogstat = baseurl + '/pota/log-stat';
-        
+
 
         const locatejcc = baseurl + '/locator/jcc-jcg';
         const importjcc = baseurl + '/locator/jcc-jcg/import';
@@ -318,15 +328,15 @@
                 })
         };
 
-        async function search(baseurl, param) {
+        async function search(baseurl, param, auth = false) {
             event.preventDefault();
 
             let fullurl = baseurl;
             if (param != '') {
                 fullurl += `?${param}`;
             }
-            
-            if (!authToken) {
+
+            if (auth && !authToken) {
                 authToken = await getAuthToken();
             }
 
@@ -352,31 +362,18 @@
                 });
         };
 
-        document.getElementById('upload-sota-log')
-            .addEventListener('submit', function (event) {
-                event.preventDefault();
-                uploadFile(uploadsotalog, 'upload-sota-log-file', 'upload-sota-log-button');
-            });
-
-        document.getElementById('award-progress')
-            .addEventListener('submit', function (event) {
-                event.preventDefault();
-                search(uploadsotalog, '');
-            });
-
-
         document.getElementById('import-summit')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
                 uploadFile(importsota, 'import-summit-file', 'import-summit-button');
             });
-
+        /*
         document.getElementById('import-activation')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
                 uploadFile(importactivation, 'import-activation-file', 'import-activation-button');
             });
-
+        */
         document.getElementById('upload-ja-summit')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
@@ -388,20 +385,20 @@
                 event.preventDefault();
                 uploadFile(importpota, 'upload-pota-file', 'upload-pota-button');
             });
-
+        /*
         document.getElementById('upload-pota-log')
             .addEventListener('submit', function (event) {
                 event.preventDefault();
                 let eid = encodeURIComponent(logid);
                 uploadFile(uploadpotalog + `/${eid}`, 'upload-pota-log-file', 'upload-pota-log-button');
             });
-        
+        */
         document.getElementById('migrate-legacy-log')
             .addEventListener('submit', async function (event) {
                 event.preventDefault();
                 let name = document.getElementById('migrate-legacy-log-name').value;
                 let param = `name=${name}`;
-                search(migratelegacylog, param)
+                search(migratelegacylog, param, true)
             });
 
         document.getElementById('log-stat')
@@ -527,5 +524,18 @@
                 search(aprslogurl, param);
             });
 
+        /*
+        document.getElementById('upload-sota-log')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                uploadFile(uploadsotalog, 'upload-sota-log-file', 'upload-sota-log-button');
+            });
+ 
+        document.getElementById('award-progress')
+            .addEventListener('submit', function (event) {
+                event.preventDefault();
+                search(uploadsotalog, '');
+            });
+        */
     </script>
 </body>
