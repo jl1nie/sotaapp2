@@ -710,6 +710,10 @@ impl PotaRepository for PotaRepositoryImpl {
         let res = self.migrate_legacy(&dbname).await;
         if res.is_err() {
             tracing::error!("Legacy DB:{} migration failed.", dbname)
+        } else {
+            tokio::time::sleep(Duration::from_secs(10)).await;
+            tracing::info!("Sending graceful shutdown signal.");
+            let _ = self.config.shutdown_tx.send(true);
         }
         Ok(())
     }
