@@ -1,12 +1,11 @@
-use adapter::{
-    aprs::connect_aprsis_with, database::connect::connect_database_with,
-    geomag::connect_geomag_with, minikvs::MiniKvs,
-};
 use anyhow::{Error, Result};
 use axum::{http::HeaderValue, Router};
 use common::config::AppConfig;
 use firebase_auth_sdk::FireAuth;
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 use tokio::{net::TcpListener, sync::watch};
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -14,6 +13,10 @@ use tower_http::{
 };
 use tracing_subscriber::EnvFilter;
 
+use adapter::{
+    aprs::connect_aprsis_with, database::connect::connect_database_with,
+    geomag::connect_geomag_with, minikvs::MiniKvs,
+};
 use api::handler::v2;
 use registry::{AppRegistry, AppState};
 
@@ -35,7 +38,7 @@ async fn bootstrap() -> Result<()> {
     let pool = connect_database_with(&config).await?;
     let aprs = connect_aprsis_with(&config).await?;
     let geomag = connect_geomag_with(&config).await?;
-    let minikvs = MiniKvs::new(config.auth_token_ttl);
+    let minikvs = Arc::new(MiniKvs::new(config.auth_token_ttl));
     let module = AppRegistry::new(&config, pool, aprs, geomag, minikvs);
     let app_state = AppState::new(module);
     let job_state = app_state.clone();
