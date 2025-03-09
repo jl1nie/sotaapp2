@@ -26,6 +26,7 @@ impl From<AprsLog> for AprsLogView {
             latitude,
         } = l;
         let (time, state, distance) = match state {
+            AprsState::Travelling { time } => (time, "Travelling", 0.0),
             AprsState::Approaching { time, distance } => (time, "Approaching", distance),
             AprsState::Climbing { time, distance } => (time, "Climbing", distance),
             AprsState::NearSummit { time, distance, .. } => (time, "NearSummit", distance),
@@ -36,7 +37,7 @@ impl From<AprsLog> for AprsLogView {
             time,
             callsign: callsign.callsign,
             ssid: callsign.ssid.unwrap_or_default() as i32,
-            destination,
+            destination: destination.unwrap_or_default(),
             state: state.to_string(),
             distance,
             longitude,
@@ -95,8 +96,8 @@ impl From<AprsTrack> for Track {
                 callsign: aprs.callsign.callsign,
                 ssid: aprs.callsign.ssid.map(|s| s.to_string()),
                 lastseen: aprs.lastseen.to_rfc3339(),
-                distance: aprs.distance as i32, // 距離を整数に変換しています
-                summit: aprs.summit,
+                distance: aprs.distance.unwrap_or_default() as i32, // 距離を整数に変換しています
+                summit: aprs.summit.unwrap_or_default(),
                 spot_summit: aprs.spot_summit,
                 spot_time: aprs.spot_time.map(|dt| dt.to_rfc3339()),
                 spot_freq: aprs.spot_freq,

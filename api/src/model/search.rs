@@ -79,8 +79,8 @@ impl From<FindResult> for SearchBriefResponse {
             sota.iter().for_each(|r| {
                 res.push(SearchBriefData {
                     code: r.summit_code.clone(),
-                    lon: r.longitude.unwrap_or_default(),
-                    lat: r.latitude.unwrap_or_default(),
+                    lon: r.longitude,
+                    lat: r.latitude,
                     name: r.summit_name.clone(),
                     name_j: r.summit_name_j.clone().unwrap_or_default(),
                 })

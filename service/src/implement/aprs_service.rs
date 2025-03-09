@@ -1,16 +1,19 @@
-use super::admin_periodic::AdminPeriodicServiceImpl;
 use aprs_message::AprsCallsign;
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeZone, Utc};
+use regex::Regex;
+use std::collections::HashMap;
+use std::fmt::Write;
+
+use super::admin_periodic::AdminPeriodicServiceImpl;
+use super::user_service::UserServiceImpl;
+
 use common::error::AppResult;
 use common::utils::calculate_distance;
 use domain::model::{
     activation::Spot,
-    aprslog::{AprsLog, AprsState},
+    aprslog::{AprsLog, AprsState, AprsTrack},
     event::{FindActBuilder, FindAprs, FindRefBuilder},
 };
-use regex::Regex;
-use std::collections::HashMap;
-use std::fmt::Write;
 
 impl AdminPeriodicServiceImpl {
     async fn last_three_spots_messasge(&self, pat: &str) -> AppResult<String> {
@@ -79,6 +82,24 @@ impl AdminPeriodicServiceImpl {
         Ok(())
     }
 
+    async fn send_message(
+        &self,
+        from: &AprsCallsign,
+        message: &str,
+        mesg_enabled: bool,
+    ) -> AppResult<()> {
+        tracing::info!(
+            "APRS Message {}-{}: {}",
+            from.callsign,
+            from.ssid.unwrap_or_default(),
+            message
+        );
+        if mesg_enabled {
+            self.aprs_repo.write_message(from, message).await?;
+        }
+        Ok(())
+    }
+
     pub async fn process_position(
         &self,
         from: AprsCallsign,
@@ -97,16 +118,28 @@ impl AdminPeriodicServiceImpl {
         }
 
         let query = FindRefBuilder::default()
-            .sota_code(alert[0].reference.clone())
+            .center(longitude, latitude, 3000.0)
             .build();
+
         let dest = self.sota_repo.find_reference(&query).await?;
 
+        let time = Utc::now().naive_utc();
+
         if dest.is_empty() {
-            tracing::error!("Unknown destination {}", &alert[0].reference);
+            let log = AprsLog {
+                callsign: from,
+                destination: None,
+                state: AprsState::Travelling { time },
+                longitude,
+                latitude,
+            };
+
+            self.aprs_log_repo.insert_aprs_log(log).await?;
+
             return Ok(());
         }
 
-        let summit = dest[0].clone();
+        let summit = dest.first().unwrap().clone();
         let destination = summit.summit_code.clone();
 
         let patstr = self
@@ -123,10 +156,7 @@ impl AdminPeriodicServiceImpl {
                 .as_ref()
                 .is_some_and(|s| s.contains(&from.callsign));
 
-        let (destlat, destlon) = (
-            summit.latitude.unwrap_or_default(),
-            summit.longitude.unwrap_or_default(),
-        );
+        let (destlat, destlon) = (summit.latitude, summit.longitude);
 
         let query = FindAprs {
             callsign: Some(from.clone()),
@@ -134,7 +164,6 @@ impl AdminPeriodicServiceImpl {
         };
         let aprslog = self.aprs_log_repo.find_aprs_log(&query).await?;
 
-        let time = Utc::now().naive_utc();
         let distance = calculate_distance(latitude, longitude, destlat, destlon).floor();
 
         let new_state = if distance > 1000.0 {
@@ -142,13 +171,14 @@ impl AdminPeriodicServiceImpl {
         } else if distance > 300.0 {
             AprsState::Climbing { time, distance }
         } else if distance > 100.0 {
+            let message = format!(
+                "Approaching {}. {}m remaining.",
+                summit.summit_code, distance
+            );
             AprsState::NearSummit {
                 time,
                 distance,
-                message: Some(format!(
-                    "Approaching {}. {}m remaining.",
-                    summit.summit_code, distance
-                )),
+                message,
             }
         } else {
             let message = if destination.starts_with("JA") {
@@ -171,124 +201,44 @@ impl AdminPeriodicServiceImpl {
                     self.last_three_spots_messasge(".*").await?
                 )
             };
-
             AprsState::OnSummit {
                 time,
                 distance,
-                message: Some(message),
+                message,
             }
         };
 
-        let old_state = aprslog.first();
-
-        let state = if old_state.is_none() {
-            match new_state {
-                AprsState::NearSummit {
-                    message: Some(ref message),
-                    ..
-                } => {
-                    tracing::info!(
-                        "APRS Message {}-{}: {}",
-                        from.callsign,
-                        from.ssid.unwrap_or_default(),
-                        message
-                    );
-
-                    if mesg_enabled {
-                        self.aprs_repo.write_message(&from, message).await?;
-                    }
+        let state = match aprslog.first().map(|log| log.state.clone()) {
+            None => {
+                if let Some(message) = new_state.message() {
+                    self.send_message(&from, message, mesg_enabled).await?;
                 }
-                AprsState::OnSummit {
-                    message: Some(ref message),
-                    ..
-                } => {
-                    tracing::info!(
-                        "APRS Message {}-{}: {}",
-                        from.callsign,
-                        from.ssid.unwrap_or_default(),
-                        message
-                    );
-
-                    if mesg_enabled {
-                        self.aprs_repo.write_message(&from, message).await?;
+                new_state
+            }
+            Some(old_state) => match (&old_state, &new_state) {
+                (AprsState::NearSummit { .. }, AprsState::OnSummit { .. })
+                | (
+                    AprsState::Approaching { .. } | AprsState::Climbing { .. },
+                    AprsState::NearSummit { .. },
+                )
+                | (
+                    AprsState::Approaching { .. } | AprsState::Climbing { .. },
+                    AprsState::OnSummit { .. },
+                ) => {
+                    if let Some(mesg) = new_state.message() {
+                        self.send_message(&from, mesg, mesg_enabled).await?;
                     }
+                    new_state
                 }
-                _ => {}
-            }
-            new_state
-        } else {
-            let old_state = old_state.unwrap().state.clone();
-            match old_state {
-                AprsState::NearSummit { .. } => match new_state {
-                    AprsState::OnSummit {
-                        message: Some(ref message),
-                        ..
-                    } => {
-                        tracing::info!(
-                            "APRS Message {}-{}: {}",
-                            from.callsign,
-                            from.ssid.unwrap_or_default(),
-                            message
-                        );
-
-                        if mesg_enabled {
-                            self.aprs_repo.write_message(&from, message).await?;
-                        }
-                        new_state
-                    }
-                    _ => old_state,
-                },
-                AprsState::Approaching { .. } | AprsState::Climbing { .. } => match new_state {
-                    AprsState::NearSummit {
-                        message: Some(ref message),
-                        ..
-                    } => {
-                        tracing::info!(
-                            "APRS Message {}-{}: {}",
-                            from.callsign,
-                            from.ssid.unwrap_or_default(),
-                            message
-                        );
-
-                        if mesg_enabled {
-                            self.aprs_repo.write_message(&from, message).await?;
-                        }
-
-                        new_state
-                    }
-                    AprsState::OnSummit {
-                        message: Some(ref message),
-                        ..
-                    } => {
-                        tracing::info!(
-                            "APRS Message {}-{}: {}",
-                            from.callsign,
-                            from.ssid.unwrap_or_default(),
-                            message
-                        );
-
-                        if mesg_enabled {
-                            self.aprs_repo.write_message(&from, message).await?;
-                        }
-
-                        new_state
-                    }
-                    _ => new_state,
-                },
-                AprsState::OnSummit { .. } => match new_state {
-                    AprsState::OnSummit { .. } => new_state,
-                    _ => AprsState::Descending { time, distance },
-                },
-                AprsState::Descending { .. } => old_state,
-            }
+                (AprsState::OnSummit { .. }, AprsState::OnSummit { .. }) => new_state,
+                (AprsState::OnSummit { .. }, _) => AprsState::Descending { time, distance },
+                _ => old_state,
+            },
         };
 
         let log = AprsLog {
-            callsign: AprsCallsign {
-                callsign: from.callsign,
-                ssid: from.ssid,
-            },
-            destination,
+            callsign: from,
+            destination: Some(destination),
             state,
             longitude,
             latitude,
@@ -297,5 +247,70 @@ impl AdminPeriodicServiceImpl {
         self.aprs_log_repo.insert_aprs_log(log).await?;
 
         Ok(())
+    }
+}
+
+impl UserServiceImpl {
+    pub async fn get_track(&self, aprslog: Vec<AprsLog>) -> AppResult<Vec<AprsTrack>> {
+        let mut track: HashMap<AprsCallsign, Vec<(f64, f64)>> = HashMap::new();
+        let mut lastlog: HashMap<AprsCallsign, AprsLog> = HashMap::new();
+
+        for l in aprslog {
+            let callsign = l.callsign.clone();
+
+            track
+                .entry(callsign.clone())
+                .or_default()
+                .push((l.latitude, l.longitude));
+
+            lastlog.entry(callsign).or_insert(l);
+        }
+
+        let mut result = Vec::new();
+
+        for callsign in track.keys() {
+            let query = FindActBuilder::default()
+                .sota()
+                .operator(&callsign.callsign)
+                .issued_after(Utc::now() - Duration::hours(8))
+                .build();
+            let spot = self.act_repo.find_spots(&query).await?;
+
+            let log = lastlog.get(callsign).unwrap();
+            let lastseen = Utc.from_utc_datetime(&log.state.time());
+
+            let mut coordinates: Vec<_> = track.get(callsign).unwrap().to_vec();
+            coordinates.reverse();
+
+            let aprstrack = if let Some(spot) = spot.first() {
+                AprsTrack {
+                    callsign: callsign.clone(),
+                    coordinates,
+                    summit: Some(spot.reference.clone()),
+                    distance: Some(log.state.distance()),
+                    lastseen,
+                    spot_time: Some(spot.spot_time),
+                    spot_summit: Some(spot.reference.clone()),
+                    spot_freq: Some(spot.frequency.clone()),
+                    spot_mode: Some(spot.mode.clone()),
+                    spot_comment: spot.comment.clone(),
+                }
+            } else {
+                AprsTrack {
+                    callsign: callsign.clone(),
+                    coordinates,
+                    summit: log.destination.clone(),
+                    distance: Some(log.state.distance()),
+                    lastseen,
+                    spot_time: None,
+                    spot_summit: None,
+                    spot_freq: None,
+                    spot_mode: None,
+                    spot_comment: None,
+                }
+            };
+            result.push(aprstrack);
+        }
+        Ok(result)
     }
 }

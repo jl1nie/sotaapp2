@@ -68,7 +68,10 @@ impl AdminService for AdminServiceImpl {
         UploadSOTASummit { data }: UploadSOTASummit,
     ) -> AppResult<()> {
         let partial_equal = |r: &SotaReference, other: &SotaReference| {
-            r.summit_code == other.summit_code
+            r.activation_count == other.activation_count
+                && r.activation_date == other.activation_date
+                && r.activation_call == other.activation_call
+                && r.summit_code == other.summit_code
                 && r.association_name == other.association_name
                 && r.region_name == other.region_name
                 && r.alt_ft == other.alt_ft
@@ -78,48 +81,51 @@ impl AdminService for AdminServiceImpl {
                 && r.bonus_points == other.bonus_points
                 && r.valid_from == other.valid_from
                 && r.valid_to == other.valid_to
-                && r.activation_count == other.activation_count
-                && r.activation_date == other.activation_date
-                && r.activation_call == other.activation_call
         };
 
         let csv: Vec<SOTASummitCSV> = csv_reader(data, false, 2)?;
 
-        let new_hash: HashMap<_, _> = csv
+        tracing::info!("Latest summit list length = {}", csv.len());
+
+        let mut new_hash: HashMap<_, _> = csv
             .into_iter()
             .map(SotaReference::from)
             .filter(is_valid_summit)
             .map(|r| (r.summit_code.clone(), r))
             .collect();
 
-        let query = FindRefBuilder::new().sota().build();
-        let result = self.sota_repo.find_reference(&query).await?;
-        let old_hash: HashMap<_, _> = result
-            .into_iter()
-            .map(|r| (r.summit_code.clone(), r))
-            .collect();
+        let limit = 5000;
+        let mut offset = 0;
 
-        let updated: Vec<_> = new_hash
-            .keys()
-            .cloned()
-            .filter_map(|summit_code| {
-                let newsummit = new_hash.get(&summit_code).unwrap().clone();
-                if old_hash.contains_key(&summit_code) {
-                    let oldsummit = old_hash.get(&summit_code).unwrap();
-                    if !partial_equal(&newsummit, oldsummit) {
-                        Some(newsummit)
-                    } else {
-                        None
+        loop {
+            let query = FindRefBuilder::new()
+                .sota()
+                .limit(limit)
+                .offset(offset)
+                .build();
+            let result = self.sota_repo.find_reference(&query).await?;
+
+            if result.is_empty() {
+                break;
+            }
+
+            for r in result {
+                let n = new_hash.get(&r.summit_code);
+                if let Some(summit) = n {
+                    if partial_equal(&r, summit) {
+                        new_hash.remove(&r.summit_code);
                     }
-                } else {
-                    Some(newsummit)
                 }
-            })
-            .collect();
+            }
+            tracing::info!("checking {} summits.", offset);
+            offset += limit;
+        }
 
-        tracing::info!("update summit {} references.", updated.len());
+        let updated: Vec<_> = new_hash.into_values().collect();
 
+        tracing::info!("update {} summits.", updated.len());
         self.sota_repo.upsert_reference(updated).await?;
+
         Ok(())
     }
 

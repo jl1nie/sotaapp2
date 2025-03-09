@@ -1,4 +1,7 @@
+use std::cmp::Ordering;
+
 use async_trait::async_trait;
+use common::utils::calculate_distance;
 use shaku::Component;
 use sqlx::SqliteConnection;
 
@@ -544,9 +547,20 @@ impl SotaRepository for SotaRepositoryImpl {
 
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SotaReference>> {
         let query = findref_query_builder(SOTA, event);
-        let results = self.select_by_condition(&query).await?;
-        let results = results.into_iter().map(SotaReference::from).collect();
-        Ok(results)
+        let mut results = self.select_by_condition(&query).await?;
+
+        if event.center.is_some() {
+            let lat = event.center.as_ref().unwrap().lat;
+            let lon = event.center.as_ref().unwrap().lon;
+
+            results.sort_by(|a, b| {
+                let dist1 = calculate_distance(lat, lon, a.latitude.unwrap(), a.longitude.unwrap());
+                let dist2 = calculate_distance(lat, lon, b.latitude.unwrap(), b.longitude.unwrap());
+                dist1.partial_cmp(&dist2).unwrap_or(Ordering::Equal)
+            });
+        }
+
+        Ok(results.into_iter().map(SotaReference::from).collect())
     }
 
     async fn upload_log(&self, logs: Vec<SotaLog>) -> AppResult<()> {
@@ -569,8 +583,7 @@ impl SotaRepository for SotaRepositoryImpl {
 
     async fn find_log(&self, query: &FindLog) -> AppResult<Vec<SotaLog>> {
         let results = self.select_log_by_condition(query).await?;
-        let results = results.into_iter().map(SotaLog::from).collect();
-        Ok(results)
+        Ok(results.into_iter().map(SotaLog::from).collect())
     }
 
     async fn delete_log(&self, query: DeleteLog) -> AppResult<()> {
