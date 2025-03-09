@@ -55,7 +55,7 @@ impl AppRegistry {
         pool: ConnectionPool,
         aprs: AprsIS,
         geomag: GeoMag,
-        kvs: MiniKvs,
+        kvs: Arc<MiniKvs>,
     ) -> Self {
         AppRegistry::builder()
             .with_component_parameters::<SotaRepositoryImpl>(SotaRepositoryImplParameters {

@@ -7,23 +7,40 @@ use shaku::Component;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Entry {
-    value: String, // JSON文字列として格納
+    value: String,
     expires_at: NaiveDateTime,
 }
-#[derive(Debug, Clone)]
+
+#[derive(Debug)]
 pub struct MiniKvs {
     store: Arc<Mutex<HashMap<String, Entry>>>,
     ttl: Duration,
+    _handle: JoinHandle<()>,
 }
 
 impl MiniKvs {
     pub fn new(ttl_seconds: TimeDelta) -> Self {
+        let store = Arc::new(Mutex::new(HashMap::<String, Entry>::new()));
+        let ttl = Duration::seconds(ttl_seconds.num_seconds());
+        let update = store.clone();
+        let _handle = tokio::spawn(async move {
+            loop {
+                {
+                    let mut update = update.lock().await;
+                    let now = Utc::now().naive_utc();
+                    update.retain(|_, value| value.expires_at > now);
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            }
+        });
         MiniKvs {
-            store: Arc::new(Mutex::new(HashMap::new())),
-            ttl: Duration::seconds(ttl_seconds.num_seconds()),
+            store,
+            ttl,
+            _handle,
         }
     }
 
@@ -53,7 +70,7 @@ impl MiniKvs {
 #[derive(Component)]
 #[shaku(interface = KvsRepositry)]
 pub struct MiniKvsRepositryImpl {
-    kvs: MiniKvs,
+    kvs: Arc<MiniKvs>,
 }
 
 #[async_trait]
