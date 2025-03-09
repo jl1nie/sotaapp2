@@ -3,6 +3,9 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 
 #[derive(Debug, Clone)]
 pub enum AprsState {
+    Travelling {
+        time: NaiveDateTime,
+    },
     Approaching {
         time: NaiveDateTime,
         distance: f64,
@@ -14,12 +17,12 @@ pub enum AprsState {
     NearSummit {
         time: NaiveDateTime,
         distance: f64,
-        message: Option<String>,
+        message: String,
     },
     OnSummit {
         time: NaiveDateTime,
         distance: f64,
-        message: Option<String>,
+        message: String,
     },
     Descending {
         time: NaiveDateTime,
@@ -30,6 +33,7 @@ pub enum AprsState {
 impl AprsState {
     pub fn distance(&self) -> f64 {
         match self {
+            Self::Travelling { .. } => 0.0,
             Self::Approaching { distance, .. } => *distance,
             Self::Climbing { distance, .. } => *distance,
             Self::NearSummit { distance, .. } => *distance,
@@ -40,6 +44,7 @@ impl AprsState {
 
     pub fn time(&self) -> NaiveDateTime {
         match self {
+            Self::Travelling { time } => *time,
             Self::Approaching { time, .. } => *time,
             Self::Climbing { time, .. } => *time,
             Self::NearSummit { time, .. } => *time,
@@ -47,12 +52,23 @@ impl AprsState {
             Self::Descending { time, .. } => *time,
         }
     }
+
+    pub fn message(&self) -> Option<&String> {
+        match self {
+            Self::Travelling { .. } => None,
+            Self::Approaching { .. } => None,
+            Self::Climbing { .. } => None,
+            Self::NearSummit { message, .. } => Some(message),
+            Self::OnSummit { message, .. } => Some(message),
+            Self::Descending { .. } => None,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct AprsLog {
     pub callsign: AprsCallsign,
-    pub destination: String,
+    pub destination: Option<String>,
     pub state: AprsState,
     pub longitude: f64,
     pub latitude: f64,
@@ -63,8 +79,8 @@ pub struct AprsTrack {
     pub coordinates: Vec<(f64, f64)>,
     pub callsign: AprsCallsign,
     pub lastseen: DateTime<Utc>,
-    pub distance: f64,
-    pub summit: String,
+    pub distance: Option<f64>,
+    pub summit: Option<String>,
     pub spot_summit: Option<String>,
     pub spot_time: Option<DateTime<Utc>>,
     pub spot_freq: Option<String>,

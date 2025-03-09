@@ -393,15 +393,30 @@ impl PotaRepositoryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
-        let data = sqlx::query_as!(PotaLegcayLogRow,
-            r#"SELECT uuid,ref as "pota_code",type as "log_type",date,qso,attempt,activate FROM potalog"#)
-            .fetch_all(&pool).await?;
+        let limit = 5000;
+        let mut offset = 0;
 
-        tracing::info!("Found {} log records from legacy DB.", data.len());
+        loop {
+            tracing::info!("reading log offset = {}", offset);
 
-        for d in data.into_iter().enumerate() {
-            let row: PotaLogRow = d.1.into();
-            sqlx::query!(
+            let data = sqlx::query_as!(
+                PotaLegcayLogRow,
+                r#"SELECT uuid,ref as "pota_code",type as "log_type",date,qso,attempt,activate
+                FROM potalog
+                LIMIT $1 OFFSET $2"#,
+                limit,
+                offset
+            )
+            .fetch_all(&pool)
+            .await?;
+
+            if data.is_empty() {
+                break;
+            }
+
+            for d in data.into_iter().enumerate() {
+                let row: PotaLogRow = d.1.into();
+                sqlx::query!(
                  r#"
                 INSERT INTO pota_log (log_id, pota_code, first_qso_date, attempts, activations, qsos)
                 VALUES($1, $2, $3, $4, $5, $6)
@@ -412,12 +427,21 @@ impl PotaRepositoryImpl {
                     activations = EXCLUDED.activations,
                     qsos = EXCLUDED.qsos
             "#,
-            row.log_id, row.pota_code, row.first_qso_date,row.attempts, row.activations, row.qsos).execute(&mut *tx).await?;
-            if d.0 % 10000 == 0 {
-                tracing::info!("migrate legacy log {}", d.0);
+            row.log_id, row.pota_code,
+            row.first_qso_date,
+            row.attempts, 
+            row.activations, 
+            row.qsos)
+            .execute(&mut *tx).await?;
             }
+            
+            offset += limit;
+        
         }
+        
         tx.commit().await.map_err(AppError::TransactionError)?;
+        tracing::info!("done");
+
         Ok(())
     }
 
