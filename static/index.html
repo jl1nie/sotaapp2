@@ -174,12 +174,11 @@
 
     <h4>Search Name</h4>
     <form id="search-name" method="get">
-        <label for="name">Name:</label>
-        <input type="text" id="name-field" name="name"><br><br>
+        <label for="name-field">Name:</label>
+        <input type="text" id="name-field" name="name-field"><br><br>
 
         <label for="limit">Limit:</label>
         <input type="text" id="limit" name="limit" value="10"><br><br>
-        <input type="submit" value="送信">
     </form>
 
     <!--
@@ -460,7 +459,7 @@
                 search(geomag, '');
             });
 
-        document.getElementById('name-field')
+        document.getElementById('search-name')
             .addEventListener('input', function (event) {
                 event.preventDefault();
                 let name = document.getElementById('name-field').value;
