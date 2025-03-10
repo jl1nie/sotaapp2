@@ -7,6 +7,7 @@ use crate::model::sota::{SotaLog, SotaReference, SummitCode};
 
 #[async_trait]
 pub trait SotaRepository: Send + Sync + Interface {
+    async fn count_reference(&self, query: &FindRef) -> AppResult<i64>;
     async fn find_reference(&self, query: &FindRef) -> AppResult<Vec<SotaReference>>;
 
     async fn create_reference(&self, references: Vec<SotaReference>) -> AppResult<()>;

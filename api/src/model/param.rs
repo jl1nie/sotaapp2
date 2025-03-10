@@ -7,7 +7,7 @@ use domain::model::{
     id::LogId,
 };
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GetParam {
     pub lon: Option<f64>,
     pub lat: Option<f64>,

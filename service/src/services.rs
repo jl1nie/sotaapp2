@@ -21,6 +21,7 @@ use domain::model::sota::{SotaReference, SummitCode};
 
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
+    async fn count_references(&self, event: &FindRef) -> AppResult<i64>;
     async fn find_references(&self, event: FindRef) -> AppResult<FindResult>;
 
     async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;

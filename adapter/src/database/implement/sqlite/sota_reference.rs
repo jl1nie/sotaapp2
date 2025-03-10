@@ -408,6 +408,18 @@ impl SotaRepositoryImpl {
         Ok(rows)
     }
 
+    async fn count_by_condition(&self, query: &str) -> AppResult<i64> {
+        let mut select = r#"
+            SELECT COUNT(*) FROM sota_references WHERE "#
+            .to_string();
+        select.push_str(query);
+
+        let row: Result<i64, _> = sqlx::query_scalar(&select)
+            .fetch_one(self.pool.inner_ref())
+            .await;
+        Ok(row.unwrap_or(0))
+    }
+
     async fn select_log_by_condition(&self, query: &FindLog) -> AppResult<Vec<SotaLogRow>> {
         let mut select = r#"
             SELECT
@@ -543,6 +555,11 @@ impl SotaRepository for SotaRepositoryImpl {
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
+    }
+
+    async fn count_reference(&self, event: &FindRef) -> AppResult<i64> {
+        let query = findref_query_builder(SOTA, event);
+        Ok(self.count_by_condition(&query).await?)
     }
 
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SotaReference>> {
