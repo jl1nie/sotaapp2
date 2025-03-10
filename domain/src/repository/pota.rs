@@ -10,6 +10,7 @@ use crate::model::pota::{
 
 #[async_trait]
 pub trait PotaRepository: Send + Sync + Interface {
+    async fn count_reference(&self, query: &FindRef) -> AppResult<i64>;
     async fn find_reference(&self, query: &FindRef) -> AppResult<Vec<PotaRefLog>>;
 
     async fn create_reference(&self, refernces: Vec<PotaReference>) -> AppResult<()>;

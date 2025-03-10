@@ -66,6 +66,20 @@ fn get_spot_group(event: &FindAct, r: &Spot) -> GroupBy {
 
 #[async_trait]
 impl UserService for UserServiceImpl {
+    async fn count_references(&self, event: &FindRef) -> AppResult<i64> {
+        let mut result = 0i64;
+
+        if event.is_sota() {
+            result += self.sota_repo.count_reference(event).await?;
+        }
+
+        if event.is_pota() {
+            result += self.pota_repo.count_reference(event).await?;
+        }
+
+        Ok(result)
+    }
+
     async fn find_references(&self, event: FindRef) -> AppResult<FindResult> {
         let mut result = FindResult::default();
 

@@ -509,6 +509,18 @@ impl PotaRepositoryImpl {
         Ok((total, rows))
     }
 
+     async fn count_by_condition(&self, query: &str) -> AppResult<i64> {
+        let mut select = r#"
+            SELECT COUNT(*) FROM pota_references WHERE "#
+            .to_string();
+        select.push_str(query);
+
+        let row: Result<i64, _> = sqlx::query_scalar(&select)
+            .fetch_one(self.pool.inner_ref())
+            .await;
+        Ok(row.unwrap_or(0))
+    }
+
     async fn select_by_condition(
         &self,
         log_id: Option<LogId>,
@@ -579,6 +591,12 @@ impl PotaRepositoryImpl {
 
 #[async_trait]
 impl PotaRepository for PotaRepositoryImpl {
+
+    async fn count_reference(&self, event: &FindRef) -> AppResult<i64> {
+        let query = findref_query_builder(POTA, event);
+        Ok(self.count_by_condition(&query).await?)
+    }
+
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<PotaRefLog>> {
         let log_id = event.log_id;
         let query = findref_query_builder(POTA, event);

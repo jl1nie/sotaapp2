@@ -57,7 +57,7 @@ impl From<FindResult> for SearchFullResponse {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchBriefResponse {
-    pub count: u32,
+    pub count: usize,
     pub candidates: Vec<SearchBriefData>,
 }
 
@@ -99,7 +99,7 @@ impl From<FindResult> for SearchBriefResponse {
             });
         };
         Self {
-            count: res.len() as u32,
+            count: res.len(),
             candidates: res,
         }
     }
