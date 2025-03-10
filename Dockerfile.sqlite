@@ -17,4 +17,4 @@ COPY --from=builder ./app/target/release/app ./target/release/app
 COPY bin/mackerel-agent ./bin/mackerel-agent
 COPY static/ static/
 COPY adapter/migrations/sqlite migrations/
-ENTRYPOINT ["sh", "-c", "./bin/mackerel-agent init -apikey=$MACKEREL_APIKEY & ./bin/mackerel-agent & ./target/release/app"]
+ENTRYPOINT ["sh", "-c", "./bin/mackerel-agent init -apikey=$MACKEREL_APIKEY && ./bin/mackerel-agent & ./target/release/app"]
