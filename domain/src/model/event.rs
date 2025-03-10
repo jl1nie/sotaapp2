@@ -30,7 +30,6 @@ pub struct FindRef {
     pub name: Option<String>,
     pub lon: Option<f64>,
     pub lat: Option<f64>,
-    pub dist: Option<f64>,
     pub bbox: Option<BoundingBox>,
     pub center: Option<CenterRadius>,
     pub min_elev: Option<i32>,
@@ -122,12 +121,12 @@ impl FindRefBuilder {
         self.param.lat = Some(lat);
         self
     }
-
-    pub fn dist(mut self, dist: f64) -> Self {
-        self.param.dist = Some(dist);
-        self
-    }
-
+    /*
+        pub fn dist(mut self, dist: f64) -> Self {
+            self.param.dist = Some(dist);
+            self
+        }
+    */
     pub fn bbox(mut self, min_lon: f64, min_lat: f64, max_lon: f64, max_lat: f64) -> Self {
         let bbox = BoundingBox::new(min_lon, min_lat, max_lon, max_lat);
         self.param.bbox = Some(bbox);

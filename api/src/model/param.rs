@@ -91,10 +91,7 @@ pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppRes
             param.max_lat.unwrap(),
         );
     } else if param.dist.is_some() && param.lon.is_some() && param.lat.is_some() {
-        query = query
-            .lon(param.lon.unwrap())
-            .lat(param.lat.unwrap())
-            .dist(param.dist.unwrap());
+        query = query.center(param.lon.unwrap(), param.lat.unwrap(), param.dist.unwrap());
     }
 
     Ok(query.build())
