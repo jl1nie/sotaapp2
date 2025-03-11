@@ -4,16 +4,16 @@ use serde::Serialize;
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CenturyCodeView {
-    pub muni_code: i32,
-    pub prefecture: String,
-    pub municipality: String,
+    pub muni_code: Option<i32>,
+    pub prefecture: Option<String>,
+    pub municipality: Option<String>,
     pub jcc_code: Option<String>,
     pub ward_code: Option<String>,
     pub jcc_text: Option<String>,
     pub jcg_code: Option<String>,
     pub jcg_text: Option<String>,
     pub hamlog_code: Option<String>,
-    pub maidenhead: Option<String>,
+    pub maidenhead: String,
 }
 
 impl From<MunicipalityCenturyCode> for CenturyCodeView {
@@ -30,9 +30,9 @@ impl From<MunicipalityCenturyCode> for CenturyCodeView {
                 ward_code,
                 jcc_text,
             } => CenturyCodeView {
-                muni_code,
-                prefecture,
-                municipality,
+                muni_code: Some(muni_code),
+                prefecture: Some(prefecture),
+                municipality: Some(municipality),
                 jcc_code: Some(jcc_code),
                 ward_code,
                 jcc_text: Some(jcc_text),
@@ -46,9 +46,9 @@ impl From<MunicipalityCenturyCode> for CenturyCodeView {
                 jcg_text,
                 hamlog_code,
             } => CenturyCodeView {
-                muni_code,
-                prefecture,
-                municipality,
+                muni_code: Some(muni_code),
+                prefecture: Some(prefecture),
+                municipality: Some(municipality),
                 jcc_code: None,
                 ward_code: None,
                 jcc_text: None,
