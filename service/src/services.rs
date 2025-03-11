@@ -49,6 +49,7 @@ pub trait AdminService: Send + Sync + Interface {
     async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
     async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<()>;
     async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<()>;
+    async fn import_pota_park_list_ja(&self, event: UploadPOTAReference) -> AppResult<()>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
     async fn show_all_sota_references(

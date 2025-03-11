@@ -20,6 +20,8 @@ pub struct AppConfig {
     pub pota_spot_endpoint: String,
     pub sota_summitlist_endpoint: String,
     pub sota_summitlist_update_schedule: String,
+    pub pota_parklist_endpoint: String,
+    pub pota_parklist_update_schedule: String,
     pub geomag_endpoint: String,
     pub geomag_update_schedule: String,
     pub mapcode_endpoint: String,
@@ -62,21 +64,32 @@ impl AppConfig {
             ),
             sota_alert_endpoint: std::env::var("SOTA_ALERT_ENDPOINT").expect("SOTA_ALERT_ENDPOINT"),
             sota_spot_endpoint: std::env::var("SOTA_SPOT_ENDPOINT").expect("SOTA_SPOT_ENDPOINT"),
+
             sota_summitlist_endpoint: std::env::var("SOTA_SUMMITLIST_ENDPOINT")
                 .expect("SOTA_SUMMITLIST_ENDPOINT"),
             sota_summitlist_update_schedule: std::env::var("SUMMITLIST_SCHEDULE")
                 .expect("SUMMITLIST_SCHEDULE"),
+
+            pota_parklist_endpoint: std::env::var("POTA_PARKLIST_ENDPOINT")
+                .expect("POTA_PARKLIST_ENDPOINT"),
+            pota_parklist_update_schedule: std::env::var("PARKLIST_SCHEDULE")
+                .expect("PARKLIST_SCHEDULE"),
+
             pota_alert_endpoint: std::env::var("POTA_ALERT_ENDPOINT").expect("POTA_ALERT_ENDPOINT"),
             pota_spot_endpoint: std::env::var("POTA_SPOT_ENDPOINT").expect("POTA_SPOT_ENDPOINT"),
+
             geomag_endpoint: std::env::var("GEOMAG_ENDPOINT").expect("GEOMAG_ENDPOINT"),
             geomag_update_schedule: std::env::var("GEOMAG_SCHEDULE").expect("GEOMAG_SCHEDULE"),
+
             mapcode_endpoint: std::env::var("MAPCODE_ENDPOINT").expect("MAPCODE_ENDPOINT"),
+
             alert_update_interval: std::env::var("ALERT_INTERVAL")
                 .expect("ALERT INTERVAL")
                 .parse::<u64>()?,
             spot_update_interval: std::env::var("SPOT_INTERVAL")
                 .expect("SPOT_INTERVAL")
                 .parse::<u64>()?,
+
             alert_expire: Duration::hours(
                 std::env::var("ALERT_EXPIRE")
                     .expect("ALERT_EXPIRE")
@@ -97,11 +110,13 @@ impl AppConfig {
                     .expect("POTA_LOG_EXPIRE")
                     .parse::<i64>()?,
             ),
+
             aprs_host: std::env::var("APRSHOST").expect("APRSHOST"),
             aprs_user: std::env::var("APRSUSER").expect("APRSUSER"),
             aprs_password: std::env::var("APRSPASSWORD").expect("APRSPASSWORD"),
             aprs_exclude_user: std::env::var("APRS_EXCLUDE_USER").ok(),
             aprs_arrival_mesg_regex: std::env::var("APRS_ARRIVAL_MESG_REGEX").ok(),
+
             shutdown_rx,
             shutdown_tx,
         })

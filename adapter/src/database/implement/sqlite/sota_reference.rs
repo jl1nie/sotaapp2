@@ -534,9 +534,6 @@ impl SotaRepository for SotaRepositoryImpl {
         for r in references.into_iter().enumerate() {
             self.upsert_partial(SotaReferenceRow::from(r.1), &mut tx)
                 .await?;
-            if r.0 % 500 == 0 {
-                tracing::info!("upsert partial sota {} rescords", r.0);
-            }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
         Ok(())
