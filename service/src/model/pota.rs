@@ -93,7 +93,7 @@ impl TryFrom<POTAAllCSVFile> for PotaReference {
             park_locid: location_desc,
             park_type: "".to_string(),
             park_inactive,
-            park_area: 10,
+            park_area: 0,
             longitude: longitude
                 .parse::<f64>()
                 .map_err(|e| format!("parse error ={} {}", reference, e))?,
