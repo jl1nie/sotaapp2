@@ -48,7 +48,21 @@ impl PotaRepositoryImpl {
                     maidenhead,
                     "update"
                 )
-                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,$10, $11,$12,$13)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,$10, $11, $12, $13)
+                ON CONFLICT (pota_code, wwff_code) DO UPDATE
+                SET pota_code = EXCLUDED.pota_code,
+                    wwff_code = EXCLUDED.wwff_code,
+                    park_name = EXCLUDED.park_name,
+                    park_name_j = EXCLUDED.park_name_j,
+                    park_location = EXCLUDED.park_location,
+                    park_locid = EXCLUDED.park_locid,
+                    park_type = EXCLUDED.park_type,
+                    park_inactive = EXCLUDED.park_inactive,
+                    park_area = EXCLUDED.park_area,
+                    longitude = EXCLUDED.longitude,
+                    latitude = EXCLUDED.latitude,
+                    maidenhead = EXCLUDED.maidenhead,
+                    "update" = EXCLUDED."update"
             "#,
             r.pota_code,
             r.wwff_code,
@@ -613,10 +627,11 @@ impl PotaRepository for PotaRepositoryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
+        let len = references.len();
         for r in references.into_iter().enumerate() {
             self.create(PotaReferenceRow::from(r.1), &mut tx).await?;
-            if r.0 % 100 == 0 {
-                tracing::info!("insert pota {} rescords", r.0);
+            if r.0 % 5000 == 0 {
+                tracing::info!("upsert pota {}/{}", r.0, len);
             }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;

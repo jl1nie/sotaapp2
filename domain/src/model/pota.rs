@@ -28,8 +28,8 @@ pub struct PotaReference {
     pub park_type: String,
     pub park_inactive: bool,
     pub park_area: i32,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub longitude: f64,
+    pub latitude: f64,
     pub maidenhead: Maidenhead,
     pub update: DateTime<Utc>,
 }

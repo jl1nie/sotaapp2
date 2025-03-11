@@ -19,8 +19,8 @@ pub struct CreateRefRequest {
     pub park_type: String,
     pub park_inactive: bool,
     pub park_area: i32,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub longitude: f64,
+    pub latitude: f64,
 }
 
 impl From<CreateRefRequest> for Vec<PotaReference> {
@@ -51,7 +51,7 @@ impl From<CreateRefRequest> for Vec<PotaReference> {
             park_area,
             longitude,
             latitude,
-            maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
+            maidenhead: maidenhead(longitude, latitude),
             update,
         }]
     }
@@ -93,8 +93,8 @@ pub struct UpdateRefRequest {
     pub park_type: String,
     pub park_inactive: bool,
     pub park_area: i32,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub longitude: f64,
+    pub latitude: f64,
 }
 
 impl From<UpdateRefRequest> for Vec<PotaReference> {
@@ -125,7 +125,7 @@ impl From<UpdateRefRequest> for Vec<PotaReference> {
             park_area,
             longitude,
             latitude,
-            maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
+            maidenhead: maidenhead(longitude, latitude),
             update,
         }]
     }
@@ -171,8 +171,8 @@ pub struct PotaRefView {
     pub park_type: String,
     pub park_inactive: bool,
     pub park_area: i32,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub longitude: f64,
+    pub latitude: f64,
     pub maidenhead: Maidenhead,
 }
 

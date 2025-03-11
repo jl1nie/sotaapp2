@@ -42,8 +42,8 @@ impl From<PotaReference> for PotaReferenceRow {
             park_type: r.park_type,
             park_inactive: r.park_inactive,
             park_area: r.park_area as i64,
-            longitude: r.longitude,
-            latitude: r.latitude,
+            longitude: Some(r.longitude),
+            latitude: Some(r.latitude),
             maidenhead: r.maidenhead,
             update: r.update,
         }
@@ -105,8 +105,8 @@ impl From<PotaReferenceRow> for PotaReference {
             park_type: r.park_type,
             park_inactive: r.park_inactive,
             park_area: r.park_area as i32,
-            longitude: r.longitude,
-            latitude: r.latitude,
+            longitude: r.longitude.unwrap(),
+            latitude: r.latitude.unwrap(),
             maidenhead: r.maidenhead,
             update: r.update,
         }

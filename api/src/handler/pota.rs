@@ -46,7 +46,7 @@ async fn update_pota_reference(
         .map(|_| StatusCode::CREATED)
 }
 
-async fn import_pota_reference(
+async fn import_pota_reference_ja(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
@@ -57,7 +57,7 @@ async fn import_pota_reference(
         let reqs = UploadPOTAReference { data };
 
         return admin_service
-            .import_pota_park_list(reqs)
+            .import_pota_park_list_ja(reqs)
             .await
             .map(|_| StatusCode::CREATED);
     }
@@ -277,7 +277,7 @@ async fn log_migrate(
 
 pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
     let protected = Router::new()
-        .route("/import", post(import_pota_reference))
+        .route("/import", post(import_pota_reference_ja))
         .route("/parks/{park_code}", put(update_pota_reference))
         .route("/parks/{park_code}", delete(delete_pota_reference))
         .route("/log-migrate", get(log_migrate))

@@ -18,7 +18,7 @@ use domain::repository::{
 };
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
-use crate::model::pota::{POTACSVFile, UploadPOTAReference};
+use crate::model::pota::{POTAAllCSVFile, POTACSVFile, UploadPOTAReference};
 use crate::model::sota::{SOTASumitOptCSV, SOTASummitCSV};
 use crate::model::sota::{UploadSOTASummit, UploadSOTASummitOpt};
 
@@ -173,11 +173,22 @@ impl AdminService for AdminServiceImpl {
         &self,
         UploadPOTAReference { data }: UploadPOTAReference,
     ) -> AppResult<()> {
+        let requests: Vec<POTAAllCSVFile> = csv_reader(data, false, 1)?;
+        let newref: Vec<_> = requests
+            .into_iter()
+            .filter_map(|r| PotaReference::try_from(r).ok())
+            .filter(|r| !r.pota_code.starts_with("JP-"))
+            .collect();
+        self.pota_repo.create_reference(newref).await?;
+        Ok(())
+    }
+
+    async fn import_pota_park_list_ja(
+        &self,
+        UploadPOTAReference { data }: UploadPOTAReference,
+    ) -> AppResult<()> {
         let requests: Vec<POTACSVFile> = csv_reader(data, false, 1)?;
         let newref = requests.into_iter().map(PotaReference::from).collect();
-        self.pota_repo
-            .delete_reference(DeleteRef::DeleteAll)
-            .await?;
         self.pota_repo.create_reference(newref).await?;
         Ok(())
     }

@@ -3,7 +3,7 @@ use tokio::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::aggregator::alerts_spots::{update_alerts, update_spots};
-use crate::aggregator::summitlist::update_summit_list;
+use crate::aggregator::updatelist::{update_park_list, update_summit_list};
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
 use registry::{AppRegistry, AppState};
@@ -64,13 +64,30 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
 
     let schedule = config.sota_summitlist_update_schedule.clone();
     let config_summit = config.clone();
+    let registry_summit = registry.clone();
     sched
         .add(
             Job::new_async(&schedule, move |_uuid, _l| {
                 let config = config_summit.clone();
-                let registry = registry.clone();
+                let registry = registry_summit.clone();
                 Box::pin(async move {
                     update_summit_list(config, registry).await.unwrap();
+                })
+            })
+            .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
+        )
+        .await
+        .map_err(AppError::CronjobError)?;
+
+    let schedule = config.pota_parklist_update_schedule.clone();
+    let config_pota = config.clone();
+    sched
+        .add(
+            Job::new_async(&schedule, move |_uuid, _l| {
+                let config = config_pota.clone();
+                let registry = registry.clone();
+                Box::pin(async move {
+                    update_park_list(config, registry).await.unwrap();
                 })
             })
             .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),

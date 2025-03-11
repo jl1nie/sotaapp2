@@ -47,11 +47,62 @@ impl From<POTACSVFile> for PotaReference {
             park_type,
             park_inactive: park_inactive.is_some(),
             park_area,
-            longitude,
-            latitude,
+            longitude: longitude.unwrap(),
+            latitude: latitude.unwrap(),
             maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
             update,
         }
+    }
+}
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct POTAAllCSVFile {
+    pub reference: String,
+    pub name: String,
+    pub active: String,
+    pub entity_id: String,
+    pub location_desc: String,
+    pub latitude: String,
+    pub longitude: String,
+    pub grid: String,
+}
+
+impl TryFrom<POTAAllCSVFile> for PotaReference {
+    type Error = String;
+    fn try_from(value: POTAAllCSVFile) -> Result<Self, Self::Error> {
+        let POTAAllCSVFile {
+            reference,
+            name,
+            active,
+            location_desc,
+            latitude,
+            longitude,
+            grid,
+            ..
+        } = value;
+
+        let update: DateTime<Utc> = Utc::now();
+        let park_inactive = !&active.contains("1");
+
+        Ok(Self {
+            pota_code: reference.clone(),
+            wwff_code: "".to_string(),
+            park_name: name.clone(),
+            park_name_j: name,
+            park_location: "".to_string(),
+            park_locid: location_desc,
+            park_type: "".to_string(),
+            park_inactive,
+            park_area: 10,
+            longitude: longitude
+                .parse::<f64>()
+                .map_err(|e| format!("parse error ={} {}", reference, e))?,
+            latitude: latitude
+                .parse::<f64>()
+                .map_err(|e| format!("parse error ={} {}", reference, e))?,
+            maidenhead: grid,
+            update,
+        })
     }
 }
 
