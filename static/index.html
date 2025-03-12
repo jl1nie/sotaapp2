@@ -52,6 +52,9 @@
     </form>
 
     <hr>
+    <h4>Result(JSON)</h4>
+    <div id="result"></div>
+    <hr>
     <!--
     <h4>Update SOTA Summits list </h4>
     <form id="import-activation" method="post" enctype="multipart/form-data">
@@ -195,10 +198,6 @@
     </form>
     -->
 
-    <h4>Search Result(JSON)</h4>
-    <div id="result"></div>
-
-
     <script>
         const uid = "538b548f-12db-4230-b48d-46d8842b2da9";
         var logid = "none";
@@ -282,7 +281,7 @@
                 .then(response => {
                     if (response.ok) {
                         console.log('Success:', response.status);
-                        resultDiv.textContent = 'Upload done: ' + response;
+                        resultDiv.textContent = 'Upload done: ' + response.status;
                     } else
                         throw new Error('HTTP error, status = ' + response.status);
 
@@ -291,6 +290,7 @@
                     authToken = null;
                     console.error('Error:', error.message);
                     resultDiv.textContent = 'Error: ' + error.message;
+                    alert("Upload error: " + error.message);
                 })
                 .finally(() => {
                     button.disabled = false;
@@ -322,6 +322,7 @@
                     authToken = null;
                     console.error('Error:', error);
                     resultDiv.textContent = 'Error: ' + response.status;
+                    alert("Delete error: " + error.message);
                 })
                 .finally(() => {
                     button.disabled = false;
@@ -359,6 +360,7 @@
                 .catch(error => {
                     console.error('Error:', error);
                     resultDiv.textContent = 'Error: ' + error;
+                    alert("Get error: " + error.message);
                 });
         };
 
