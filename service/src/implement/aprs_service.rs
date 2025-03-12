@@ -89,9 +89,10 @@ impl AdminPeriodicServiceImpl {
         mesg_enabled: bool,
     ) -> AppResult<()> {
         tracing::info!(
-            "APRS Message {}-{}: {}",
+            "APRS Message {}-{}({}): {}",
             from.callsign,
             from.ssid.unwrap_or_default(),
+            mesg_enabled,
             message
         );
         if mesg_enabled {
@@ -134,7 +135,6 @@ impl AdminPeriodicServiceImpl {
                 latitude,
             };
 
-            tracing::info!("aprslog ={:?}", log);
             self.aprs_log_repo.insert_aprs_log(log).await?;
 
             return Ok(());
@@ -245,7 +245,6 @@ impl AdminPeriodicServiceImpl {
             latitude,
         };
 
-        tracing::info!("aprslog ={:?}", log);
         self.aprs_log_repo.insert_aprs_log(log).await?;
 
         Ok(())
