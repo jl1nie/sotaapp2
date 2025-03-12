@@ -186,7 +186,10 @@ impl PotaRepositoryImpl {
         )
         .fetch_one(self.pool.inner_ref())
         .await
-        .map_err(AppError::RowNotFound)
+        .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })
     }
 
     async fn update_logid(
@@ -484,7 +487,10 @@ impl PotaRepositoryImpl {
         let row: PotaReferenceRow = sql_query
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
         Ok(row)
     }
 
@@ -519,7 +525,10 @@ impl PotaRepositoryImpl {
         let rows: Vec<PotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
         Ok((total, rows))
     }
 
@@ -598,7 +607,10 @@ impl PotaRepositoryImpl {
         let rows: Vec<PotaRefLogRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
         Ok(rows)
     }
 }

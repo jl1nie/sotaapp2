@@ -320,10 +320,14 @@ impl SotaRepositoryImpl {
         select.push_str(query);
 
         let sql_query = sqlx::query_as::<_, SotaReferenceRow>(&select);
-        let row: SotaReferenceRow = sql_query
-            .fetch_one(self.pool.inner_ref())
-            .await
-            .map_err(AppError::RowNotFound)?;
+        let row: SotaReferenceRow =
+            sql_query
+                .fetch_one(self.pool.inner_ref())
+                .await
+                .map_err(|e| AppError::RowNotFound {
+                    source: e,
+                    location: format!("{}:{}", file!(), line!()),
+                })?;
         Ok(row)
     }
 
@@ -331,7 +335,10 @@ impl SotaRepositoryImpl {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
         let total: i64 = row.count;
 
         let mut select = r#"
@@ -366,7 +373,10 @@ impl SotaRepositoryImpl {
         let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
         Ok((total, rows))
     }
 
@@ -403,7 +413,10 @@ impl SotaRepositoryImpl {
         let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
 
         Ok(rows)
     }
@@ -455,10 +468,14 @@ impl SotaRepositoryImpl {
             }
         }
 
-        let rows: Vec<SotaLogRow> = sql_query
-            .fetch_all(self.pool.inner_ref())
-            .await
-            .map_err(AppError::RowNotFound)?;
+        let rows: Vec<SotaLogRow> =
+            sql_query
+                .fetch_all(self.pool.inner_ref())
+                .await
+                .map_err(|e| AppError::RowNotFound {
+                    source: e,
+                    location: format!("{}:{}", file!(), line!()),
+                })?;
 
         Ok(rows)
     }
