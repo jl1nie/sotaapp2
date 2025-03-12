@@ -253,7 +253,7 @@ impl AdminPeriodicServiceImpl {
 }
 
 impl UserServiceImpl {
-    pub async fn get_track(&self, aprslog: Vec<AprsLog>) -> AppResult<Vec<AprsTrack>> {
+    pub async fn generate_track(&self, aprslog: Vec<AprsLog>) -> AppResult<Vec<AprsTrack>> {
         let mut track: HashMap<AprsCallsign, Vec<(f64, f64)>> = HashMap::new();
         let mut lastlog: HashMap<AprsCallsign, AprsLog> = HashMap::new();
 

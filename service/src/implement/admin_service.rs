@@ -59,7 +59,9 @@ impl AdminService for AdminServiceImpl {
         self.sota_repo
             .delete_reference(DeleteRef::DeleteAll)
             .await?;
+
         self.sota_repo.create_reference(req).await?;
+
         Ok(())
     }
 
@@ -117,7 +119,6 @@ impl AdminService for AdminServiceImpl {
                     }
                 }
             }
-            tracing::info!("checking {} summits.", offset);
             offset += limit;
         }
 
@@ -166,6 +167,7 @@ impl AdminService for AdminServiceImpl {
                 .collect();
             self.sota_repo.update_reference(newref).await?;
         }
+
         Ok(())
     }
 
@@ -179,7 +181,10 @@ impl AdminService for AdminServiceImpl {
             .filter_map(|r| PotaReference::try_from(r).ok())
             .filter(|r| !r.pota_code.starts_with("JP-"))
             .collect();
+
+        tracing::info!("update {} parks.", newref.len());
         self.pota_repo.create_reference(newref).await?;
+
         Ok(())
     }
 
@@ -188,8 +193,11 @@ impl AdminService for AdminServiceImpl {
         UploadPOTAReference { data }: UploadPOTAReference,
     ) -> AppResult<()> {
         let requests: Vec<POTACSVFile> = csv_reader(data, false, 1)?;
-        let newref = requests.into_iter().map(PotaReference::from).collect();
+        let newref: Vec<_> = requests.into_iter().map(PotaReference::from).collect();
+
+        tracing::info!("update {} JA parks.", newref.len());
         self.pota_repo.create_reference(newref).await?;
+
         Ok(())
     }
 
@@ -203,6 +211,7 @@ impl AdminService for AdminServiceImpl {
             .map(MunicipalityCenturyCode::from)
             .collect();
         self.loc_repo.upload_muni_century_list(newtable).await?;
+
         Ok(())
     }
 
