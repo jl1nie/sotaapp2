@@ -201,7 +201,10 @@ impl ActivationRepositryImpl {
         let rows: Vec<SpotRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
 
         Ok(rows.into_iter().map(Spot::from).collect())
     }
