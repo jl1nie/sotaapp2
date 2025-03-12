@@ -376,6 +376,6 @@ impl UserService for UserServiceImpl {
 
     async fn get_aprs_track(&self, event: FindAprs) -> AppResult<Vec<AprsTrack>> {
         let aprslog = self.find_aprs_log(event).await?;
-        self.get_track(aprslog).await
+        self.generate_track(aprslog).await
     }
 }
