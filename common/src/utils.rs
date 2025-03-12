@@ -53,5 +53,6 @@ pub fn calculate_distance(lat: f64, lon: f64, lat2: f64, lon2: f64) -> f64 {
 }
 
 pub fn maidenhead(lon: f64, lat: f64) -> String {
+    let lon = if lon >= 180.0 { lon - 360.0f64 } else { lon };
     longlat_to_grid(lon, lat, 8).unwrap_or("--------".to_string())
 }
