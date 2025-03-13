@@ -290,8 +290,8 @@ impl SotaRepositoryImpl {
         Ok(())
     }
 
-    async fn select(&self, query: &str) -> AppResult<SotaReferenceRow> {
-        let mut select = r#"
+    async fn select(&self, query: &FindRef) -> AppResult<SotaReferenceRow> {
+        let select = r#"
             SELECT
                 summit_code,
                 association_name,
@@ -314,12 +314,11 @@ impl SotaRepositoryImpl {
                 activation_count,
                 activation_date,
                 activation_call
-            FROM sota_references WHERE "#
-            .to_string();
+            FROM sota_references WHERE "#;
 
-        select.push_str(query);
+        let mut builder = findref_query_builder(SOTA, select, query);
+        let sql_query = builder.build_query_as::<SotaReferenceRow>();
 
-        let sql_query = sqlx::query_as::<_, SotaReferenceRow>(&select);
         let row: SotaReferenceRow =
             sql_query
                 .fetch_one(self.pool.inner_ref())
@@ -328,10 +327,11 @@ impl SotaRepositoryImpl {
                     source: e,
                     location: format!("{}:{}", file!(), line!()),
                 })?;
+
         Ok(row)
     }
 
-    async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<SotaReferenceRow>)> {
+    async fn select_pagenated(&self, event: &FindRef) -> AppResult<(i64, Vec<SotaReferenceRow>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
             .fetch_one(self.pool.inner_ref())
             .await
@@ -341,7 +341,7 @@ impl SotaRepositoryImpl {
             })?;
         let total: i64 = row.count;
 
-        let mut select = r#"
+        let select = r#"
             SELECT
                 summit_code,
                 association_name,
@@ -364,12 +364,11 @@ impl SotaRepositoryImpl {
                 activation_count,
                 activation_date,
                 activation_call
-            FROM sota_references WHERE "#
-            .to_string();
+            FROM sota_references WHERE "#;
 
-        select.push_str(query);
+        let mut builder = findref_query_builder(SOTA, select, event);
+        let sql_query = builder.build_query_as::<SotaReferenceRow>();
 
-        let sql_query = sqlx::query_as::<_, SotaReferenceRow>(&select);
         let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
@@ -377,11 +376,12 @@ impl SotaRepositoryImpl {
                 source: e,
                 location: format!("{}:{}", file!(), line!()),
             })?;
+
         Ok((total, rows))
     }
 
-    async fn select_by_condition(&self, query: &str) -> AppResult<Vec<SotaReferenceRow>> {
-        let mut select = r#"
+    async fn select_by_condition(&self, query: &FindRef) -> AppResult<Vec<SotaReferenceRow>> {
+        let select = r#"
             SELECT
                 summit_code,
                 association_name,
@@ -404,12 +404,10 @@ impl SotaRepositoryImpl {
                 activation_count,
                 activation_date,
                 activation_call
-            FROM sota_references WHERE "#
-            .to_string();
+            FROM sota_references WHERE "#;
 
-        select.push_str(query);
-
-        let sql_query = sqlx::query_as::<_, SotaReferenceRow>(&select);
+        let mut builder = findref_query_builder(SOTA, select, query);
+        let sql_query = builder.build_query_as::<SotaReferenceRow>();
         let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
@@ -421,20 +419,20 @@ impl SotaRepositoryImpl {
         Ok(rows)
     }
 
-    async fn count_by_condition(&self, query: &str) -> AppResult<i64> {
-        let mut select = r#"
-            SELECT COUNT(*) FROM sota_references WHERE "#
-            .to_string();
-        select.push_str(query);
+    async fn count_by_condition(&self, event: &FindRef) -> AppResult<i64> {
+        let select = r#"
+            SELECT COUNT(*) FROM sota_references WHERE "#;
 
-        let row: Result<i64, _> = sqlx::query_scalar(&select)
-            .fetch_one(self.pool.inner_ref())
-            .await;
+        let mut builder = findref_query_builder(SOTA, select, event);
+        let sql_query = builder.build_query_scalar::<i64>();
+
+        let row = sql_query.fetch_one(self.pool.inner_ref()).await;
+
         Ok(row.unwrap_or(0))
     }
 
     async fn select_log_by_condition(&self, query: &FindLog) -> AppResult<Vec<SotaLogRow>> {
-        let mut select = r#"
+        let select = r#"
             SELECT
                 user_id,
                 my_callsign,
@@ -447,36 +445,18 @@ impl SotaRepositoryImpl {
                 his_summit_code,
                 comment,
                 "update"
-            FROM sota_log WHERE "#
-            .to_string();
+            FROM sota_log WHERE "#;
 
-        let cond = findlog_query_builder(query);
+        let mut builder = findlog_query_builder(select, query);
+        let sql_query = builder.build_query_as::<SotaLogRow>();
 
-        select.push_str(&cond);
-
-        let mut sql_query = sqlx::query_as::<_, SotaLogRow>(&select);
-
-        if select.contains("time >=") {
-            if let Some(after) = query.after {
-                sql_query = sql_query.bind(after);
-            }
-        };
-
-        if select.contains("time <=") {
-            if let Some(before) = query.before {
-                sql_query = sql_query.bind(before);
-            }
-        }
-
-        let rows: Vec<SotaLogRow> =
-            sql_query
-                .fetch_all(self.pool.inner_ref())
-                .await
-                .map_err(|e| AppError::RowNotFound {
-                    source: e,
-                    location: format!("{}:{}", file!(), line!()),
-                })?;
-
+        let rows: Vec<_> = sql_query
+            .fetch_all(self.pool.inner_ref())
+            .await
+            .map_err(|e| AppError::RowNotFound {
+                source: e,
+                location: format!("{}:{}", file!(), line!()),
+            })?;
         Ok(rows)
     }
 }
@@ -502,8 +482,7 @@ impl SotaRepository for SotaRepositoryImpl {
     }
 
     async fn show_reference(&self, event: &FindRef) -> AppResult<SotaReference> {
-        let query = findref_query_builder(SOTA, event);
-        let result = self.select(&query).await?;
+        let result = self.select(event).await?;
         Ok(result.into())
     }
 
@@ -513,8 +492,7 @@ impl SotaRepository for SotaRepositoryImpl {
     ) -> AppResult<PagenatedResult<SotaReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
-        let query = findref_query_builder(SOTA, event);
-        let (total, results) = self.select_pagenated(&query).await?;
+        let (total, results) = self.select_pagenated(event).await?;
         Ok(PagenatedResult {
             total,
             limit,
@@ -572,13 +550,11 @@ impl SotaRepository for SotaRepositoryImpl {
     }
 
     async fn count_reference(&self, event: &FindRef) -> AppResult<i64> {
-        let query = findref_query_builder(SOTA, event);
-        Ok(self.count_by_condition(&query).await?)
+        Ok(self.count_by_condition(event).await?)
     }
 
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SotaReference>> {
-        let query = findref_query_builder(SOTA, event);
-        let mut results = self.select_by_condition(&query).await?;
+        let mut results = self.select_by_condition(event).await?;
 
         if event.center.is_some() {
             let lat = event.center.as_ref().unwrap().lat;

@@ -1,145 +1,193 @@
+use sqlx::query_builder::QueryBuilder;
+
 use common::utils::calculate_bounding_box;
 use domain::model::event::{CenterRadius, FindAct, FindLog, FindRef};
 use domain::model::AwardProgram::{self, POTA, SOTA, WWFF};
+use sqlx::Sqlite;
 
-pub fn findref_query_builder(mode: AwardProgram, r: &FindRef) -> String {
-    let mut query: String = String::new();
+pub fn findref_query_builder<'a>(
+    mode: AwardProgram,
+    query: &str,
+    r: &FindRef,
+) -> QueryBuilder<'a, Sqlite> {
+    let mut builder = QueryBuilder::new(query);
 
     if r.sota_code.is_some() && mode == SOTA {
-        query.push_str(&format!(
-            "(summit_code = '{}') AND ",
-            r.sota_code.clone().unwrap()
-        ))
+        builder.push(" (summit_code = ");
+        builder.push_bind(r.sota_code.clone().unwrap());
+        builder.push(" ) AND ");
     } else if r.pota_code.is_some() && mode == POTA {
-        query.push_str(&format!(
-            "(p.pota_code = '{}') AND ",
-            r.pota_code.clone().unwrap()
-        ))
+        builder.push(" (p.pota_code =");
+        builder.push_bind(r.pota_code.clone().unwrap());
+        builder.push(" ) AND ");
     } else if r.wwff_code.is_some() && mode == WWFF {
-        query.push_str(&format!(
-            "(p.wwff_code = '{}') AND ",
-            r.wwff_code.clone().unwrap()
-        ))
+        builder.push("(p.wwff_code =");
+        builder.push_bind(r.wwff_code.clone().unwrap());
+        builder.push(" ) AND ");
     } else {
         if let Some(name) = &r.name {
             if r.is_sota() && mode == SOTA {
-                let name = format!("'%{}%'", name);
-                query.push_str(&format!(
-                    "(summit_code LIKE {} OR summit_name LIKE {} OR summit_name_j LIKE {}) AND ",
-                    name, name, name
-                ));
+                builder.push(" (summit_code LIKE ");
+                builder.push_bind(format!("%{}%", name));
+                builder.push(" OR summit_name LIKE ");
+                builder.push_bind(format!("%{}%", name));
+                builder.push(" OR summit_name_j LIKE ");
+                builder.push_bind(format!("%{}%", name));
+                builder.push(" ) AND ");
             } else {
-                let name = format!("'%{}%'", name);
-                query.push_str(&format!(
-                "(p.pota_code LIKE {} OR p.wwff_code LIKE {} OR p.park_name LIKE {} OR p.park_name_j LIKE {}) AND ",
-                name, name, name, name
-            ));
+                builder.push(" (p.pota_code LIKE ");
+                builder.push_bind(format!("%{}%", name));
+                builder.push(" OR p.wwff_code LIKE ");
+                builder.push_bind(format!("%{}%", name));
+                builder.push(" OR p.park_name LIKE ");
+                builder.push_bind(format!("%{}%", name));
+                builder.push(" OR p.park_name_j LIKE ");
+                builder.push_bind(format!("%{}%", name));
+                builder.push(" ) AND ");
             }
         }
 
-        if let Some(min_elev) = &r.min_elev {
+        if let Some(min_elev) = r.min_elev {
             if r.is_sota() && mode == SOTA {
-                query.push_str(&format!("(alt_m >= {}) AND ", min_elev));
+                builder.push(" (alt_m >= ");
+                builder.push_bind(min_elev);
+                builder.push(" ) AND ");
             }
         }
 
-        if let Some(min_area) = &r.min_area {
+        if let Some(min_area) = r.min_area {
             if r.is_pota() && (mode == POTA || mode == WWFF) {
-                query.push_str(&format!("(p.park_area >= {}) AND ", min_area));
+                builder.push(" (p.park_area >= ");
+                builder.push_bind(min_area);
+                builder.push(" ) AND ");
             }
         }
 
         if let Some(bbox) = &r.bbox {
-            query.push_str(&format!(
-                "(longitude > {} AND latitude > {} AND longitude < {} AND latitude < {}) AND ",
-                bbox.min_lon, bbox.min_lat, bbox.max_lon, bbox.max_lat
-            ));
+            builder.push(" (longitude BETWEEN ");
+            builder.push_bind(bbox.min_lon);
+            builder.push(" AND ");
+            builder.push_bind(bbox.max_lon);
+            builder.push(" AND ");
+            builder.push(" latitude BETWEEN ");
+            builder.push_bind(bbox.min_lat);
+            builder.push(" AND ");
+            builder.push_bind(bbox.max_lat);
+            builder.push(" ) AND ");
         } else if let Some(CenterRadius { lon, lat, rad }) = r.center {
             let (min_lat, min_lon, max_lat, max_lon) = calculate_bounding_box(lat, lon, rad);
 
-            query.push_str(&format!(
-                "(longitude > {} AND latitude > {} AND longitude < {} AND latitude < {}) AND ",
-                min_lon, min_lat, max_lon, max_lat
-            ));
+            builder.push(" (longitude BETWEEN ");
+            builder.push_bind(min_lon);
+            builder.push(" AND ");
+            builder.push_bind(max_lon);
+            builder.push(" AND ");
+            builder.push(" latitude BETWEEN ");
+            builder.push_bind(min_lat);
+            builder.push(" AND ");
+            builder.push_bind(max_lat);
+            builder.push(" ) AND ");
         }
     }
-    query.push_str("TRUE ");
+    builder.push(" TRUE ");
 
     if r.is_sota() && mode == SOTA {
         if r.min_elev.is_some() {
-            query.push_str("ORDER BY alt_m DESC ");
+            builder.push(" ORDER BY alt_m DESC ");
         } else {
-            query.push_str("ORDER BY summit_code ");
+            builder.push(" ORDER BY summit_code ");
         }
     } else if r.is_pota() && (mode == POTA || mode == WWFF) {
         if r.min_area.is_some() {
-            query.push_str("ORDER BY p.park_area DESC ");
+            builder.push(" ORDER BY p.park_area DESC ");
         } else {
-            query.push_str("ORDER BY p.pota_code ");
+            builder.push(" ORDER BY p.pota_code ");
         }
     }
 
-    if let Some(limit) = &r.limit {
-        query.push_str(&format!("LIMIT {} ", limit));
+    if let Some(limit) = r.limit {
+        builder.push(" LIMIT ");
+        builder.push_bind(limit);
     }
 
-    if let Some(offset) = &r.offset {
-        query.push_str(&format!("OFFSET {} ", offset));
+    if let Some(offset) = r.offset {
+        builder.push(" OFFSET ");
+        builder.push_bind(offset);
     }
-    query
+
+    builder
 }
 
-pub fn findact_query_builder(is_alert: bool, r: &FindAct) -> String {
-    let mut query: String = String::new();
+pub fn findact_query_builder<'a>(
+    is_alert: bool,
+    query: &str,
+    r: &FindAct,
+) -> QueryBuilder<'a, Sqlite> {
+    let mut builder = QueryBuilder::new(query);
 
     if let Some(prog) = &r.program {
-        query.push_str(format!("program = {} AND ", prog.as_i32()).as_str());
+        builder.push(" program = ");
+        builder.push_bind(prog.as_i32());
+        builder.push(" AND ");
     }
 
-    if let Some(pat) = &r.operator {
-        query.push_str(&format!("operator = '{}' AND ", pat));
+    if let Some(pat) = r.operator.clone() {
+        builder.push(" operator = ");
+        builder.push_bind(pat);
+        builder.push(" AND ");
     }
 
     if is_alert {
-        if let Some(_after) = r.issued_after {
-            query.push_str("start_time >= ? AND ");
+        if let Some(after) = r.issued_after {
+            builder.push(" start_time >= ");
+            builder.push_bind(after);
+            builder.push(" AND ");
         }
-        query.push_str("TRUE ORDER BY start_time ASC ");
+        builder.push("TRUE ORDER BY start_time ASC ");
     } else {
-        if let Some(_after) = r.issued_after {
-            query.push_str("spot_time >= ? AND ");
+        if let Some(after) = r.issued_after {
+            builder.push(" spot_time >= ");
+            builder.push_bind(after);
+            builder.push(" AND ");
         }
-        query.push_str("TRUE ORDER BY spot_time DESC ");
+        builder.push(" TRUE ORDER BY spot_time DESC ");
     }
 
-    if let Some(limit) = &r.limit {
-        query.push_str(&format!("LIMIT {} ", limit));
+    if let Some(limit) = r.limit {
+        builder.push(" LIMIT ");
+        builder.push_bind(limit);
     }
 
-    if let Some(offset) = &r.offset {
-        query.push_str(&format!("OFFSET {} ", offset));
+    if let Some(offset) = r.offset {
+        builder.push(" OFFSET ");
+        builder.push_bind(offset);
     }
-    query
+
+    builder
 }
 
-pub fn findlog_query_builder(r: &FindLog) -> String {
-    let mut query = String::new();
+pub fn findlog_query_builder<'a>(query: &str, r: &FindLog) -> QueryBuilder<'a, Sqlite> {
+    let mut builder = QueryBuilder::new(query);
 
     if r.activation {
-        query.push_str("my_summit_code IS NOT NULL AND ");
+        builder.push(" my_summit_code IS NOT NULL AND ");
     } else {
-        query.push_str("my_summit_code IS NULL AND ");
+        builder.push(" my_summit_code IS NULL AND ");
     }
 
-    if let Some(_after) = r.after {
-        query.push_str("time >= ? AND ");
+    if let Some(after) = r.after {
+        builder.push(" time >= ");
+        builder.push_bind(after);
+        builder.push(" AND ");
     }
 
-    if let Some(_before) = r.before {
-        query.push_str("time <= ? AND ");
+    if let Some(before) = r.before {
+        builder.push(" time <= ");
+        builder.push_bind(before);
+        builder.push(" AND ");
     }
 
-    query.push_str("TRUE ORDER BY time ASC");
+    builder.push(" TRUE ORDER BY time ASC ");
 
-    query
+    builder
 }
