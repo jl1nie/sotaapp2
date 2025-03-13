@@ -316,7 +316,7 @@ impl SotaRepositoryImpl {
                 activation_call
             FROM sota_references WHERE "#;
 
-        let mut builder = findref_query_builder(SOTA, select, query);
+        let mut builder = findref_query_builder(SOTA, None, select, query);
         let sql_query = builder.build_query_as::<SotaReferenceRow>();
 
         let row: SotaReferenceRow =
@@ -366,7 +366,7 @@ impl SotaRepositoryImpl {
                 activation_call
             FROM sota_references WHERE "#;
 
-        let mut builder = findref_query_builder(SOTA, select, event);
+        let mut builder = findref_query_builder(SOTA, None, select, event);
         let sql_query = builder.build_query_as::<SotaReferenceRow>();
 
         let rows: Vec<SotaReferenceRow> = sql_query
@@ -406,7 +406,7 @@ impl SotaRepositoryImpl {
                 activation_call
             FROM sota_references WHERE "#;
 
-        let mut builder = findref_query_builder(SOTA, select, query);
+        let mut builder = findref_query_builder(SOTA, None, select, query);
         let sql_query = builder.build_query_as::<SotaReferenceRow>();
         let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
@@ -423,7 +423,7 @@ impl SotaRepositoryImpl {
         let select = r#"
             SELECT COUNT(*) FROM sota_references WHERE "#;
 
-        let mut builder = findref_query_builder(SOTA, select, event);
+        let mut builder = findref_query_builder(SOTA, None, select, event);
         let sql_query = builder.build_query_scalar::<i64>();
 
         let row = sql_query.fetch_one(self.pool.inner_ref()).await;

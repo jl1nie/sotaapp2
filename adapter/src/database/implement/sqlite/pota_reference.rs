@@ -480,7 +480,7 @@ impl PotaRepositoryImpl {
                 "update"
             FROM pota_references AS p WHERE "#;
 
-        let mut builder = findref_query_builder(POTA, select, query);
+        let mut builder = findref_query_builder(POTA, None, select, query);
         let sql_query = builder.build_query_as::<PotaReferenceRow>();
         
         let row: PotaReferenceRow = sql_query
@@ -518,7 +518,7 @@ impl PotaRepositoryImpl {
                 "update"
             FROM pota_references AS p WHERE "#;
 
-        let mut builder = findref_query_builder(POTA, select, query);
+        let mut builder = findref_query_builder(POTA, None, select, query);
         let sql_query = builder.build_query_as::<PotaReferenceRow>();
       
         let rows: Vec<PotaReferenceRow> = sql_query
@@ -536,7 +536,7 @@ impl PotaRepositoryImpl {
         let select = r#"
             SELECT COUNT(*) FROM pota_references WHERE "#;
         
-        let mut builder = findref_query_builder(POTA, select, query);
+        let mut builder = findref_query_builder(POTA, None, select, query);
         let sql_query = builder.build_query_scalar::<i64>();
 
         let row: Result<i64, _> = sql_query
@@ -550,9 +550,8 @@ impl PotaRepositoryImpl {
         log_id: Option<LogId>,
         query: &FindRef,
     ) -> AppResult<Vec<PotaRefLogRow>> {
-        let mut select = String::new();
+        let select = 
         if log_id.is_none() {
-            select.push_str(
                 r#"
                 SELECT
                     pota_code,
@@ -571,11 +570,9 @@ impl PotaRepositoryImpl {
                     NULL as activations,
                     NULL as first_qso_date,
                     NULL as qsos
-                FROM pota_references AS p WHERE "#,
-            );
+                FROM pota_references AS p WHERE "#
         } else {
-            select.push_str(
-                &format!(r#"
+                r#"
                 SELECT
                     p.pota_code AS pota_code,
                     p.wwff_code AS wwff_code,
@@ -594,12 +591,10 @@ impl PotaRepositoryImpl {
                     l.first_qso_date AS first_qso_date,
                     l.qsos AS qsos
                 FROM pota_references AS p 
-                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = '{}'
-                WHERE "#,log_id.unwrap().raw())
-            );
-        }
+                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = "#
+        };
   
-        let mut builder = findref_query_builder(POTA, &select, query);
+        let mut builder = findref_query_builder(POTA, log_id, select, query);
         let sql_query = builder.build_query_as::<PotaRefLogRow>();
 
         let rows: Vec<PotaRefLogRow> = sql_query

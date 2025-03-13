@@ -1,3 +1,4 @@
+use domain::model::id::LogId;
 use sqlx::query_builder::QueryBuilder;
 
 use common::utils::calculate_bounding_box;
@@ -7,10 +8,16 @@ use sqlx::Sqlite;
 
 pub fn findref_query_builder<'a>(
     mode: AwardProgram,
+    logid: Option<LogId>,
     query: &str,
     r: &FindRef,
 ) -> QueryBuilder<'a, Sqlite> {
     let mut builder = QueryBuilder::new(query);
+
+    if let Some(logid) = logid {
+        builder.push_bind(logid.raw());
+        builder.push(" WHERE ");
+    }
 
     if r.sota_code.is_some() && mode == SOTA {
         builder.push(" (summit_code = ");
