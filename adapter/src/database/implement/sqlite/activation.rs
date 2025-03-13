@@ -133,7 +133,7 @@ impl ActivationRepositryImpl {
     }
 
     async fn select_alerts_by_condition(&self, query: &FindAct) -> AppResult<Vec<Alert>> {
-        let mut select = r#"
+        let select = r#"
             SELECT
                 program,
                 alert_id,
@@ -149,18 +149,10 @@ impl ActivationRepositryImpl {
                 frequencies,
                 comment,
                 poster
-            FROM alerts WHERE "#
-            .to_string();
+            FROM alerts WHERE "#;
 
-        let cond = findact_query_builder(true, query);
-
-        select.push_str(&cond);
-
-        let mut sql_query = sqlx::query_as::<_, AlertRow>(&select);
-
-        if let Some(after) = query.issued_after {
-            sql_query = sql_query.bind(after);
-        }
+        let mut builder = findact_query_builder(true, select, query);
+        let sql_query = builder.build_query_as::<AlertRow>();
 
         let rows: Vec<AlertRow> = sql_query
             .fetch_all(self.pool.inner_ref())
@@ -171,7 +163,7 @@ impl ActivationRepositryImpl {
     }
 
     async fn select_spots_by_condition(&self, query: &FindAct) -> AppResult<Vec<Spot>> {
-        let mut select = r#"
+        let select = r#"
             SELECT
                 program,
                 spot_id,
@@ -185,18 +177,10 @@ impl ActivationRepositryImpl {
                 mode,
                 spotter,
                 comment
-            FROM spots WHERE "#
-            .to_string();
+            FROM spots WHERE "#;
 
-        let cond = findact_query_builder(false, query);
-
-        select.push_str(&cond);
-
-        let mut sql_query = sqlx::query_as::<_, SpotRow>(&select);
-
-        if let Some(after) = query.issued_after {
-            sql_query = sql_query.bind(after);
-        }
+        let mut builder = findact_query_builder(false, select, query);
+        let sql_query = builder.build_query_as::<SpotRow>();
 
         let rows: Vec<SpotRow> = sql_query
             .fetch_all(self.pool.inner_ref())

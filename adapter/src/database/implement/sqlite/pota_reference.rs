@@ -462,8 +462,8 @@ impl PotaRepositoryImpl {
         Ok(())
     }
 
-    async fn select(&self, query: &str) -> AppResult<PotaReferenceRow> {
-        let mut select = r#"
+    async fn select(&self, query: &FindRef) -> AppResult<PotaReferenceRow> {
+        let select = r#"
             SELECT
                 pota_code,
                 wwff_code,
@@ -477,13 +477,12 @@ impl PotaRepositoryImpl {
                 longitude,
                 latitude,
                 maidenhead,
-                update
-            FROM pota_references AS p WHERE "#
-            .to_string();
+                "update"
+            FROM pota_references AS p WHERE "#;
 
-        select.push_str(query);
-
-        let sql_query = sqlx::query_as::<_, PotaReferenceRow>(&select);
+        let mut builder = findref_query_builder(POTA, select, query);
+        let sql_query = builder.build_query_as::<PotaReferenceRow>();
+        
         let row: PotaReferenceRow = sql_query
             .fetch_one(self.pool.inner_ref())
             .await
@@ -491,17 +490,18 @@ impl PotaRepositoryImpl {
                 source: e,
                 location: format!("{}:{}", file!(), line!()),
             })?;
+        
         Ok(row)
     }
 
-    async fn select_pagenated(&self, query: &str) -> AppResult<(i64, Vec<PotaReferenceRow>)> {
+    async fn select_pagenated(&self, query: &FindRef) -> AppResult<(i64, Vec<PotaReferenceRow>)> {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM pota_references")
             .fetch_one(self.pool.inner_ref())
             .await
             .map_err(AppError::SpecificOperationError)?;
         let total: i64 = row.count;
 
-        let mut select = r#"
+        let  select = r#"
             SELECT
                 pota_code,
                 wwff_code,
@@ -515,13 +515,12 @@ impl PotaRepositoryImpl {
                 longitude,
                 latitude,
                 maidenhead,
-                update
-            FROM pota_references AS p WHERE "#
-            .to_string();
+                "update"
+            FROM pota_references AS p WHERE "#;
 
-        select.push_str(query);
-
-        let sql_query = sqlx::query_as::<_, PotaReferenceRow>(&select);
+        let mut builder = findref_query_builder(POTA, select, query);
+        let sql_query = builder.build_query_as::<PotaReferenceRow>();
+      
         let rows: Vec<PotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
@@ -529,16 +528,18 @@ impl PotaRepositoryImpl {
                 source: e,
                 location: format!("{}:{}", file!(), line!()),
             })?;
+
         Ok((total, rows))
     }
 
-     async fn count_by_condition(&self, query: &str) -> AppResult<i64> {
-        let mut select = r#"
-            SELECT COUNT(*) FROM pota_references WHERE "#
-            .to_string();
-        select.push_str(query);
+     async fn count_by_condition(&self, query: &FindRef) -> AppResult<i64> {
+        let select = r#"
+            SELECT COUNT(*) FROM pota_references WHERE "#;
+        
+        let mut builder = findref_query_builder(POTA, select, query);
+        let sql_query = builder.build_query_scalar::<i64>();
 
-        let row: Result<i64, _> = sqlx::query_scalar(&select)
+        let row: Result<i64, _> = sql_query
             .fetch_one(self.pool.inner_ref())
             .await;
         Ok(row.unwrap_or(0))
@@ -547,7 +548,7 @@ impl PotaRepositoryImpl {
     async fn select_by_condition(
         &self,
         log_id: Option<LogId>,
-        query: &str,
+        query: &FindRef,
     ) -> AppResult<Vec<PotaRefLogRow>> {
         let mut select = String::new();
         if log_id.is_none() {
@@ -574,7 +575,7 @@ impl PotaRepositoryImpl {
             );
         } else {
             select.push_str(
-                r#"
+                &format!(r#"
                 SELECT
                     p.pota_code AS pota_code,
                     p.wwff_code AS wwff_code,
@@ -593,16 +594,13 @@ impl PotaRepositoryImpl {
                     l.first_qso_date AS first_qso_date,
                     l.qsos AS qsos
                 FROM pota_references AS p 
-                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = ?
-                WHERE "#,
+                LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = '{}'
+                WHERE "#,log_id.unwrap().raw())
             );
         }
-        select.push_str(query);
-        let mut sql_query = sqlx::query_as::<_, PotaRefLogRow>(&select);
-
-        if let Some(log_id) = log_id {
-            sql_query = sql_query.bind(log_id);
-        }
+  
+        let mut builder = findref_query_builder(POTA, &select, query);
+        let sql_query = builder.build_query_as::<PotaRefLogRow>();
 
         let rows: Vec<PotaRefLogRow> = sql_query
             .fetch_all(self.pool.inner_ref())
@@ -619,14 +617,12 @@ impl PotaRepositoryImpl {
 impl PotaRepository for PotaRepositoryImpl {
 
     async fn count_reference(&self, event: &FindRef) -> AppResult<i64> {
-        let query = findref_query_builder(POTA, event);
-        Ok(self.count_by_condition(&query).await?)
+        Ok(self.count_by_condition(event).await?)
     }
 
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<PotaRefLog>> {
         let log_id = event.log_id;
-        let query = findref_query_builder(POTA, event);
-        let results = self.select_by_condition(log_id, &query).await?;
+        let results = self.select_by_condition(log_id, event).await?;
         let results = results.into_iter().map(PotaRefLog::from).collect();
         Ok(results)
     }
@@ -651,8 +647,7 @@ impl PotaRepository for PotaRepositoryImpl {
     }
 
     async fn show_reference(&self, event: &FindRef) -> AppResult<PotaReference> {
-        let query = findref_query_builder(POTA, event);
-        let result = self.select(&query).await?;
+        let result = self.select(event).await?;
         Ok(result.into())
     }
 
@@ -662,8 +657,7 @@ impl PotaRepository for PotaRepositoryImpl {
     ) -> AppResult<PagenatedResult<PotaReference>> {
         let limit = event.limit.unwrap_or(10);
         let offset = event.offset.unwrap_or(0);
-        let query = findref_query_builder(POTA, event);
-        let (total, results) = self.select_pagenated(&query).await?;
+        let (total, results) = self.select_pagenated(event).await?;
         Ok(PagenatedResult {
             total,
             limit,
