@@ -218,6 +218,9 @@ impl AdminPeriodicServiceImpl {
             }
             Some(prev_log) => {
                 if prev_log.destination != Some(destination.clone()) {
+                    if let Some(message) = new_state.message() {
+                        self.send_message(&from, message, mesg_enabled).await?;
+                    }
                     new_state
                 } else {
                     let old_state = prev_log.state.clone();
