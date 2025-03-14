@@ -41,7 +41,9 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
 
     let spot_handle = tokio::spawn(async move {
         'outer: loop {
-            let _ = update_spots(&config_spot, &registry_spot).await;
+            if let Err(e) = update_spots(&config_spot, &registry_spot).await {
+                tracing::error!("Update Spot Error {:?}", e);
+            }
 
             for _ in 0..10 {
                 if *shutdown.borrow() {
@@ -71,7 +73,9 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
                 let config = config_summit.clone();
                 let registry = registry_summit.clone();
                 Box::pin(async move {
-                    update_summit_list(config, registry).await.unwrap();
+                    if let Err(e) = update_summit_list(config, registry).await {
+                        tracing::error!("Update Summit Error {:?}", e);
+                    }
                 })
             })
             .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
@@ -87,7 +91,9 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
                 let config = config_pota.clone();
                 let registry = registry.clone();
                 Box::pin(async move {
-                    update_park_list(config, registry).await.unwrap();
+                    if let Err(e) = update_park_list(config, registry).await {
+                        tracing::error!("Update Park Error {:?}", e);
+                    }
                 })
             })
             .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
