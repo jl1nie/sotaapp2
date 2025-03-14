@@ -471,10 +471,11 @@ impl SotaRepository for SotaRepositoryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
+        let len = references.len();
         for r in references.into_iter().enumerate() {
             self.create(SotaReferenceRow::from(r.1), &mut tx).await?;
-            if r.0 % 500 == 0 {
-                tracing::info!("insert sota {} rescords", r.0);
+            if r.0 % 10000 == 0 {
+                tracing::info!("insert sota with {}/{} rescords", r.0, len);
             }
         }
         tx.commit().await.map_err(AppError::TransactionError)?;
@@ -509,7 +510,7 @@ impl SotaRepository for SotaRepositoryImpl {
             .await
             .map_err(AppError::TransactionError)?;
 
-        tracing::info!("update sota {} rescords", references.len());
+        tracing::info!("update sota with {} rescords", references.len());
 
         for r in references.into_iter() {
             self.update(SotaReferenceRow::from(r), &mut tx).await?;

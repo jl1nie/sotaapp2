@@ -633,7 +633,7 @@ impl PotaRepository for PotaRepositoryImpl {
         let len = references.len();
         for r in references.into_iter().enumerate() {
             self.create(PotaReferenceRow::from(r.1), &mut tx).await?;
-            if r.0 % 5000 == 0 {
+            if r.0 % 10000 == 0 {
                 tracing::info!("upsert pota {}/{}", r.0, len);
             }
         }
