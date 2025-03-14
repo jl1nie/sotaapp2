@@ -209,32 +209,39 @@ impl AdminPeriodicServiceImpl {
             }
         };
 
-        let state = match aprslog.first().map(|log| log.state.clone()) {
+        let state = match aprslog.first() {
             None => {
                 if let Some(message) = new_state.message() {
                     self.send_message(&from, message, mesg_enabled).await?;
                 }
                 new_state
             }
-            Some(old_state) => match (&old_state, &new_state) {
-                (AprsState::NearSummit { .. }, AprsState::OnSummit { .. })
-                | (
-                    AprsState::Approaching { .. } | AprsState::Climbing { .. },
-                    AprsState::NearSummit { .. },
-                )
-                | (
-                    AprsState::Approaching { .. } | AprsState::Climbing { .. },
-                    AprsState::OnSummit { .. },
-                ) => {
-                    if let Some(mesg) = new_state.message() {
-                        self.send_message(&from, mesg, mesg_enabled).await?;
-                    }
+            Some(prev_log) => {
+                if prev_log.destination != Some(destination.clone()) {
                     new_state
+                } else {
+                    let old_state = prev_log.state.clone();
+                    match (&old_state, &new_state) {
+                        (AprsState::NearSummit { .. }, AprsState::OnSummit { .. })
+                        | (
+                            AprsState::Approaching { .. } | AprsState::Climbing { .. },
+                            AprsState::NearSummit { .. },
+                        )
+                        | (
+                            AprsState::Approaching { .. } | AprsState::Climbing { .. },
+                            AprsState::OnSummit { .. },
+                        ) => {
+                            if let Some(mesg) = new_state.message() {
+                                self.send_message(&from, mesg, mesg_enabled).await?;
+                            }
+                            new_state
+                        }
+                        (AprsState::OnSummit { .. }, AprsState::OnSummit { .. }) => new_state,
+                        (AprsState::OnSummit { .. }, _) => AprsState::Descending { time, distance },
+                        _ => old_state,
+                    }
                 }
-                (AprsState::OnSummit { .. }, AprsState::OnSummit { .. }) => new_state,
-                (AprsState::OnSummit { .. }, _) => AprsState::Descending { time, distance },
-                _ => old_state,
-            },
+            }
         };
 
         let log = AprsLog {
