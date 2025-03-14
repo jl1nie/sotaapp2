@@ -127,16 +127,17 @@ impl AdminPeriodicServiceImpl {
         let time = Utc::now().naive_utc();
 
         if dest.is_empty() {
-            let log = AprsLog {
-                callsign: from,
-                destination: None,
-                state: AprsState::Travelling { time },
-                longitude,
-                latitude,
-            };
+            /*
+                        let log = AprsLog {
+                            callsign: from,
+                            destination: None,
+                            state: AprsState::Travelling { time },
+                            longitude,
+                            latitude,
+                        };
 
-            self.aprs_log_repo.insert_aprs_log(log).await?;
-
+                        self.aprs_log_repo.insert_aprs_log(log).await?;
+            */
             return Ok(());
         }
 
@@ -241,7 +242,10 @@ impl AdminPeriodicServiceImpl {
                         }
                         (AprsState::OnSummit { .. }, AprsState::OnSummit { .. }) => new_state,
                         (AprsState::OnSummit { .. }, _) => AprsState::Descending { time, distance },
-                        _ => old_state,
+                        (AprsState::Descending { .. }, _) => {
+                            AprsState::Descending { time, distance }
+                        }
+                        _ => new_state,
                     }
                 }
             }
