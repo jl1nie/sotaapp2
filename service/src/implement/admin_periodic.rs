@@ -31,8 +31,6 @@ pub struct AdminPeriodicServiceImpl {
 #[async_trait]
 impl AdminPeriodicService for AdminPeriodicServiceImpl {
     async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()> {
-        tracing::info!("Update {} alerts", alerts.len());
-
         let now: DateTime<Utc> = Utc::now();
         let alert_window_start = now - TimeDelta::hours(5);
         let alert_window_end = now + TimeDelta::hours(6);
