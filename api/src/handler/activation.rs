@@ -53,6 +53,10 @@ async fn show_spots(
         query = query.pattern(&pat);
     }
 
+    if let Some(log_id) = param.log_id {
+        query = query.log_id(&log_id);
+    }
+
     let query = query.build();
 
     let result = user_service.find_spots(query).await?;

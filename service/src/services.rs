@@ -8,7 +8,7 @@ use crate::model::locator::UploadMuniCSV;
 use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
 use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use common::error::AppResult;
-use domain::model::activation::{Alert, Spot};
+use domain::model::activation::{Alert, Spot, SpotLog};
 use domain::model::aprslog::{AprsLog, AprsTrack};
 use domain::model::event::{
     DeleteRef, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy, PagenatedResult,
@@ -25,7 +25,7 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_references(&self, event: FindRef) -> AppResult<FindResult>;
 
     async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
-    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>>;
+    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<SpotLog>>>;
 
     async fn upload_pota_log(&self, event: UploadPOTALog) -> AppResult<PotaLogHist>;
     async fn delete_pota_log(&self, log_id: LogId) -> AppResult<()>;

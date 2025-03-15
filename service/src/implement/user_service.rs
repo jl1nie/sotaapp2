@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::{TimeZone, Utc};
+use domain::model::AwardProgram;
 use regex::Regex;
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
@@ -12,9 +13,11 @@ use crate::services::UserService;
 use common::config::AppConfig;
 use common::error::AppResult;
 use common::utils::csv_reader;
-use domain::model::activation::{Alert, Spot};
+use domain::model::activation::{Alert, Spot, SpotLog};
 use domain::model::aprslog::{AprsLog, AprsTrack};
-use domain::model::event::{DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy};
+use domain::model::event::{
+    DeleteLog, FindAct, FindAprs, FindLog, FindRef, FindRefBuilder, FindResult, GroupBy,
+};
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
@@ -122,21 +125,67 @@ impl UserService for UserServiceImpl {
         Ok(result)
     }
 
-    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Spot>>> {
+    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<SpotLog>>> {
         let mut result = HashMap::new();
         if event.group_by.is_some() {
             let mut spots = self.act_repo.find_spots(&event).await?;
+
             if let Some(loc_regex) = &event.pattern {
                 let pat = Regex::new(loc_regex);
                 if let Ok(pat) = pat {
                     spots.retain(|r| pat.is_match(&r.reference));
                 }
             }
+            let mut pota_hash: HashMap<String, SpotLog> = HashMap::new();
+
             for spot in spots {
-                result
-                    .entry(get_spot_group(&event, &spot))
-                    .or_insert(Vec::new())
-                    .push(spot);
+                match get_spot_group(&event, &spot) {
+                    GroupBy::Callsign(_) => {
+                        let spotlog = SpotLog::new(spot.clone(), None);
+                        result
+                            .entry(get_spot_group(&event, &spot))
+                            .or_insert(Vec::new())
+                            .push(spotlog);
+                    }
+                    GroupBy::Reference(code) => {
+                        if spot.program == AwardProgram::POTA && event.log_id.is_some() {
+                            let code = code.unwrap_or_default();
+                            let mut spotlog = SpotLog::new(spot.clone(), None);
+
+                            if let Some(v) = pota_hash.get(&code) {
+                                spotlog.first_qso_date = v.first_qso_date;
+                                spotlog.qsos = v.qsos;
+                            } else {
+                                let builder = FindRefBuilder::default();
+                                let query = builder
+                                    .pota()
+                                    .pota_code(code.clone())
+                                    .log_id(event.log_id.unwrap())
+                                    .build();
+
+                                let parks = self.find_references(query).await?;
+                                if let FindResult { pota: Some(p), .. } = parks {
+                                    if !p.is_empty() {
+                                        let pota = p.first().unwrap();
+                                        spotlog.first_qso_date = pota.first_qso_date;
+                                        spotlog.qsos = pota.qsos;
+                                        pota_hash.insert(code, spotlog.clone());
+                                    }
+                                }
+                            }
+                            result
+                                .entry(get_spot_group(&event, &spot))
+                                .or_insert(Vec::new())
+                                .push(spotlog);
+                        } else {
+                            let spotlog = SpotLog::new(spot.clone(), None);
+                            result
+                                .entry(get_spot_group(&event, &spot))
+                                .or_insert(Vec::new())
+                                .push(spotlog);
+                        }
+                    }
+                }
             }
         }
         Ok(result)
