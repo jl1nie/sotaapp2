@@ -19,7 +19,7 @@ use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;
 use crate::database::model::pota::{
     PotaLegcayLogHistRow, PotaLegcayLogRow, PotaLogHistRow, PotaLogRow, PotaRefLogRow,
-    PotaReferenceRow,
+    PotaReferenceRow
 };
 
 #[derive(Component)]

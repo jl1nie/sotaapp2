@@ -3,7 +3,7 @@ use common::utils::call_to_operator;
 use serde::{Deserialize, Serialize};
 
 use common::error::{AppError, AppResult};
-use domain::model::activation::Spot;
+use domain::model::activation::{Spot, SpotLog};
 use domain::model::AwardProgram;
 
 #[derive(Debug, Deserialize)]
@@ -107,10 +107,15 @@ pub struct SpotView {
     pub mode: String,
     pub spotter: String,
     pub comment: Option<String>,
+    pub first_qso_date: Option<String>,
+    pub qsos: Option<i32>,
 }
 
-impl From<Spot> for SpotView {
-    fn from(s: Spot) -> Self {
+impl From<SpotLog> for SpotView {
+    fn from(s: SpotLog) -> Self {
+        let first_qso_date = s.first_qso_date.map(|d| d.to_string());
+        let qsos = s.qsos;
+        let s = s.spot;
         Self {
             program: s.program.into(),
             spot_id: s.spot_id,
@@ -123,6 +128,8 @@ impl From<Spot> for SpotView {
             mode: s.mode,
             spotter: s.spotter,
             comment: s.comment,
+            first_qso_date,
+            qsos,
         }
     }
 }

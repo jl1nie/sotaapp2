@@ -1,5 +1,6 @@
 use aprs_message::AprsCallsign;
 use chrono::{DateTime, Utc};
+use std::str::FromStr;
 
 use derive_new::new;
 
@@ -241,6 +242,7 @@ pub struct FindAct {
     pub operator: Option<String>,
     pub pattern: Option<String>,
     pub group_by: Option<GroupBy>,
+    pub log_id: Option<LogId>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -298,6 +300,11 @@ impl FindActBuilder {
 
     pub fn pattern(mut self, pattern: &str) -> Self {
         self.param.pattern = Some(pattern.to_string());
+        self
+    }
+
+    pub fn log_id(mut self, log_id: &str) -> Self {
+        self.param.log_id = Some(LogId::from_str(log_id).unwrap());
         self
     }
 

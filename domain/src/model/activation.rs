@@ -1,5 +1,6 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 
+use crate::model::pota::PotaRefLog;
 use crate::model::AwardProgram;
 
 #[derive(Debug)]
@@ -34,4 +35,29 @@ pub struct Spot {
     pub mode: String,
     pub spotter: String,
     pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SpotLog {
+    pub spot: Spot,
+    pub first_qso_date: Option<NaiveDate>,
+    pub qsos: Option<i32>,
+}
+
+impl SpotLog {
+    pub fn new(s: Spot, r: Option<PotaRefLog>) -> Self {
+        if let Some(r) = r {
+            SpotLog {
+                spot: s,
+                first_qso_date: r.first_qso_date,
+                qsos: r.qsos,
+            }
+        } else {
+            SpotLog {
+                spot: s,
+                first_qso_date: None,
+                qsos: None,
+            }
+        }
+    }
 }
