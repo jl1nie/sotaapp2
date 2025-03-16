@@ -107,13 +107,11 @@ pub struct SpotView {
     pub mode: String,
     pub spotter: String,
     pub comment: Option<String>,
-    pub first_qso_date: Option<String>,
     pub qsos: Option<i32>,
 }
 
 impl From<SpotLog> for SpotView {
     fn from(s: SpotLog) -> Self {
-        let first_qso_date = s.first_qso_date.map(|d| d.to_string());
         let qsos = s.qsos;
         let s = s.spot;
         Self {
@@ -128,7 +126,6 @@ impl From<SpotLog> for SpotView {
             mode: s.mode,
             spotter: s.spotter,
             comment: s.comment,
-            first_qso_date,
             qsos,
         }
     }

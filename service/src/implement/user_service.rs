@@ -153,7 +153,6 @@ impl UserService for UserServiceImpl {
                             let mut spotlog = SpotLog::new(spot.clone(), None);
 
                             if let Some(v) = pota_hash.get(&code) {
-                                spotlog.first_qso_date = v.first_qso_date;
                                 spotlog.qsos = v.qsos;
                             } else {
                                 let builder = FindRefBuilder::default();
@@ -167,7 +166,6 @@ impl UserService for UserServiceImpl {
                                 if let FindResult { pota: Some(p), .. } = parks {
                                     if !p.is_empty() {
                                         let pota = p.first().unwrap();
-                                        spotlog.first_qso_date = pota.first_qso_date;
                                         spotlog.qsos = pota.qsos;
                                         pota_hash.insert(code, spotlog.clone());
                                     }
