@@ -1,8 +1,7 @@
 use aprs_message::AprsCallsign;
 use chrono::{DateTime, Utc};
-use std::str::FromStr;
-
 use derive_new::new;
+use std::str::FromStr;
 
 use crate::model::{id::LogId, AwardProgram};
 use crate::model::{pota::PotaRefLog, sota::SotaReference};
@@ -304,7 +303,11 @@ impl FindActBuilder {
     }
 
     pub fn log_id(mut self, log_id: &str) -> Self {
-        self.param.log_id = Some(LogId::from_str(log_id).unwrap());
+        if let Ok(log_id) = LogId::from_str(log_id) {
+            self.param.log_id = Some(log_id)
+        } else {
+            tracing::error!("LogId::from_str faild {}", log_id)
+        }
         self
     }
 
