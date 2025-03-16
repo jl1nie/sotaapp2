@@ -27,9 +27,9 @@ impl GeoMag {
         let geomag = Arc::new(Mutex::new(Some(GeomagIndex::default())));
         let geomag_clone = geomag.clone();
 
-        Self::update(endpoint.as_str(), geomag.clone())
-            .await
-            .unwrap();
+        if let Err(e) = Self::update(endpoint.as_str(), geomag.clone()).await {
+            tracing::error!("Geomag update error: {}", e);
+        }
 
         let sched = JobScheduler::new().await?;
         sched
@@ -38,7 +38,9 @@ impl GeoMag {
                     let endpoint = endpoint.clone();
                     let geomag = geomag_clone.clone();
                     Box::pin(async move {
-                        Self::update(endpoint.as_str(), geomag).await.unwrap();
+                        if let Err(e) = Self::update(endpoint.as_str(), geomag.clone()).await {
+                            tracing::error!("Geomag update error: {}", e);
+                        }
                     })
                 })
                 .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
