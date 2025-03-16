@@ -15,3 +15,4 @@ shaku.workspace = true
 sqlx.workspace = true
 uuid.workspace = true
 aprs-message.workspace = true
+tracing.workspace = true
