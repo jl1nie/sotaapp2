@@ -42,6 +42,8 @@ pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> A
 
     requests.extend(requests_pota);
 
+    tracing::info!("Update {} alerts.", requests.len());
+
     service.update_alerts(requests).await?;
     Ok(())
 }
