@@ -259,6 +259,8 @@ impl AdminPeriodicServiceImpl {
             latitude,
         };
 
+        tracing::info!("APRS log {:?}", log);
+
         self.aprs_log_repo.insert_aprs_log(log).await?;
 
         Ok(())
