@@ -112,18 +112,9 @@ pub fn findref_query_builder<'a>(
         }
     }
 
-    let max_limit = 300;
-
     if let Some(limit) = r.limit {
         builder.push(" LIMIT ");
-        if limit < max_limit {
-            builder.push_bind(limit);
-        } else {
-            builder.push_bind(max_limit);
-        }
-    } else {
-        builder.push(" LIMIT ");
-        builder.push_bind(max_limit);
+        builder.push_bind(limit);
     }
 
     if let Some(offset) = r.offset {

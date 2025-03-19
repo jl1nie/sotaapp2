@@ -15,7 +15,7 @@ async fn search(
     let query = FindRefBuilder::default().sota().pota();
     let mut query = build_findref_query(param, query)?;
 
-    query.limit = query.limit.map_or(Some(1000), |v| Some(v.min(1000)));
+    query.limit = query.limit.map_or(Some(500), |v| Some(v.min(500)));
 
     let results = user_service.find_references(query).await?;
     Ok(results)
