@@ -41,11 +41,11 @@ async fn search_reference_breif(
     user_service: Inject<AppRegistry, dyn UserService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<SearchBriefResponse>> {
-    let maxcount = param.max_count.unwrap_or(100) as usize;
+    let maxcount = param.max_count.unwrap_or(100);
 
     let query = FindRefBuilder::default().sota().pota();
     let query = build_findref_query(param.clone(), query)?;
-    let count = user_service.count_references(&query).await? as usize;
+    let count = user_service.count_references(&query).await? as u32;
 
     let mut res = SearchBriefResponse {
         count,

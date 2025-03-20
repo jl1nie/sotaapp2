@@ -1,8 +1,10 @@
 use serde::Serialize;
+use typeshare::typeshare;
 
 use domain::model::event::GroupBy;
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct ActivationView<T> {
     pub key: Option<String>,

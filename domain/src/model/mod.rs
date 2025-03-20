@@ -1,4 +1,5 @@
 use serde::Serialize;
+use typeshare::typeshare;
 
 pub mod activation;
 pub mod aprslog;
@@ -17,6 +18,7 @@ pub enum AwardProgram {
     WWFF = 2,
 }
 
+#[typeshare]
 pub type Maidenhead = String;
 
 impl AwardProgram {

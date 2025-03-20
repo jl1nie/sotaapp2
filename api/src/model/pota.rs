@@ -1,7 +1,8 @@
 use chrono::{DateTime, NaiveDate, Utc};
-use domain::model::id::{LogId, UserId};
+use domain::model::id::UserId;
 use domain::model::Maidenhead;
 use serde::{Deserialize, Serialize};
+use typeshare::typeshare;
 
 use common::utils::maidenhead;
 use domain::model::event::PagenatedResult;
@@ -60,7 +61,7 @@ impl From<CreateRefRequest> for Vec<PotaReference> {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PagenatedResponse<PotaReference> {
-    pub total: i64,
+    pub total: i32,
     pub limit: i32,
     pub offset: i32,
     pub results: Vec<PotaReference>,
@@ -69,7 +70,7 @@ pub struct PagenatedResponse<PotaReference> {
 impl From<PagenatedResult<PotaReference>> for PagenatedResponse<PotaRefView> {
     fn from(pagenated: PagenatedResult<PotaReference>) -> Self {
         PagenatedResponse {
-            total: pagenated.total,
+            total: pagenated.total as i32,
             limit: pagenated.limit,
             offset: pagenated.offset,
             results: pagenated
@@ -160,6 +161,7 @@ pub struct PotaHunterLog {
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PotaRefView {
     pub pota_code: String,
@@ -196,6 +198,7 @@ impl From<PotaReference> for PotaRefView {
 }
 
 #[derive(Debug, Serialize, Default)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PotaRefLogView {
     pub pota_code: String,
@@ -212,7 +215,7 @@ pub struct PotaRefLogView {
     pub maidenhead: Maidenhead,
     pub attempts: Option<i32>,
     pub activations: Option<i32>,
-    pub first_qso_date: Option<NaiveDate>,
+    pub first_qso_date: Option<String>,
     pub qsos: Option<i32>,
 }
 
@@ -233,13 +236,14 @@ impl From<PotaRefLog> for PotaRefLogView {
             maidenhead: pota.maidenhead,
             attempts: pota.attempts,
             activations: pota.activations,
-            first_qso_date: pota.first_qso_date,
+            first_qso_date: pota.first_qso_date.map(|d| d.to_string()),
             qsos: pota.qsos,
         }
     }
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PotaSearchView {
     pub pota: String,
@@ -252,7 +256,7 @@ pub struct PotaSearchView {
     pub lat: Option<f64>,
     pub atmpt: Option<i32>,
     pub act: Option<i32>,
-    pub date: Option<NaiveDate>,
+    pub date: Option<String>,
     pub qsos: Option<i32>,
 }
 
@@ -275,18 +279,19 @@ impl From<PotaRefLog> for PotaSearchView {
             lat: pota.latitude,
             atmpt: pota.attempts,
             act: pota.activations,
-            date: pota.first_qso_date,
+            date: pota.first_qso_date.map(|d| d.to_string()),
             qsos: pota.qsos,
         }
     }
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PotaLogHistView {
     pub log_id: String,
     pub log_kind: String,
-    pub last_update: NaiveDate,
+    pub last_update: String,
 }
 
 impl From<PotaLogHist> for PotaLogHistView {
@@ -299,36 +304,38 @@ impl From<PotaLogHist> for PotaLogHistView {
         PotaLogHistView {
             log_id: log.log_id.into(),
             log_kind,
-            last_update: log.update.date(),
+            last_update: log.update.date().to_string(),
         }
     }
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 pub struct PotaLogStatEntView {
     pub time: String,
-    pub users: i64,
-    pub logs: i64,
+    pub users: i32,
+    pub logs: i32,
 }
 
 impl From<PotaLogStatEnt> for PotaLogStatEntView {
     fn from(stat: PotaLogStatEnt) -> Self {
         PotaLogStatEntView {
             time: stat.time,
-            users: stat.users,
-            logs: stat.logs,
+            users: stat.users as i32,
+            logs: stat.logs as i32,
         }
     }
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 pub struct PotaLogStatView {
-    pub log_uploaded: i64,
-    pub log_entries: i64,
-    pub log_expired: i64,
-    pub log_error: i64,
-    pub longest_id: LogId,
-    pub longest_entry: i64,
+    pub log_uploaded: i32,
+    pub log_entries: i32,
+    pub log_expired: i32,
+    pub log_error: i32,
+    pub longest_id: String,
+    pub longest_entry: i32,
     pub query_latency: String,
     pub log_history: Vec<PotaLogStatEntView>,
 }
@@ -338,12 +345,12 @@ impl From<PotaLogStat> for PotaLogStatView {
         let query_latency = format!("{:.2}", stat.query_latency.as_secs_f32() * 1000f32);
 
         PotaLogStatView {
-            log_uploaded: stat.log_uploaded,
-            log_entries: stat.log_entries,
-            log_expired: stat.log_expired,
-            log_error: stat.log_error,
-            longest_id: stat.longest_id,
-            longest_entry: stat.longest_entry,
+            log_uploaded: stat.log_uploaded as i32,
+            log_entries: stat.log_entries as i32,
+            log_expired: stat.log_expired as i32,
+            log_error: stat.log_error as i32,
+            longest_id: stat.longest_id.to_string(),
+            longest_entry: stat.longest_entry as i32,
             query_latency,
             log_history: stat
                 .log_history

@@ -1,10 +1,12 @@
 use serde::Serialize;
+use typeshare::typeshare;
 
 use super::pota::{PotaRefLogView, PotaSearchView};
 use super::sota::{SotaRefView, SotaSearchView};
 use domain::model::event::FindResult;
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     pub sota: Option<Vec<SotaSearchView>>,
@@ -30,6 +32,7 @@ impl From<FindResult> for SearchResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchFullResponse {
     pub sota: Option<Vec<SotaRefView>>,
@@ -55,13 +58,15 @@ impl From<FindResult> for SearchFullResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchBriefResponse {
-    pub count: usize,
+    pub count: u32,
     pub candidates: Vec<SearchBriefData>,
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchBriefData {
     pub code: String,
@@ -99,7 +104,7 @@ impl From<FindResult> for SearchBriefResponse {
             });
         };
         Self {
-            count: res.len(),
+            count: res.len() as u32,
             candidates: res,
         }
     }

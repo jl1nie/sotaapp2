@@ -1,7 +1,9 @@
 use domain::model::locator::{CenturyCode, MunicipalityCenturyCode};
 use serde::Serialize;
+use typeshare::typeshare;
 
 #[derive(Debug, Default, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct CenturyCodeView {
     pub muni_code: Option<i32>,
