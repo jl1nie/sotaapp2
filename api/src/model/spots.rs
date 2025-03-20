@@ -1,6 +1,7 @@
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{NaiveDateTime, TimeZone, Utc};
 use common::utils::call_to_operator;
 use serde::{Deserialize, Serialize};
+use typeshare::typeshare;
 
 use common::error::{AppError, AppResult};
 use domain::model::activation::{Spot, SpotLog};
@@ -94,6 +95,7 @@ impl From<PotaSpot> for AppResult<Spot> {
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SpotView {
     pub program: String,
@@ -102,7 +104,7 @@ pub struct SpotView {
     pub reference_detail: String,
     pub activator: String,
     pub activator_name: Option<String>,
-    pub spot_time: DateTime<Utc>,
+    pub spot_time: String,
     pub frequency: String,
     pub mode: String,
     pub spotter: String,
@@ -121,7 +123,7 @@ impl From<SpotLog> for SpotView {
             reference_detail: s.reference_detail,
             activator: s.activator,
             activator_name: s.activator_name,
-            spot_time: s.spot_time,
+            spot_time: s.spot_time.to_rfc3339(),
             frequency: s.frequency,
             mode: s.mode,
             spotter: s.spotter,

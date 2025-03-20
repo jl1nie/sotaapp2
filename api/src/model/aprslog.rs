@@ -1,12 +1,13 @@
-use chrono::NaiveDateTime;
 use serde::Serialize;
+use typeshare::typeshare;
 
 use domain::model::aprslog::{AprsLog, AprsState, AprsTrack};
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct AprsLogView {
-    pub time: NaiveDateTime,
+    pub time: String,
     pub callsign: String,
     pub ssid: i32,
     pub destination: String,
@@ -34,7 +35,7 @@ impl From<AprsLog> for AprsLogView {
             AprsState::Descending { time, distance } => (time, "Descending", distance),
         };
         AprsLogView {
-            time,
+            time: time.to_string(),
             callsign: callsign.callsign,
             ssid: callsign.ssid.unwrap_or_default() as i32,
             destination: destination.unwrap_or_default(),

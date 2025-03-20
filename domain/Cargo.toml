@@ -16,3 +16,4 @@ sqlx.workspace = true
 uuid.workspace = true
 aprs-message.workspace = true
 tracing.workspace = true
+typeshare.workspace = true

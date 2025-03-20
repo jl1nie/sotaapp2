@@ -1,5 +1,6 @@
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
+use typeshare::typeshare;
 
 use common::utils::maidenhead;
 use domain::model::event::PagenatedResult;
@@ -158,6 +159,7 @@ impl From<UpdateRefRequest> for Vec<SotaReference> {
 }
 
 #[derive(Debug, Serialize, Default)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SotaRefView {
     pub summit_code: String,
@@ -275,9 +277,10 @@ impl From<(Maidenhead, SotaReference)> for SotaRefView {
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PagenatedResponse<SOTAReference> {
-    pub total: i64,
+    pub total: i32,
     pub limit: i32,
     pub offset: i32,
     pub results: Vec<SOTAReference>,
@@ -286,7 +289,7 @@ pub struct PagenatedResponse<SOTAReference> {
 impl From<PagenatedResult<SotaReference>> for PagenatedResponse<SotaRefView> {
     fn from(pagenated: PagenatedResult<SotaReference>) -> Self {
         PagenatedResponse {
-            total: pagenated.total,
+            total: pagenated.total as i32,
             limit: pagenated.limit,
             offset: pagenated.offset,
             results: pagenated
@@ -299,6 +302,7 @@ impl From<PagenatedResult<SotaReference>> for PagenatedResponse<SotaRefView> {
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SotaSearchView {
     pub code: String,

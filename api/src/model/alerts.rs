@@ -1,5 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
+use typeshare::typeshare;
 
 use common::error::{AppError, AppResult};
 use common::utils::call_to_operator;
@@ -102,6 +103,7 @@ impl From<PotaAlert> for AppResult<Alert> {
 }
 
 #[derive(Debug, Serialize)]
+#[typeshare]
 pub struct AlertView {
     pub program: String,
     pub alert_id: i32,
@@ -112,8 +114,8 @@ pub struct AlertView {
     pub activator: String,
     pub operator: String,
     pub activator_name: Option<String>,
-    pub start_time: DateTime<Utc>,
-    pub end_time: Option<DateTime<Utc>>,
+    pub start_time: String,
+    pub end_time: Option<String>,
     pub frequencies: String,
     pub comment: Option<String>,
     pub poster: Option<String>,
@@ -131,8 +133,8 @@ impl From<Alert> for AlertView {
             activator: a.activator,
             operator: a.operator,
             activator_name: a.activator_name,
-            start_time: a.start_time,
-            end_time: a.end_time,
+            start_time: a.start_time.to_rfc3339(),
+            end_time: a.end_time.map(|e| e.to_rfc3339()),
             frequencies: a.frequencies,
             comment: a.comment,
             poster: a.poster,
