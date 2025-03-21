@@ -18,11 +18,10 @@ pub struct AprsLogRepositoryImpl {
 
 impl AprsLogRepositoryImpl {
     async fn select_by_callsign(&self, callsign: &AprsCallsign) -> AppResult<Vec<AprsLogRow>> {
-        let ssid = callsign.ssid.unwrap_or_default();
-
-        let result = sqlx::query_as!(
-            AprsLogRow,
-            r#"
+        let result = if let Some(ssid) = &callsign.ssid {
+            sqlx::query_as!(
+                AprsLogRow,
+                r#"
                 SELECT
                     time,
                     callsign,
@@ -36,12 +35,35 @@ impl AprsLogRepositoryImpl {
                 FROM aprs_log WHERE callsign = $1 AND ssid = $2
                 ORDER BY time DESC
             "#,
-            callsign.callsign,
-            ssid
-        )
-        .fetch_all(self.pool.inner_ref())
-        .await
-        .map_err(AppError::SpecificOperationError)?;
+                callsign.callsign,
+                ssid
+            )
+            .fetch_all(self.pool.inner_ref())
+            .await
+            .map_err(AppError::SpecificOperationError)?
+        } else {
+            sqlx::query_as!(
+                AprsLogRow,
+                r#"
+                SELECT
+                    time,
+                    callsign,
+                    ssid,
+                    destination,
+                    distance,
+                    state,
+                    message,
+                    longitude,
+                    latitude
+                FROM aprs_log WHERE callsign = $1
+                ORDER BY time DESC
+            "#,
+                callsign.callsign
+            )
+            .fetch_all(self.pool.inner_ref())
+            .await
+            .map_err(AppError::SpecificOperationError)?
+        };
 
         Ok(result)
     }
