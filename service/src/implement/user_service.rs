@@ -139,9 +139,10 @@ impl UserService for UserServiceImpl {
             let mut pota_hash: HashMap<String, SpotLog> = HashMap::new();
 
             for spot in spots {
+                let mut spotlog = SpotLog::new(spot.clone(), None);
+
                 match get_spot_group(&event, &spot) {
                     GroupBy::Callsign(_) => {
-                        let spotlog = SpotLog::new(spot.clone(), None);
                         result
                             .entry(get_spot_group(&event, &spot))
                             .or_insert(Vec::new())
@@ -150,8 +151,6 @@ impl UserService for UserServiceImpl {
                     GroupBy::Reference(code) => {
                         if spot.program == AwardProgram::POTA && event.log_id.is_some() {
                             let code = code.unwrap_or_default();
-                            let mut spotlog = SpotLog::new(spot.clone(), None);
-
                             if let Some(v) = pota_hash.get(&code) {
                                 spotlog.qsos = v.qsos;
                             } else {
@@ -176,7 +175,6 @@ impl UserService for UserServiceImpl {
                                 .or_insert(Vec::new())
                                 .push(spotlog);
                         } else {
-                            let spotlog = SpotLog::new(spot.clone(), None);
                             result
                                 .entry(get_spot_group(&event, &spot))
                                 .or_insert(Vec::new())
