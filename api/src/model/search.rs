@@ -96,8 +96,8 @@ impl From<FindResult> for SearchBriefResponse {
             pota.into_iter().for_each(|r| {
                 res.push(SearchBriefData {
                     code: r.pota_code,
-                    lon: r.longitude.unwrap_or_default(),
-                    lat: r.latitude.unwrap_or_default(),
+                    lon: r.longitude,
+                    lat: r.latitude,
                     name: r.park_name,
                     name_j: r.park_name_j,
                 })
