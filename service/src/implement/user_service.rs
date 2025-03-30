@@ -226,29 +226,38 @@ impl UserService for UserServiceImpl {
         let log_id = update_id.log_id;
 
         if data.contains("Attempts") {
-            let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, true, 1)?;
-
+            let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, false, 1)?;
             let newlog: Vec<_> = requests
                 .into_iter()
                 .map(|l| POTAActivatorLogCSV::to_log(log_id, l))
                 .collect();
 
+            let query = DeleteLog {
+                log_id: Some(log_id),
+                ..Default::default()
+            };
+            self.pota_repo.delete_log(query).await?;
             self.pota_repo.upload_activator_log(newlog).await?;
 
             update_id.log_kind = Some(POTALogKind::ActivatorLog);
         } else {
             let requests: Vec<POTAHunterLogCSV> = csv_reader(data, false, 1)?;
-
             let newlog: Vec<_> = requests
                 .into_iter()
                 .map(|l| POTAHunterLogCSV::to_log(log_id, l))
                 .collect();
 
+            let query = DeleteLog {
+                log_id: Some(log_id),
+                ..Default::default()
+            };
+            self.pota_repo.delete_log(query).await?;
             self.pota_repo.upload_hunter_log(newlog).await?;
 
             update_id.log_kind = Some(POTALogKind::HunterLog);
         }
 
+        update_id.update = Utc::now().naive_utc();
         self.pota_repo.update_logid(update_id.clone()).await?;
 
         self.pota_repo
