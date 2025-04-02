@@ -94,8 +94,9 @@ impl From<FindResult> for SearchBriefResponse {
 
         if let Some(pota) = pota {
             pota.into_iter().for_each(|r| {
+                let code = r.pota_code + "/" + &r.wwff_code;
                 res.push(SearchBriefData {
-                    code: r.pota_code,
+                    code,
                     lon: r.longitude,
                     lat: r.latitude,
                     name: r.park_name,
