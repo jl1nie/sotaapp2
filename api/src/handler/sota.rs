@@ -164,8 +164,11 @@ async fn show_all_sota_reference(
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<SotaRefView>>> {
     let mut query = FindRefBuilder::default().sota();
+
     if param.limit.is_some() {
         query = query.limit(param.limit.unwrap());
+    } else {
+        query = query.limit(500);
     }
 
     if param.offset.is_some() {
@@ -182,7 +185,9 @@ async fn search_sota_reference(
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<SotaRefView>>> {
     let query = FindRefBuilder::default().sota();
-    let query = build_findref_query(param, query)?;
+    let mut query = build_findref_query(param, query)?;
+
+    query.limit = query.limit.map_or(Some(500), |v| Some(v.min(500)));
 
     let results = user_service.find_references(query).await?;
 
