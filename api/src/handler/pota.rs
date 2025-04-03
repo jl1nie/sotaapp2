@@ -143,6 +143,8 @@ async fn show_all_pota_reference(
 
     if param.limit.is_some() {
         query = query.limit(param.limit.unwrap());
+    } else {
+        query = query.limit(500);
     }
 
     if param.offset.is_some() {
@@ -161,7 +163,9 @@ async fn find_pota_reference(
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<Vec<PotaRefLogView>>> {
     let query = FindRefBuilder::default().pota();
-    let query = build_findref_query(param, query)?;
+    let mut query = build_findref_query(param, query)?;
+
+    query.limit = query.limit.map_or(Some(500), |v| Some(v.min(500)));
 
     let results = user_service.find_references(query).await?;
 
