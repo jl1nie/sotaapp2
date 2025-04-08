@@ -71,18 +71,18 @@ async fn upload_pota_log(
 ) -> AppResult<Json<PotaLogHistView>> {
     if let Some(field) = multipart.next_field().await.unwrap() {
         let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
+        if let Ok(data) = String::from_utf8(data.to_vec()) {
+            let reqs = UploadPOTALog {
+                activator_logid,
+                hunter_logid,
+                data,
+            };
 
-        let reqs = UploadPOTALog {
-            activator_logid,
-            hunter_logid,
-            data,
-        };
+            let res = user_service.upload_pota_log(reqs).await;
 
-        let res = user_service.upload_pota_log(reqs).await;
-
-        if let Ok(loguser) = res {
-            return Ok(Json(loguser.into()));
+            if let Ok(loguser) = res {
+                return Ok(Json(loguser.into()));
+            }
         }
     }
     Err(AppError::ForbiddenOperation)
