@@ -77,7 +77,7 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
 
     async fn aprs_packet_received(&self, packet: AprsData) -> AppResult<()> {
         match packet {
-            AprsData::AprsMesasge {
+            AprsData::AprsMessage {
                 callsign,
                 addressee,
                 message,
