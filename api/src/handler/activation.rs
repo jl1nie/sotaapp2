@@ -196,7 +196,7 @@ async fn show_aprs_log(
     };
 
     if let Some(callsign) = param.by_call {
-        request.callsign = Some(AprsCallsign::from(&callsign));
+        request.callsign = Some(AprsCallsign::from(callsign));
     } else {
         if let Some(ago) = param.hours_ago {
             request.after = Some(Utc::now() - Duration::hours(ago));
