@@ -23,10 +23,12 @@ pub async fn update_summit_list(config: AppConfig, registry: Arc<AppRegistry>) -
     let event = UploadSOTASummit { data };
     service.update_summit_list(event).await?;
 
-    tokio::time::sleep(Duration::from_secs(10)).await;
-    tracing::info!("Sending graceful shutdown signal.");
-    let _ = config.shutdown_tx.send(true);
-
+    if config.reboot_after_update {
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        tracing::info!("Sending graceful shutdown signal.");
+        let _ = config.shutdown_tx.send(true);
+    }
+    tracing::info!("Summit list updated successfully.");
     Ok(())
 }
 
