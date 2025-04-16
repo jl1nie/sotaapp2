@@ -36,6 +36,7 @@ pub struct AppConfig {
     pub aprs_password: String,
     pub aprs_exclude_user: Option<String>,
     pub aprs_arrival_mesg_regex: Option<String>,
+    pub reboot_after_update: bool,
     pub shutdown_tx: watch::Sender<bool>,
     pub shutdown_rx: watch::Receiver<bool>,
 }
@@ -69,7 +70,9 @@ impl AppConfig {
                 .expect("SOTA_SUMMITLIST_ENDPOINT"),
             sota_summitlist_update_schedule: std::env::var("SUMMITLIST_SCHEDULE")
                 .expect("SUMMITLIST_SCHEDULE"),
-
+            reboot_after_update: std::env::var("REBOOT_AFTER_UPDATE")
+                .expect("REBOOT_AFTER_UPDATE")
+                .parse::<bool>()?,
             pota_parklist_endpoint: std::env::var("POTA_PARKLIST_ENDPOINT")
                 .expect("POTA_PARKLIST_ENDPOINT"),
             pota_parklist_update_schedule: std::env::var("PARKLIST_SCHEDULE")
