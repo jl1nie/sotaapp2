@@ -75,6 +75,15 @@ pub mod connect {
             tracing::info!("done.");
         }
 
+        // 毎晩リブートするので起動時にデータベースを最適化
+        tracing::info!("Optimizing database...");
+        sqlx::query("PRAGMA optimize")
+            .execute(pool.inner_ref())
+            .await?;
+        sqlx::query("VACUUM").execute(pool.inner_ref()).await?;
+        sqlx::query("ANALYZE").execute(pool.inner_ref()).await?;
+        tracing::info!("Database optimization completed.");
+
         Ok(pool)
     }
 }
