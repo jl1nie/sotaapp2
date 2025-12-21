@@ -61,8 +61,34 @@ fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
+/// 必須環境変数のリスト
+const REQUIRED_ENV_VARS: &[&str] = &[
+    "DATABASE_URL",
+    "FIREBASE_API_KEY",
+    "APRSUSER",
+    "APRSPASSWORD",
+];
+
 impl AppConfig {
+    /// 必須環境変数を事前検証
+    pub fn validate_required_env() -> Result<()> {
+        let missing: Vec<_> = REQUIRED_ENV_VARS
+            .iter()
+            .filter(|key| std::env::var(key).is_err())
+            .collect();
+
+        if !missing.is_empty() {
+            anyhow::bail!(
+                "必須環境変数が設定されていません: {}",
+                missing.into_iter().copied().collect::<Vec<_>>().join(", ")
+            );
+        }
+        Ok(())
+    }
+
     pub fn new() -> Result<Self> {
+        Self::validate_required_env()?;
+
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
         Ok(Self {
             // 必須の設定
