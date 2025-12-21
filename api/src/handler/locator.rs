@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Multipart, Query},
+    extract::Multipart,
     routing::{get, post},
     Json, Router,
 };
@@ -9,7 +9,7 @@ use shaku_axum::Inject;
 use crate::model::import::ImportResult;
 use crate::model::{
     locator::{CenturyCodeView, MapcodeView},
-    param::GetParam,
+    param::{GetParam, ValidatedQuery},
 };
 use common::error::AppResult;
 use common::utils::maidenhead;
@@ -32,7 +32,7 @@ async fn import_muni_csv(
 
 async fn find_century_code(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<CenturyCodeView>> {
     let muni_code: i32 = param.muni_code.unwrap_or_default();
     let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
@@ -48,7 +48,7 @@ async fn find_century_code(
 
 async fn find_map_code(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<MapcodeView>> {
     let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
     let mapcode = user_service.find_mapcode(lon, lat).await?;

@@ -166,10 +166,15 @@ async fn bootstrap() -> Result<()> {
     let firebase = FireAuth::new(config.firebase_api_key.clone());
 
     let cors = match config.cors_origin.clone() {
-        Some(origin) => CorsLayer::new()
-            .allow_origin(origin.parse::<HeaderValue>().unwrap())
-            .allow_headers(Any)
-            .allow_methods(Any),
+        Some(origin) => {
+            let header_value = origin
+                .parse::<HeaderValue>()
+                .expect("Invalid CORS origin header value in configuration");
+            CorsLayer::new()
+                .allow_origin(header_value)
+                .allow_headers(Any)
+                .allow_methods(Any)
+        }
         None => CorsLayer::new()
             .allow_origin(Any)
             .allow_headers(Any)

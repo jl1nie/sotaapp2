@@ -367,7 +367,13 @@ impl PotaRepositoryImpl {
         tracing::info!("Found {} user records from legacy DB.", data.len());
 
         for d in data {
-            let row: PotaLogHistRow = d.into();
+            let row: PotaLogHistRow = match d.try_into() {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::warn!("Skipping invalid legacy log hist record: {}", e);
+                    continue;
+                }
+            };
             sqlx::query!(
                 r#"INSERT INTO pota_log_user (user_id, log_id, log_kind, "update")
                             VALUES($1, $2, $3, $4)
@@ -414,8 +420,14 @@ impl PotaRepositoryImpl {
                 break;
             }
 
-            for d in data.into_iter().enumerate() {
-                let row: PotaLogRow = d.1.into();
+            for (idx, d) in data.into_iter().enumerate() {
+                let row: PotaLogRow = match d.try_into() {
+                    Ok(r) => r,
+                    Err(e) => {
+                        tracing::warn!("Skipping invalid legacy log record at {}: {}", idx, e);
+                        continue;
+                    }
+                };
                 sqlx::query!(
                  r#"
                 INSERT INTO pota_log (log_id, pota_code, first_qso_date, attempts, activations, qsos)

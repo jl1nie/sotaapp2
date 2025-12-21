@@ -4,6 +4,7 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
+// Note: Query is still used for log_migrate which has different param type
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
 use fastrand;
@@ -20,7 +21,7 @@ use crate::model::pota::{
 use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
-    param::{build_findref_query, GetParam},
+    param::{build_findref_query, GetParam, ValidatedQuery},
     spots::SpotView,
 };
 use domain::model::{
@@ -121,7 +122,7 @@ async fn show_pota_reference(
 
 async fn show_all_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<PotaRefView>>> {
     let mut query = FindRefBuilder::default()
         .pota()
@@ -140,7 +141,7 @@ async fn show_all_pota_reference(
 
 async fn find_pota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Vec<PotaRefLogView>>> {
     let query = FindRefBuilder::default().pota();
     let mut query = build_findref_query(param, query)?;
@@ -161,7 +162,7 @@ async fn find_pota_reference(
 
 async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
 
@@ -184,7 +185,7 @@ async fn show_pota_spots(
 
 async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
 

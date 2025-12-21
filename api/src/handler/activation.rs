@@ -1,5 +1,5 @@
 use aprs_message::AprsCallsign;
-use axum::{extract::Query, routing::get, Json, Router};
+use axum::{routing::get, Json, Router};
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
 use serde_json::Value;
@@ -15,7 +15,7 @@ use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
     aprslog::{AprsLogView, Track, Tracks},
-    param::GetParam,
+    param::{GetParam, ValidatedQuery},
     spots::SpotView,
 };
 
@@ -135,7 +135,7 @@ async fn show_alerts(
 async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Value>> {
     let query = FindActBuilder::default().sota();
     show_spots(user_service, kvs_repo, param, query).await
@@ -144,7 +144,7 @@ async fn show_sota_spots(
 async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Value>> {
     let query = FindActBuilder::default().pota();
     show_spots(user_service, kvs_repo, param, query).await
@@ -153,7 +153,7 @@ async fn show_pota_spots(
 async fn show_all_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Value>> {
     let query = FindActBuilder::default();
     show_spots(user_service, kvs_repo, param, query).await
@@ -162,7 +162,7 @@ async fn show_all_spots(
 async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Value>> {
     let query = FindActBuilder::default().sota();
     show_alerts(user_service, kvs_repo, param, query).await
@@ -171,7 +171,7 @@ async fn show_sota_alerts(
 async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Value>> {
     let query = FindActBuilder::default().pota();
     show_alerts(user_service, kvs_repo, param, query).await
@@ -180,7 +180,7 @@ async fn show_pota_alerts(
 async fn show_all_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Value>> {
     let query = FindActBuilder::default();
     show_alerts(user_service, kvs_repo, param, query).await
@@ -188,7 +188,7 @@ async fn show_all_alerts(
 
 async fn show_aprs_log(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Vec<AprsLogView>>> {
     let mut request = FindAprs {
         reference: None,
@@ -220,7 +220,7 @@ async fn show_aprs_log(
 async fn show_aprs_track(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Value>> {
     let key = param.to_key();
     if let Some(val) = kvs_repo.get(&key).await {

@@ -24,6 +24,7 @@ maidenhead.workspace = true
 fastrand.workspace = true
 aprs-message.workspace = true
 typeshare.workspace = true
+validator.workspace = true
 
 [dev-dependencies]
 axum-test.workspace = true

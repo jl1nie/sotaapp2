@@ -79,10 +79,11 @@ impl IntoResponse for AppError {
                 (StatusCode::NOT_FOUND, msg.clone(), Some("NOT_FOUND"))
             }
             AppError::RowNotFound { source, location } => {
-                tracing::error!("Not found {:?} at {}", source, location);
+                // locationは内部情報なのでログにのみ記録し、レスポンスには含めない
+                tracing::error!("Row not found at {}: {:?}", location, source);
                 (
                     StatusCode::NOT_FOUND,
-                    format!("指定された行が見つかりません: {}", location),
+                    "指定されたリソースが見つかりません".to_string(),
                     Some("ROW_NOT_FOUND"),
                 )
             }

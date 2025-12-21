@@ -357,23 +357,24 @@ service/src/implement/
 
 ### 【セキュリティ - 高優先】
 
-#### #33 エラーレスポンス情報漏洩防止 🔴 HIGH
-**ファイル**: `common/src/error.rs:81-87`
-**問題**: `RowNotFound`エラーで内部の`location`情報がレスポンスに含まれる
-```rust
-// 現状
-format!("指定された行が見つかりません: {}", location)  // ← 内部詳細露出
-```
-**対策**: 汎用メッセージに変更、詳細はログのみに記録
-**複雑度**: 低
-**工数**: 1h
+#### #33 エラーレスポンス情報漏洩防止 ✅
+**ファイル**: `common/src/error.rs:81-89`
+**問題**: `RowNotFound`エラーで内部の`location`情報がレスポンスに含まれていた
+**対策**:
+- レスポンスには汎用メッセージ「指定されたリソースが見つかりません」のみを返却
+- `location`はログにのみ記録（`tracing::error!`）
+- 内部詳細の外部露出を防止
 
-#### #34 入力バリデーション強化 🟡 MEDIUM
+#### #34 入力バリデーション強化 ✅
 **ファイル**: `api/src/model/param.rs`
-**問題**: `limit`, `offset`, `min_elev`等の数値パラメータに範囲チェックなし
-**対策**: `validator`クレート導入、`#[validate(range(min=0, max=10000))]`
-**複雑度**: 中
-**工数**: 4h
+**対策完了**:
+- `validator`クレート導入
+- `GetParam`構造体に`#[validate]`属性追加
+  - 数値パラメータ: `range`バリデーション（limit: 1-10000, offset: 0-1000000等）
+  - 文字列パラメータ: `length`バリデーション（max 20-100文字）
+  - 座標: lat -90〜90, lon -180〜180
+- `ValidatedQuery<T>`エクストラクタ作成（自動バリデーション）
+- 全APIハンドラで`ValidatedQuery`使用に変更（22箇所）
 
 #### #35 PostGISレガシー関数削除 🟢 LOW
 **ファイル**: `adapter/src/database/implement/postgis/querybuilder.rs:220-339`
@@ -387,21 +388,18 @@ format!("指定された行が見つかりません: {}", location)  // ← 内�
 
 ### 【コード品質 - 中優先】
 
-#### #36 残存unwrap()の置き換え 🟡 MEDIUM
-**問題箇所** (約20箇所):
+#### #36 残存unwrap()の置き換え ✅
+**対策完了**:
 
-| ファイル | 行 | 内容 |
-|---------|-----|------|
-| `adapter/src/minikvs.rs` | 50 | `serde_json::to_string().unwrap()` |
-| `adapter/src/database/model/pota.rs` | 108-243 | 6箇所 |
-| `adapter/src/database/model/locator.rs` | 66-78 | 4箇所 |
-| `adapter/src/database/implement/sqlite/sota_reference.rs` | 553-661 | 4箇所 |
-| `src/bin/app.rs` | 170 | ヘッダ値パース |
-| `service/src/implement/admin_service.rs` | 159 | HashMap.get() |
-
-**対策**: `?`演算子、`unwrap_or_default()`、`expect()`への置き換え
-**複雑度**: 低
-**工数**: 3h
+| ファイル | 変更内容 |
+|---------|---------|
+| `adapter/src/minikvs.rs` | `expect()`に変更（シリアライズ失敗はプログラムエラー） |
+| `adapter/src/database/model/pota.rs` | `unwrap_or_default()`使用、`TryFrom`トレイトに変更 |
+| `adapter/src/database/model/locator.rs` | `if let`パターンマッチに書き換え |
+| `adapter/src/database/implement/sqlite/sota_reference.rs` | `unwrap_or_default()`使用 |
+| `adapter/src/database/implement/sqlite/pota_reference.rs` | `try_into()`でエラースキップ |
+| `src/bin/app.rs` | `expect()`に変更（設定エラーは起動時検出） |
+| `service/src/implement/admin_service.rs` | `filter_map()`+`?`パターンに変更 |
 
 #### #37 clone()最適化 🟢 LOW
 **問題**: 115箇所でclone()使用、一部は参照で代替可能
@@ -514,10 +512,10 @@ service/src/implement/
 
 | 優先度 | 項目 | 工数 | 次期スプリント候補 |
 |--------|------|------|------------------|
-| 🔴 高 | #33 エラー情報漏洩防止 | 1h | ✓ |
+| ✅ | #33 エラー情報漏洩防止 | 完了 | |
 | 🔴 高 | #39 APIハンドラテスト | 16h | ✓ |
-| 🟡 中 | #34 入力バリデーション | 4h | ✓ |
-| 🟡 中 | #36 unwrap()置き換え | 3h | ✓ |
+| ✅ | #34 入力バリデーション | 完了 | |
+| ✅ | #36 unwrap()置き換え | 完了 | |
 | 🟡 中 | #40 APRSテスト | 8h | |
 | 🟡 中 | #41 ファイル分割 | 12h | |
 | 🟡 中 | #42 user_service責務分離 | 16h | |
@@ -529,15 +527,15 @@ service/src/implement/
 
 ---
 
-## 次期スプリント推奨（24h）
+## 次期スプリント推奨（16h）
 
-1. **#33 エラー情報漏洩防止** (1h) - セキュリティ
+1. ~~**#33 エラー情報漏洩防止** (1h)~~ ✅ 完了
 2. **#35 PostGISレガシー削除** (1h) - セキュリティ
-3. **#36 unwrap()置き換え** (3h) - コード品質
-4. **#34 入力バリデーション** (4h) - セキュリティ
+3. ~~**#36 unwrap()置き換え** (3h)~~ ✅ 完了
+4. ~~**#34 入力バリデーション** (4h)~~ ✅ 完了
 5. **#39 APIハンドラテスト（部分）** (15h) - テスト
    - auth.rs: 3h
    - sota.rs: 6h
    - pota.rs: 6h
 
-合計: 24h
+合計: 16h（8h完了済み）

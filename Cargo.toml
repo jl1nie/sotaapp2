@@ -71,6 +71,7 @@ fastrand = "2.3.0"
 mockall = "0.13"
 axum-test = "16"
 tempfile = "3"
+validator = { version = "0.19", features = ["derive"] }
 
 [dependencies]
 api.workspace = true
