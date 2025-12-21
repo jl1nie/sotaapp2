@@ -5,7 +5,7 @@ use shaku::Component;
 use sqlx::SqliteConnection;
 
 use common::config::AppConfig;
-use common::error::{AppError, AppResult};
+use common::error::{db_error, tx_error, AppError, AppResult};
 use common::http;
 use domain::model::locator::MunicipalityCenturyCode;
 
@@ -53,7 +53,7 @@ impl LocatorRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert/update municipality_century_codes"))?;
         Ok(())
     }
 
@@ -72,7 +72,7 @@ impl LocatorRepositryImpl {
         )
         .fetch_one(self.pool.inner_ref())
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("fetch municipality_century_codes by muni_code"))?;
         Ok(results.into())
     }
 }
@@ -85,7 +85,7 @@ impl LocatorRepositry for LocatorRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin upload_muni_century_list"))?;
 
         for r in table.into_iter().enumerate() {
             self.update(MunicipalityCenturyCodeRow::from(r.1), &mut tx)
@@ -94,7 +94,9 @@ impl LocatorRepositry for LocatorRepositryImpl {
                 tracing::info!("insert db {} rescords", r.0);
             }
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit upload_muni_century_list"))?;
         Ok(())
     }
 
