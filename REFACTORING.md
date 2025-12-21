@@ -138,19 +138,11 @@ service/src/implement/
 
 ### 【エラーハンドリング - 高優先】
 
-#### #23 unwrap() の一掃 🟠 HIGH
-**問題**: 96箇所の `unwrap()` 使用
-**重要箇所**:
-- `service/src/implement/user_service.rs:210`: `LogId::from_str().unwrap_or()`
-- `service/src/implement/user_service.rs:298-299`: ハードコードされた日付
-- `service/src/implement/aprs_service.rs:24`: `Regex::new().unwrap()`
-
+#### #23 unwrap() の一掃 ✅
 **対策**:
-- 全 `unwrap()` を `?`, `.map_err()`, `.unwrap_or_default()` に置換
-- クリティカルパスでパニックフリー保証
-
-**優先度**: 高
-**複雑度**: 中
+- aprs_service.rs: unwrap() を let-else パターン、is_some_and() に置換
+- user_service.rs: 日付のunwrap()を.single().unwrap_or_else()に変更
+- award.rs: is_activation()/is_chase()をis_some_and()で安全化
 
 #### #24 エラーコンテキストの統一 🟡 MEDIUM
 **問題**: エラー発生位置情報が不統一
@@ -166,31 +158,17 @@ service/src/implement/
 
 ### 【パフォーマンス - 高優先】
 
-#### #25 POTA統計のN+1クエリ問題 🟠 HIGH
-**ファイル**: `adapter/src/database/implement/sqlite/pota_reference.rs:280-310`
-**問題**: ループ内でクエリ実行（10,000エントリで10,000クエリ）
-```rust
-for l in logs {
-    let r = sqlx::query!(...).fetch_one(...) // ループ内クエリ!
-}
-```
+#### #25 POTA統計のN+1クエリ問題 ✅
+**ファイル**: `adapter/src/database/implement/sqlite/pota_reference.rs`
 **対策**:
-- SQL JOINで単一クエリ化
-- ウィンドウ関数で集計
-- 結果のキャッシュ（TTL付き）
+- log_stat()内のN+1クエリをJOINクエリに書き換え
+- O(n)クエリをO(1)に削減
 
-**優先度**: 高
-**複雑度**: 中
-
-#### #26 Regexランタイムコンパイル 🟡 MEDIUM
-**ファイル**: `service/src/implement/aprs_service.rs:24`
-**問題**: 呼び出しごとに正規表現をコンパイル
+#### #26 Regexランタイムコンパイル ✅
+**ファイル**: `service/src/implement/aprs_service.rs`
 **対策**:
-- `lazy_static` または `once_cell` でキャッシュ
-- 起動時にパターン検証
-
-**優先度**: 中
-**複雑度**: 低
+- `OnceLock` を使用して正規表現をキャッシュ
+- `get_cached_regex()` 関数で共通パターンを事前コンパイル
 
 #### #27 過剰なclone()削減 🟡 MEDIUM
 **問題**: 115箇所の `clone()` 呼び出し
@@ -291,22 +269,23 @@ for l in logs {
 
 ## 優先順位サマリー
 
-| カテゴリ | 項目数 | 優先度 | 複雑度 | 工数目安 |
+| カテゴリ | 項目数 | 状態 | 複雑度 | 工数目安 |
 |----------|--------|--------|--------|----------|
 | セキュリティ | 1 | ✅完了 | - | - |
-| ファイル分割 | 2 | 高 | 高 | 20-30h |
-| エラーハンドリング | 2 | 高 | 中 | 20-25h |
-| パフォーマンス | 3 | 高 | 中 | 15-20h |
-| テスト | 1 | 高 | 高 | 40h+ |
-| アーキテクチャ | 3 | 中 | 中-高 | 30-40h |
-| 設定・保守性 | 2 | 低-中 | 低 | 10-15h |
+| エラーハンドリング | 1 | ✅完了 | - | - |
+| パフォーマンス | 2 | ✅完了 | - | - |
+| ファイル分割 | 2 | 未着手 | 高 | 20-30h |
+| テスト | 1 | 未着手 | 高 | 40h+ |
+| アーキテクチャ | 3 | 未着手 | 中-高 | 30-40h |
+| 設定・保守性 | 2 | 未着手 | 低 | 10-15h |
 
 ## 推奨実施順序
 
 1. ~~**#19 SQLインジェクション対策**~~ ✅ 完了
-2. **#7 テストインフラ整備** - 大規模リファクタリング前に
-3. **#23 unwrap()一掃** - 安定性向上
-4. **#25 N+1クエリ修正** - パフォーマンス改善
-5. **#21 user_service分割** - 可読性向上
-6. **#22 ハンドラ関数の重複排除** - 保守性向上
-7. 残りは優先度順に実施
+2. ~~**#23 unwrap()一掃**~~ ✅ 完了
+3. ~~**#25 N+1クエリ修正**~~ ✅ 完了
+4. ~~**#26 Regexキャッシュ**~~ ✅ 完了
+5. **#7 テストインフラ整備** - 大規模リファクタリング前に
+6. **#21 user_service分割** - 可読性向上
+7. **#22 ハンドラ関数の重複排除** - 保守性向上
+8. 残りは優先度順に実施
