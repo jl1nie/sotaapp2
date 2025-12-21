@@ -275,36 +275,27 @@ impl PotaRepositoryImpl {
             .await;
         let log_entries = r.map_or(0, |v| v.count);
 
+        // N+1クエリ問題を解決: JOINで一括取得
         let (mut longest_id, mut longest_entry, mut log_error) =
             (Option::<LogId>::None, 0i64, 0i64);
 
-        let r = sqlx::query_as!(
-            PotaLogHistRow,
-            r#"SELECT user_id as "user_id: UserId", log_id as "log_id: LogId", log_kind, "update" 
-            FROM pota_log_user"#
+        let r = sqlx::query!(
+            r#"SELECT u.log_id as "log_id: LogId", COUNT(l.log_id) as count
+               FROM pota_log_user u
+               LEFT JOIN pota_log l ON u.log_id = l.log_id
+               GROUP BY u.log_id"#
         )
         .fetch_all(self.pool.inner_ref())
         .await;
 
         if let Ok(logs) = r {
-            for l in logs {
-                let r = sqlx::query!(
-                    r#"SELECT COUNT(log_id) as count FROM pota_log WHERE log_id = $1"#,
-                    l.log_id
-                )
-                .fetch_one(self.pool.inner_ref())
-                .await;
-                match r {
-                    Ok(row) => {
-                        let loglen = row.count;
-                        if loglen == 0 {
-                            log_error += 1;
-                        } else if loglen > longest_entry {
-                            longest_entry = loglen;
-                            longest_id = Some(l.log_id)
-                        }
-                    }
-                    Err(_) => log_error += 1,
+            for row in logs {
+                let loglen = row.count;
+                if loglen == 0 {
+                    log_error += 1;
+                } else if loglen > longest_entry {
+                    longest_entry = loglen;
+                    longest_id = Some(row.log_id)
                 }
             }
         }
@@ -326,32 +317,24 @@ impl PotaRepositoryImpl {
 
         let end_date = Utc::now().naive_utc();
 
+        // N+1クエリ問題を解決: 日付ごとの統計を一括取得
         let days: Vec<NaiveDateTime> = (0..14)
-            .map(|i| end_date.checked_sub_days(Days::new(i)).unwrap())
+            .filter_map(|i| end_date.checked_sub_days(Days::new(i)))
             .collect();
 
         for day in days {
-            let loglist = sqlx::query!(
-                r#"SELECT log_id as "log_id: LogId" FROM pota_log_user WHERE "update" <= $1"#,
+            // JOINで一括取得
+            let r = sqlx::query!(
+                r#"SELECT COUNT(DISTINCT u.log_id) as users, COUNT(l.log_id) as logs
+                   FROM pota_log_user u
+                   LEFT JOIN pota_log l ON u.log_id = l.log_id
+                   WHERE u."update" <= $1"#,
                 day
             )
-            .fetch_all(self.pool.inner_ref())
-            .await
-            .map_or(Vec::new(), |r| r.into_iter().map(|r| r.log_id).collect());
+            .fetch_one(self.pool.inner_ref())
+            .await;
 
-            let (mut logs, mut users) = (0i64, 0i64);
-            for id in loglist {
-                let r = sqlx::query!(
-                    r#"SELECT COUNT(*) as count FROM pota_log WHERE log_id = $1"#,
-                    id
-                )
-                .fetch_one(self.pool.inner_ref())
-                .await;
-                if let Ok(r) = r {
-                    logs += r.count;
-                    users += 1;
-                }
-            }
+            let (users, logs) = r.map_or((0i64, 0i64), |r| (r.users, r.logs));
             let time = day.and_utc().to_rfc3339();
             log_history.push(PotaLogStatEnt { time, users, logs });
         }

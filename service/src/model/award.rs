@@ -93,8 +93,14 @@ impl Default for AwardPeriod {
         // SOTA日本支部設立10周年記念アワード期間: 2025/6/1 - 2025/12/31 (JST)
         // JSTなので UTC+9、UTCでは2025/5/31 15:00 - 2025/12/31 14:59:59
         Self {
-            start: Utc.with_ymd_and_hms(2025, 5, 31, 15, 0, 0).unwrap(),
-            end: Utc.with_ymd_and_hms(2025, 12, 31, 15, 0, 0).unwrap(),
+            start: Utc
+                .with_ymd_and_hms(2025, 5, 31, 15, 0, 0)
+                .single()
+                .expect("Invalid award start date"),
+            end: Utc
+                .with_ymd_and_hms(2025, 12, 31, 15, 0, 0)
+                .single()
+                .expect("Invalid award end date"),
         }
     }
 }
@@ -124,11 +130,15 @@ impl SotaLogEntry {
 
     /// アクティベーションログかどうか
     pub fn is_activation(&self) -> bool {
-        self.my_summit_code.is_some() && !self.my_summit_code.as_ref().unwrap().is_empty()
+        self.my_summit_code
+            .as_ref()
+            .is_some_and(|code| !code.is_empty())
     }
 
     /// チェイスログかどうか
     pub fn is_chase(&self) -> bool {
-        self.his_summit_code.is_some() && !self.his_summit_code.as_ref().unwrap().is_empty()
+        self.his_summit_code
+            .as_ref()
+            .is_some_and(|code| !code.is_empty())
     }
 }

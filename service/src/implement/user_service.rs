@@ -167,8 +167,7 @@ impl UserService for UserServiceImpl {
 
                                 let parks = self.find_references(query).await?;
                                 if let FindResult { pota: Some(p), .. } = parks {
-                                    if !p.is_empty() {
-                                        let pota = p.first().unwrap();
+                                    if let Some(pota) = p.first() {
                                         spotlog.qsos = pota.qsos;
                                         pota_hash.insert(code, spotlog.clone());
                                     }
@@ -295,8 +294,14 @@ impl UserService for UserServiceImpl {
     ) -> AppResult<()> {
         let requests: Vec<SOTALogCSV> = csv_reader(data, false, 0)?;
 
-        let from = Utc.with_ymd_and_hms(2024, 6, 1, 0, 0, 0).unwrap();
-        let to = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let from = Utc
+            .with_ymd_and_hms(2024, 6, 1, 0, 0, 0)
+            .single()
+            .unwrap_or_else(|| Utc::now());
+        let to = Utc
+            .with_ymd_and_hms(2025, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap_or_else(|| Utc::now());
 
         let newlog: Vec<_> = requests
             .into_iter()
@@ -331,7 +336,9 @@ impl UserService for UserServiceImpl {
         let mut act_hash = HashMap::new();
 
         for a in act_log {
-            let summit_code = a.my_summit_code.unwrap();
+            let Some(summit_code) = a.my_summit_code else {
+                continue;
+            };
             let date = a.time.date_naive();
             let newent = act_hash
                 .entry((a.operator, summit_code))
@@ -343,8 +350,9 @@ impl UserService for UserServiceImpl {
         let mut chase_summit_hash = HashMap::new();
 
         for c in chase_log {
-            //let my_operator = c.operator.clone();
-            let his_summit_code = c.his_summit_code.unwrap();
+            let Some(his_summit_code) = c.his_summit_code else {
+                continue;
+            };
             let his_callsign = common::utils::call_to_operator(&c.his_callsign);
 
             let newent = chase_summit_hash
@@ -544,21 +552,26 @@ fn judge_award_with_mode(
 
         // アクティベーションログの処理（アクティベータログの場合のみ）
         if log_type == LogType::Activator && log.is_activation() {
-            let summit_code = log.my_summit_code.as_ref().unwrap().to_uppercase();
-            let his_operator = log.his_operator().to_uppercase();
-            let utc_date = datetime.date_naive();
+            if let Some(summit_code) = log.my_summit_code.as_ref() {
+                let summit_code = summit_code.to_uppercase();
+                let his_operator = log.his_operator().to_uppercase();
+                let utc_date = datetime.date_naive();
 
-            activator_map
-                .entry(summit_code)
-                .or_default()
-                .entry(utc_date)
-                .or_default()
-                .insert(his_operator);
+                activator_map
+                    .entry(summit_code)
+                    .or_default()
+                    .entry(utc_date)
+                    .or_default()
+                    .insert(his_operator);
+            }
         }
 
         // チェイスログの処理（チェイサーログの場合のみ）
         if log_type == LogType::Chaser && log.is_chase() {
-            let his_summit_code = log.his_summit_code.as_ref().unwrap().to_uppercase();
+            let Some(his_summit_code) = log.his_summit_code.as_ref() else {
+                continue;
+            };
+            let his_summit_code = his_summit_code.to_uppercase();
             let his_operator = log.his_operator().to_uppercase();
 
             chaser_map

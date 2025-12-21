@@ -3,6 +3,7 @@ use chrono::{Duration, TimeZone, Utc};
 use regex::Regex;
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::sync::OnceLock;
 
 use super::admin_periodic::AdminPeriodicServiceImpl;
 use super::user_service::UserServiceImpl;
@@ -15,14 +16,34 @@ use domain::model::{
     event::{FindActBuilder, FindAprs, FindRefBuilder},
 };
 
+/// キャッシュされた正規表現パターン
+fn get_cached_regex(pattern: &str) -> Option<&'static Regex> {
+    static JA_PATTERN: OnceLock<Regex> = OnceLock::new();
+    static ANY_PATTERN: OnceLock<Regex> = OnceLock::new();
+
+    match pattern {
+        r"^JA.*" => Some(JA_PATTERN.get_or_init(|| Regex::new(r"^JA.*").expect("Invalid JA regex"))),
+        r".*" => Some(ANY_PATTERN.get_or_init(|| Regex::new(r".*").expect("Invalid any regex"))),
+        _ => None,
+    }
+}
+
 impl AdminPeriodicServiceImpl {
     async fn last_three_spots_messasge(&self, pat: &str) -> AppResult<String> {
         let after = Utc::now() - Duration::hours(3);
         let query = FindActBuilder::default().sota().issued_after(after).build();
         let mut spots = self.act_repo.find_spots(&query).await?;
 
-        let pat = Regex::new(pat).unwrap();
-        spots.retain(|r| pat.is_match(&r.reference));
+        // キャッシュされた正規表現を使用、未知のパターンはコンパイル
+        let compiled_regex;
+        let pat_regex = match get_cached_regex(pat) {
+            Some(r) => r,
+            None => {
+                compiled_regex = Regex::new(pat).unwrap_or_else(|_| Regex::new("$.").expect("Fallback regex"));
+                &compiled_regex
+            }
+        };
+        spots.retain(|r| pat_regex.is_match(&r.reference));
 
         let mut latest: HashMap<String, Spot> = HashMap::new();
         for s in spots {
@@ -46,14 +67,13 @@ impl AdminPeriodicServiceImpl {
             message = "No Spots.".to_string();
         } else {
             for s in spots {
-                write!(
+                let _ = write!(
                     &mut message,
                     "{}-{}-{} ",
                     s.spot_time.format("%H:%M"),
                     s.activator,
                     s.frequency
-                )
-                .unwrap();
+                );
             }
         }
 
@@ -141,7 +161,9 @@ impl AdminPeriodicServiceImpl {
             return Ok(());
         }
 
-        let summit = dest.first().unwrap().clone();
+        let Some(summit) = dest.first().cloned() else {
+            return Ok(());
+        };
         let destination = summit.summit_code.clone();
 
         let patstr = self
@@ -291,10 +313,15 @@ impl UserServiceImpl {
                 .build();
             let spot = self.act_repo.find_spots(&query).await?;
 
-            let log = lastlog.get(callsign).unwrap();
+            let Some(log) = lastlog.get(callsign) else {
+                continue;
+            };
             let lastseen = Utc.from_utc_datetime(&log.state.time());
 
-            let mut coordinates: Vec<_> = track.get(callsign).unwrap().to_vec();
+            let Some(coords) = track.get(callsign) else {
+                continue;
+            };
+            let mut coordinates: Vec<_> = coords.to_vec();
             coordinates.reverse();
 
             let aprstrack = if let Some(spot) = spot.first() {
