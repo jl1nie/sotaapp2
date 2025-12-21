@@ -1,6 +1,5 @@
 use axum::{
     extract::{Multipart, Query},
-    http::StatusCode,
     middleware,
     routing::{get, post},
     Json, Router,
@@ -8,6 +7,7 @@ use axum::{
 use firebase_auth_sdk::FireAuth;
 use shaku_axum::Inject;
 
+use crate::model::import::ImportResult;
 use crate::model::{
     locator::{CenturyCodeView, MapcodeView},
     param::GetParam,
@@ -23,19 +23,26 @@ use super::auth::auth_middle;
 async fn import_muni_csv(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
-) -> AppResult<StatusCode> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
+) -> AppResult<Json<ImportResult>> {
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
+        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
 
-        let reqs = UploadMuniCSV { data };
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
 
-        return admin_service
-            .import_muni_century_list(reqs)
-            .await
-            .map(|_| StatusCode::CREATED);
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = String::from_utf8(data.to_vec())
+        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+
+    let reqs = UploadMuniCSV { data };
+
+    let count = admin_service.import_muni_century_list(reqs).await?;
+
+    Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
 async fn find_century_code(

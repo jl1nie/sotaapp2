@@ -13,6 +13,7 @@ use serde_json::{json, Value};
 use shaku_axum::Inject;
 use std::str::FromStr;
 
+use crate::model::import::ImportResult;
 use crate::model::pota::{
     PagenatedResponse, PotaLogHistView, PotaLogStatView, PotaRefLogView, PotaRefView,
     UpdateRefRequest,
@@ -49,19 +50,26 @@ async fn update_pota_reference(
 async fn import_pota_reference_ja(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
-) -> AppResult<StatusCode> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
+) -> AppResult<Json<ImportResult>> {
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
+        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
 
-        let reqs = UploadPOTAReference { data };
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
 
-        return admin_service
-            .import_pota_park_list_ja(reqs)
-            .await
-            .map(|_| StatusCode::CREATED);
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = String::from_utf8(data.to_vec())
+        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+
+    let reqs = UploadPOTAReference { data };
+
+    let count = admin_service.import_pota_park_list_ja(reqs).await?;
+
+    Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
 async fn upload_pota_log(

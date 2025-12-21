@@ -7,7 +7,6 @@ pub struct AppConfig {
     pub host: String,
     pub port: u16,
     pub database: String,
-    pub init_database: bool,
     pub run_migration: bool,
     pub migration_path: String,
     pub cors_origin: Option<String>,
@@ -49,11 +48,8 @@ impl AppConfig {
             port: std::env::var("PORT").expect("PORT").parse::<u16>()?,
             log_level: std::env::var("LOG_LEVEL").expect("LOG_LEVEL"),
             database: std::env::var("DATABASE_URL").expect("DATABASE_URL"),
-            init_database: std::env::var("INIT_DATABASE")
-                .expect("INIT_DATABASE")
-                .parse::<bool>()?,
             run_migration: std::env::var("RUN_MIGRATION")
-                .expect("RUN_MIGRATION")
+                .unwrap_or_else(|_| "false".to_string())
                 .parse::<bool>()?,
             migration_path: std::env::var("MIGRATION_PATH").expect("MIGRATION_PATH"),
             cors_origin: std::env::var("CORS_ORIGIN").ok(),

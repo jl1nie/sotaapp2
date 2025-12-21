@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use aprs_message::AprsData;
 
+use crate::model::award::{AwardResult, JudgmentMode};
 use crate::model::locator::UploadMuniCSV;
 use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
 use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
@@ -36,6 +37,9 @@ pub trait UserService: Send + Sync + Interface {
 
     async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;
 
+    /// SOTA日本支部設立10周年記念アワード判定（in-memory、DBに保存しない）
+    fn judge_10th_anniversary_award(&self, csv_data: &str, mode: JudgmentMode) -> AppResult<AwardResult>;
+
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;
     async fn find_aprs_log(&self, event: FindAprs) -> AppResult<Vec<AprsLog>>;
@@ -45,12 +49,12 @@ pub trait UserService: Send + Sync + Interface {
 
 #[async_trait]
 pub trait AdminService: Send + Sync + Interface {
-    async fn import_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
-    async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<()>;
-    async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<()>;
-    async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<()>;
-    async fn import_pota_park_list_ja(&self, event: UploadPOTAReference) -> AppResult<()>;
-    async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<()>;
+    async fn import_summit_list(&self, event: UploadSOTASummit) -> AppResult<usize>;
+    async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<usize>;
+    async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<usize>;
+    async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<usize>;
+    async fn import_pota_park_list_ja(&self, event: UploadPOTAReference) -> AppResult<usize>;
+    async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<usize>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
     async fn show_all_sota_references(
         &self,

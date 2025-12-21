@@ -19,7 +19,7 @@ pub fn routes(auth: FireAuth) -> Router<AppState> {
         .merge(build_search_routers())
         .merge(build_activation_routers())
         .merge(build_auth_routers(&auth))
-        .layer(DefaultBodyLimit::max(1024 * 1024 * 32));
+        .layer(DefaultBodyLimit::max(1024 * 1024 * 64));
 
     Router::new().nest("/api/v2", router)
 }

@@ -1,5 +1,18 @@
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Json},
+};
+use serde::Serialize;
 use thiserror::Error;
+
+/// Error response returned as JSON
+#[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    pub success: bool,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+}
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -55,39 +68,87 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
-        let status_code = match self {
-            AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::CSVReadError(e) =>{tracing::error!("CSV Error {:?}",e); StatusCode::UNPROCESSABLE_ENTITY},
-            AppError::EntityNotFound(e) => {tracing::error!("Not found {:?}",e); StatusCode::NOT_FOUND},
-            AppError::RowNotFound{source,location} =>  {tracing::error!("Not found {:?}at {}",source,location);StatusCode::NOT_FOUND}
-            AppError::UuidError(e) =>  {tracing::error!("Not found {:?}",e); StatusCode::NOT_FOUND},
-            /* AppError::ValidationError(_) |*/
-            AppError::ConvertToUuidError(_) => { StatusCode::BAD_REQUEST},
-            AppError::UnauthenticatedError | AppError::ForbiddenOperation => StatusCode::FORBIDDEN,
-            AppError::UnauthorizedError => StatusCode::UNAUTHORIZED,
-            e @ (AppError::TransactionError(_)
-            | AppError::SpecificOperationError(_)
-            | AppError::APRSError
-            | AppError::CronjobError(_)
-            | AppError::NoRowsAffectedError(_)
-            | AppError::PostError(_)
-            | AppError::GetError(_)
-            | AppError::JsonError(_)
-            | AppError::ParseError(_)
-            /* 
-            | AppError::KeyValueStoreError(_)
-            | AppError::BcryptError(_)
-            */
-            | AppError::ConversionEntityError(_)) => {
-                tracing::error!(
-                error.cause_chain = ?e,
-                error.message = %e,
-                "Unexpected error happened"
-                );
-                StatusCode::INTERNAL_SERVER_ERROR
+        let (status_code, message, code) = match &self {
+            AppError::UnprocessableEntity(msg) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, msg.clone(), Some("UNPROCESSABLE_ENTITY"))
+            }
+            AppError::CSVReadError(e) => {
+                tracing::error!("CSV Error {:?}", e);
+                (StatusCode::UNPROCESSABLE_ENTITY, "CSVの読み込みに失敗しました".to_string(), Some("CSV_READ_ERROR"))
+            }
+            AppError::EntityNotFound(msg) => {
+                tracing::error!("Not found {:?}", msg);
+                (StatusCode::NOT_FOUND, msg.clone(), Some("NOT_FOUND"))
+            }
+            AppError::RowNotFound { source, location } => {
+                tracing::error!("Not found {:?} at {}", source, location);
+                (StatusCode::NOT_FOUND, format!("指定された行が見つかりません: {}", location), Some("ROW_NOT_FOUND"))
+            }
+            AppError::UuidError(e) => {
+                tracing::error!("UUID Error {:?}", e);
+                (StatusCode::NOT_FOUND, "UUIDエラー".to_string(), Some("UUID_ERROR"))
+            }
+            AppError::ConvertToUuidError(_) => {
+                (StatusCode::BAD_REQUEST, "UUIDの変換に失敗しました".to_string(), Some("UUID_CONVERT_ERROR"))
+            }
+            AppError::UnauthenticatedError => {
+                (StatusCode::FORBIDDEN, "ログインに失敗しました".to_string(), Some("UNAUTHENTICATED"))
+            }
+            AppError::ForbiddenOperation => {
+                (StatusCode::FORBIDDEN, "許可されていない操作です".to_string(), Some("FORBIDDEN"))
+            }
+            AppError::UnauthorizedError => {
+                (StatusCode::UNAUTHORIZED, "認可情報が誤っています".to_string(), Some("UNAUTHORIZED"))
+            }
+            AppError::TransactionError(e) => {
+                tracing::error!(error.cause_chain = ?e, "Transaction error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "データベーストランザクションエラー".to_string(), Some("TRANSACTION_ERROR"))
+            }
+            AppError::SpecificOperationError(e) => {
+                tracing::error!(error.cause_chain = ?e, "Database operation error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "データベース処理エラー".to_string(), Some("DB_OPERATION_ERROR"))
+            }
+            AppError::NoRowsAffectedError(msg) => {
+                tracing::error!("No rows affected: {}", msg);
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("更新対象がありません: {}", msg), Some("NO_ROWS_AFFECTED"))
+            }
+            AppError::PostError(e) => {
+                tracing::error!(error.cause_chain = ?e, "POST error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "POSTリクエストに失敗しました".to_string(), Some("POST_ERROR"))
+            }
+            AppError::GetError(e) => {
+                tracing::error!(error.cause_chain = ?e, "GET error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "GETリクエストに失敗しました".to_string(), Some("GET_ERROR"))
+            }
+            AppError::JsonError(e) => {
+                tracing::error!(error.cause_chain = ?e, "JSON error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "JSON変換に失敗しました".to_string(), Some("JSON_ERROR"))
+            }
+            AppError::ParseError(e) => {
+                tracing::error!(error.cause_chain = ?e, "Parse error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "時刻変換に失敗しました".to_string(), Some("PARSE_ERROR"))
+            }
+            AppError::APRSError => {
+                tracing::error!("APRS error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "APRSにエラーが発生しました".to_string(), Some("APRS_ERROR"))
+            }
+            AppError::CronjobError(e) => {
+                tracing::error!(error.cause_chain = ?e, "Cronjob error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "JOBスケジューラにエラーが発生しました".to_string(), Some("CRONJOB_ERROR"))
+            }
+            AppError::ConversionEntityError(msg) => {
+                tracing::error!("Conversion error: {}", msg);
+                (StatusCode::INTERNAL_SERVER_ERROR, msg.clone(), Some("CONVERSION_ERROR"))
             }
         };
-        status_code.into_response()
+
+        let body = ErrorResponse {
+            success: false,
+            message,
+            code: code.map(|c| c.to_string()),
+        };
+
+        (status_code, Json(body)).into_response()
     }
 }
 

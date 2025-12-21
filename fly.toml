@@ -29,5 +29,5 @@ processes = ["app"]
 
 [[restart]]
 policy = "always"
-retries = 3
+retries = 10
 processes = ["app"]

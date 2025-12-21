@@ -1,20 +1,24 @@
 FROM rust:1.86.0-slim-bookworm AS builder
 WORKDIR /app
-ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL}
-RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config && apt install -y sqlite3 && apt install -y wget
+ENV DATABASE_URL=sqlite:./data/sotaapp2.db
+RUN apt update && apt install -y libssl-dev pkg-config sqlite3 wget
 COPY . .
 COPY adapter/migrations/sqlite migrations/
 RUN mkdir ./data && sqlite3 ./data/sotaapp2.db < ./migrations/20241130234000_start.up.sql
 RUN cargo build --release
 
 FROM debian:bookworm-slim
-ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL}
-RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config && apt install -y sqlite3 && apt install -y wget
+RUN apt update && apt install -y libssl-dev pkg-config sqlite3 wget curl ca-certificates
 WORKDIR /app
+
+# Install mackerel-agent from GitHub releases
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL -L "https://github.com/mackerelio/mackerel-agent/releases/latest/download/mackerel-agent_linux_${ARCH}.tar.gz" -o /tmp/mackerel-agent.tar.gz && \
+    tar xzf /tmp/mackerel-agent.tar.gz -C /tmp && \
+    mv /tmp/mackerel-agent_linux_${ARCH}/mackerel-agent /usr/local/bin/ && \
+    rm -rf /tmp/mackerel-agent.tar.gz /tmp/mackerel-agent_linux_${ARCH}
+
 COPY --from=builder ./app/target/release/app ./target/release/app
-COPY bin/mackerel-agent ./bin/mackerel-agent
 COPY static/ static/
 COPY adapter/migrations/sqlite migrations/
-ENTRYPOINT ["sh", "-c", "./bin/mackerel-agent init -apikey=$MACKEREL_APIKEY && ./bin/mackerel-agent -root=/data & ./target/release/app"]
+ENTRYPOINT ["/bin/bash", "-c", "mackerel-agent init -apikey=$MACKEREL_APIKEY && mackerel-agent -root=/data & ./target/release/app"]
