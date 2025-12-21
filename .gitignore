@@ -3,3 +3,4 @@ target/
 tmp/
 .env
 Cargo.lock
+sotaapp2.db
