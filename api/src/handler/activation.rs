@@ -1,7 +1,7 @@
 use aprs_message::AprsCallsign;
 use axum::{extract::Query, routing::get, Json, Router};
 use chrono::{Duration, Utc};
-use common::error::AppResult;
+use common::error::{AppError, AppResult};
 use serde_json::Value;
 use shaku_axum::Inject;
 
@@ -69,7 +69,8 @@ async fn show_spots(
 
     spots.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value = serde_json::to_value(spots).unwrap();
+    let value = serde_json::to_value(spots)
+        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(30)))
         .await;
@@ -123,7 +124,8 @@ async fn show_alerts(
 
     alerts.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value = serde_json::to_value(alerts).unwrap();
+    let value = serde_json::to_value(alerts)
+        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(180)))
         .await;
@@ -235,7 +237,8 @@ async fn show_aprs_track(
     let tracks = user_service.get_aprs_track(request).await?;
     let tracks = tracks.into_iter().map(Track::from).collect();
     let value = Tracks { tracks };
-    let value = serde_json::to_value(value).unwrap();
+    let value = serde_json::to_value(value)
+        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
 
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(60)))

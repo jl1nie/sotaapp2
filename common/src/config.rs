@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Duration;
 use tokio::sync::watch;
 
@@ -40,81 +40,99 @@ pub struct AppConfig {
     pub shutdown_rx: watch::Receiver<bool>,
 }
 
+/// 環境変数を取得（必須）
+fn env_required(key: &str) -> Result<String> {
+    std::env::var(key).with_context(|| format!("環境変数 {} が設定されていません", key))
+}
+
+/// 環境変数を取得してパース（デフォルト値あり）
+fn env_parse_or<T: std::str::FromStr>(key: &str, default: T) -> T
+where
+    T::Err: std::error::Error + Send + Sync + 'static,
+{
+    std::env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
+}
+
+/// 環境変数を取得（デフォルト値あり）
+fn env_or(key: &str, default: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.to_string())
+}
+
 impl AppConfig {
     pub fn new() -> Result<Self> {
         let (shutdown_tx, shutdown_rx) = watch::channel(false);
         Ok(Self {
-            host: std::env::var("HOST").expect("HOST"),
-            port: std::env::var("PORT").expect("PORT").parse::<u16>()?,
-            log_level: std::env::var("LOG_LEVEL").expect("LOG_LEVEL"),
-            database: std::env::var("DATABASE_URL").expect("DATABASE_URL"),
-            run_migration: std::env::var("RUN_MIGRATION")
-                .unwrap_or_else(|_| "false".to_string())
-                .parse::<bool>()?,
-            migration_path: std::env::var("MIGRATION_PATH").expect("MIGRATION_PATH"),
+            // 必須の設定
+            host: env_or("HOST", "0.0.0.0"),
+            port: env_parse_or("PORT", 8080),
+            log_level: env_or("LOG_LEVEL", "info"),
+            database: env_required("DATABASE_URL")?,
+            migration_path: env_or("MIGRATION_PATH", "./migrations"),
+            firebase_api_key: env_required("FIREBASE_API_KEY")?,
+
+            // オプションの設定
+            run_migration: env_parse_or("RUN_MIGRATION", false),
             cors_origin: std::env::var("CORS_ORIGIN").ok(),
-            firebase_api_key: std::env::var("FIREBASE_API_KEY").expect("FIREBASE_API_KEY"),
-            auth_token_ttl: Duration::hours(
-                std::env::var("AUTH_TOKEN_TTL")
-                    .expect("AUTH_TOKEN_TTL")
-                    .parse::<i64>()?,
+
+            // 認証
+            auth_token_ttl: Duration::hours(env_parse_or("AUTH_TOKEN_TTL", 24)),
+
+            // SOTA エンドポイント
+            sota_alert_endpoint: env_or(
+                "SOTA_ALERT_ENDPOINT",
+                "https://api2.sota.org.uk/api/alerts",
             ),
-            sota_alert_endpoint: std::env::var("SOTA_ALERT_ENDPOINT").expect("SOTA_ALERT_ENDPOINT"),
-            sota_spot_endpoint: std::env::var("SOTA_SPOT_ENDPOINT").expect("SOTA_SPOT_ENDPOINT"),
-
-            sota_summitlist_endpoint: std::env::var("SOTA_SUMMITLIST_ENDPOINT")
-                .expect("SOTA_SUMMITLIST_ENDPOINT"),
-            sota_summitlist_update_schedule: std::env::var("SUMMITLIST_SCHEDULE")
-                .expect("SUMMITLIST_SCHEDULE"),
-            reboot_after_update: std::env::var("REBOOT_AFTER_UPDATE")
-                .expect("REBOOT_AFTER_UPDATE")
-                .parse::<bool>()?,
-            pota_parklist_endpoint: std::env::var("POTA_PARKLIST_ENDPOINT")
-                .expect("POTA_PARKLIST_ENDPOINT"),
-            pota_parklist_update_schedule: std::env::var("PARKLIST_SCHEDULE")
-                .expect("PARKLIST_SCHEDULE"),
-
-            pota_alert_endpoint: std::env::var("POTA_ALERT_ENDPOINT").expect("POTA_ALERT_ENDPOINT"),
-            pota_spot_endpoint: std::env::var("POTA_SPOT_ENDPOINT").expect("POTA_SPOT_ENDPOINT"),
-
-            geomag_endpoint: std::env::var("GEOMAG_ENDPOINT").expect("GEOMAG_ENDPOINT"),
-            geomag_update_schedule: std::env::var("GEOMAG_SCHEDULE").expect("GEOMAG_SCHEDULE"),
-
-            mapcode_endpoint: std::env::var("MAPCODE_ENDPOINT").expect("MAPCODE_ENDPOINT"),
-
-            alert_update_interval: std::env::var("ALERT_INTERVAL")
-                .expect("ALERT INTERVAL")
-                .parse::<u64>()?,
-            spot_update_interval: std::env::var("SPOT_INTERVAL")
-                .expect("SPOT_INTERVAL")
-                .parse::<u64>()?,
-
-            alert_expire: Duration::hours(
-                std::env::var("ALERT_EXPIRE")
-                    .expect("ALERT_EXPIRE")
-                    .parse::<i64>()?,
+            sota_spot_endpoint: env_or(
+                "SOTA_SPOT_ENDPOINT",
+                "https://api2.sota.org.uk/api/spots/20?",
             ),
-            spot_expire: Duration::hours(
-                std::env::var("SPOT_EXPIRE")
-                    .expect("SPOT_EXPIRE")
-                    .parse::<i64>()?,
+            sota_summitlist_endpoint: env_or(
+                "SOTA_SUMMITLIST_ENDPOINT",
+                "https://www.sotadata.org.uk/summitslist.csv",
             ),
-            aprs_log_expire: Duration::days(
-                std::env::var("APRS_LOG_EXPIRE")
-                    .expect("APRS_LOG_EXPIRE")
-                    .parse::<i64>()?,
-            ),
-            pota_log_expire: Duration::days(
-                std::env::var("POTA_LOG_EXPIRE")
-                    .expect("POTA_LOG_EXPIRE")
-                    .parse::<i64>()?,
-            ),
+            sota_summitlist_update_schedule: env_or("SUMMITLIST_SCHEDULE", "0 0 9 * * *"),
 
-            aprs_host: std::env::var("APRSHOST").expect("APRSHOST"),
-            aprs_user: std::env::var("APRSUSER").expect("APRSUSER"),
-            aprs_password: std::env::var("APRSPASSWORD").expect("APRSPASSWORD"),
+            // POTA エンドポイント
+            pota_alert_endpoint: env_or("POTA_ALERT_ENDPOINT", "https://api.pota.app/activation/"),
+            pota_spot_endpoint: env_or("POTA_SPOT_ENDPOINT", "https://api.pota.app/spot/activator/"),
+            pota_parklist_endpoint: env_or(
+                "POTA_PARKLIST_ENDPOINT",
+                "https://pota.app/all_parks_ext.csv",
+            ),
+            pota_parklist_update_schedule: env_or("PARKLIST_SCHEDULE", "0 0 10 * * *"),
+
+            // Geomag
+            geomag_endpoint: env_or(
+                "GEOMAG_ENDPOINT",
+                "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt",
+            ),
+            geomag_update_schedule: env_or("GEOMAG_SCHEDULE", "0 0 */3 * * *"),
+
+            // Mapcode
+            mapcode_endpoint: env_or("MAPCODE_ENDPOINT", "https://japanmapcode.com/mapcode"),
+
+            // 更新間隔（秒）
+            alert_update_interval: env_parse_or("ALERT_INTERVAL", 600),
+            spot_update_interval: env_parse_or("SPOT_INTERVAL", 120),
+
+            // 有効期限
+            alert_expire: Duration::hours(env_parse_or("ALERT_EXPIRE", 24)),
+            spot_expire: Duration::hours(env_parse_or("SPOT_EXPIRE", 48)),
+            aprs_log_expire: Duration::days(env_parse_or("APRS_LOG_EXPIRE", 10)),
+            pota_log_expire: Duration::days(env_parse_or("POTA_LOG_EXPIRE", 180)),
+
+            // APRS
+            aprs_host: env_or("APRSHOST", "rotate.aprs2.net:14580"),
+            aprs_user: env_required("APRSUSER")?,
+            aprs_password: env_required("APRSPASSWORD")?,
             aprs_exclude_user: std::env::var("APRS_EXCLUDE_USER").ok(),
             aprs_arrival_mesg_regex: std::env::var("APRS_ARRIVAL_MESG_REGEX").ok(),
+
+            // その他
+            reboot_after_update: env_parse_or("REBOOT_AFTER_UPDATE", false),
 
             shutdown_rx,
             shutdown_tx,

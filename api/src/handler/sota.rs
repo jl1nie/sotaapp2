@@ -33,6 +33,7 @@ use crate::model::{
 };
 
 use super::auth::auth_middle;
+use super::multipart::extract_text_file;
 
 async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -48,24 +49,9 @@ async fn import_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<Json<ImportResult>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field
-        .bytes()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
-
+    let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadSOTASummit { data };
-
     let count = admin_service.import_summit_list(reqs).await?;
-
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
@@ -73,24 +59,9 @@ async fn update_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<Json<ImportResult>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field
-        .bytes()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
-
+    let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadSOTASummit { data };
-
     let count = admin_service.update_summit_list(reqs).await?;
-
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
@@ -98,24 +69,9 @@ async fn import_sota_opt_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<Json<ImportResult>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field
-        .bytes()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
-
+    let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadSOTASummitOpt { data };
-
     let count = admin_service.import_summit_opt_list(reqs).await?;
-
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
@@ -124,17 +80,12 @@ async fn upload_log(
     Extension(user_id): Extension<UserId>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
-        let reqs = UploadSOTALog { data };
-
-        return user_service
-            .upload_sota_log(user_id, reqs)
-            .await
-            .map(|_| StatusCode::CREATED);
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = extract_text_file(&mut multipart).await?;
+    let reqs = UploadSOTALog { data };
+    user_service
+        .upload_sota_log(user_id, reqs)
+        .await
+        .map(|_| StatusCode::CREATED)
 }
 
 async fn delete_log(
@@ -152,8 +103,14 @@ async fn show_progress(
     Extension(user_id): Extension<UserId>,
 ) -> AppResult<Json<String>> {
     let mut query = FindLogBuilder::default();
-    let from = Utc.with_ymd_and_hms(2024, 6, 1, 0, 0, 0).unwrap();
-    let to = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+    let from = Utc
+        .with_ymd_and_hms(2024, 6, 1, 0, 0, 0)
+        .single()
+        .ok_or_else(|| AppError::UnprocessableEntity("無効な日付".to_string()))?;
+    let to = Utc
+        .with_ymd_and_hms(2025, 1, 1, 0, 0, 0)
+        .single()
+        .ok_or_else(|| AppError::UnprocessableEntity("無効な日付".to_string()))?;
 
     query = query.after(from).before(to);
     let query = query.build();
@@ -189,16 +146,12 @@ async fn show_all_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<SotaRefView>>> {
-    let mut query = FindRefBuilder::default().sota();
+    let mut query = FindRefBuilder::default()
+        .sota()
+        .limit(param.limit.unwrap_or(500));
 
-    if param.limit.is_some() {
-        query = query.limit(param.limit.unwrap());
-    } else {
-        query = query.limit(500);
-    }
-
-    if param.offset.is_some() {
-        query = query.offset(param.offset.unwrap());
+    if let Some(offset) = param.offset {
+        query = query.offset(offset);
     }
     let result = admin_service
         .show_all_sota_references(query.build())
@@ -291,20 +244,7 @@ async fn judge_10th_anniversary_award(
         JudgmentMode::Lenient => service::model::award::JudgmentMode::Lenient,
     };
 
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| {
-            AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e))
-        })?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field.bytes().await.map_err(|e| {
-        AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e))
-    })?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+    let data = extract_text_file(&mut multipart).await?;
 
     // in-memoryで判定（モード指定）
     let result = user_service.judge_10th_anniversary_award(&data, service_mode)?;
