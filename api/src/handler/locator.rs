@@ -1,6 +1,5 @@
 use axum::{
     extract::{Multipart, Query},
-    middleware,
     routing::{get, post},
     Json, Router,
 };
@@ -18,7 +17,7 @@ use registry::{AppRegistry, AppState};
 use service::model::locator::UploadMuniCSV;
 use service::services::{AdminService, UserService};
 
-use super::auth::auth_middle;
+use super::auth::with_auth;
 use super::multipart::extract_text_file;
 
 async fn import_muni_csv(
@@ -57,9 +56,10 @@ async fn find_map_code(
 }
 
 pub fn build_locator_routers(auth: &FireAuth) -> Router<AppState> {
-    let protected = Router::new()
-        .route("/jcc-jcg/import", post(import_muni_csv))
-        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+    let protected = with_auth(
+        Router::new().route("/jcc-jcg/import", post(import_muni_csv)),
+        auth,
+    );
 
     let public = Router::new()
         .route("/jcc-jcg", get(find_century_code))

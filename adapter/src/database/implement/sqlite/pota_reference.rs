@@ -294,16 +294,17 @@ impl PotaRepositoryImpl {
                 )
                 .fetch_one(self.pool.inner_ref())
                 .await;
-                if r.is_err() {
-                    log_error += 1;
-                } else {
-                    let loglen = r.unwrap().count;
-                    if loglen == 0 {
-                        log_error += 1;
-                    } else if loglen > longest_entry {
-                        longest_entry = loglen;
-                        longest_id = Some(l.log_id)
+                match r {
+                    Ok(row) => {
+                        let loglen = row.count;
+                        if loglen == 0 {
+                            log_error += 1;
+                        } else if loglen > longest_entry {
+                            longest_entry = loglen;
+                            longest_id = Some(l.log_id)
+                        }
                     }
+                    Err(_) => log_error += 1,
                 }
             }
         }

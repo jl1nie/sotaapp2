@@ -1,7 +1,6 @@
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
-    middleware,
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -35,7 +34,7 @@ use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadPOTALog, UploadPOTAReference};
 use service::services::{AdminService, UserService};
 
-use super::auth::auth_middle;
+use super::auth::with_auth;
 use super::multipart::extract_text_file;
 
 async fn update_pota_reference(
@@ -261,12 +260,14 @@ async fn log_migrate(
 }
 
 pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
-    let protected = Router::new()
-        .route("/import", post(import_pota_reference_ja))
-        .route("/parks/{park_code}", put(update_pota_reference))
-        .route("/parks/{park_code}", delete(delete_pota_reference))
-        .route("/log-migrate", get(log_migrate))
-        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+    let protected = with_auth(
+        Router::new()
+            .route("/import", post(import_pota_reference_ja))
+            .route("/parks/{park_code}", put(update_pota_reference))
+            .route("/parks/{park_code}", delete(delete_pota_reference))
+            .route("/log-migrate", get(log_migrate)),
+        auth,
+    );
 
     let public = Router::new()
         .route("/log/{act_id}/{hntr_id}", post(upload_pota_log))

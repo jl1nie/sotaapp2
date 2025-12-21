@@ -1,7 +1,6 @@
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
-    middleware,
     routing::{delete, get, post, put},
     Extension, Json, Router,
 };
@@ -32,7 +31,7 @@ use crate::model::{
     spots::SpotView,
 };
 
-use super::auth::auth_middle;
+use super::auth::with_auth;
 use super::multipart::extract_text_file;
 
 async fn update_sota_reference(
@@ -294,16 +293,18 @@ async fn judge_10th_anniversary_award(
 }
 
 pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
-    let protected = Router::new()
-        .route("/import", post(import_summit_list))
-        .route("/import/ja", post(import_sota_opt_reference))
-        .route("/log", post(upload_log))
-        .route("/log", delete(delete_log))
-        .route("/log", get(show_progress))
-        .route("/update", post(update_summit_list))
-        .route("/summits/{summit_code}", put(update_sota_reference))
-        .route("/summits/{summit_code}", delete(delete_sota_reference))
-        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+    let protected = with_auth(
+        Router::new()
+            .route("/import", post(import_summit_list))
+            .route("/import/ja", post(import_sota_opt_reference))
+            .route("/log", post(upload_log))
+            .route("/log", delete(delete_log))
+            .route("/log", get(show_progress))
+            .route("/update", post(update_summit_list))
+            .route("/summits/{summit_code}", put(update_sota_reference))
+            .route("/summits/{summit_code}", delete(delete_sota_reference)),
+        auth,
+    );
 
     let public = Router::new()
         .route("/spots", get(show_sota_spots))

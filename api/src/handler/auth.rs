@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use axum::extract::State;
 use axum::http::{header, Request, StatusCode};
-use axum::middleware::Next;
+use axum::middleware::{self, Next};
 use axum::response::IntoResponse;
 use axum::Json;
 use axum::{routing::post, Router};
@@ -11,6 +11,11 @@ use firebase_auth_sdk::FireAuth;
 use crate::model::auth::AuthRequest;
 use domain::model::id::UserId;
 use registry::AppState;
+
+/// 認証ミドルウェアをルーターに適用
+pub fn with_auth<S: Clone + Send + Sync + 'static>(router: Router<S>, auth: &FireAuth) -> Router<S> {
+    router.route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle))
+}
 
 pub async fn auth_middle(
     State(auth_service): State<FireAuth>,
@@ -55,7 +60,7 @@ pub async fn sign_in(
             "Successfully LoggedIn",
         ),
         Err(ex) => {
-            eprintln!("{:?}", ex);
+            tracing::warn!("Sign-in failed: {:?}", ex);
             (
                 StatusCode::UNAUTHORIZED,
                 [(header::AUTHORIZATION, String::new())],

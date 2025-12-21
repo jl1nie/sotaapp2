@@ -19,6 +19,11 @@ use crate::model::{
     spots::SpotView,
 };
 
+/// キャッシュTTL定数
+const CACHE_TTL_SPOTS: i64 = 30;
+const CACHE_TTL_ALERTS: i64 = 180;
+const CACHE_TTL_TRACK: i64 = 60;
+
 async fn show_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
@@ -72,7 +77,7 @@ async fn show_spots(
     let value = serde_json::to_value(spots)
         .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(30)))
+        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_SPOTS)))
         .await;
 
     Ok(Json(value))
@@ -127,7 +132,7 @@ async fn show_alerts(
     let value = serde_json::to_value(alerts)
         .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(180)))
+        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_ALERTS)))
         .await;
 
     Ok(Json(value))
@@ -241,7 +246,7 @@ async fn show_aprs_track(
         .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
 
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(60)))
+        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_TRACK)))
         .await;
 
     Ok(Json(value))

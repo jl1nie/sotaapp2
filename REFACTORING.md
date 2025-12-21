@@ -24,56 +24,56 @@
   - `UnauthorizedError`: 401→403 (FORBIDDEN)
 - コメントアウトされたデッドコード削除（`ValidationError`, `KeyValueStoreError`）
 
+### #5 expect() の置き換え ✅
+- `src/bin/app.rs`: IPアドレスパースの `expect()` を `context()` に置換
+- Adapter層には `expect()` 使用箇所なし
+
+### #6 認証ミドルウェアの共通化 (API層) ✅
+- `auth.rs` に `with_auth()` ヘルパー関数を追加
+- `sota.rs`, `pota.rs`, `locator.rs` で重複していた `route_layer(middleware::from_fn_with_state(...))` を共通化
+- 各ハンドラから `middleware` インポートを削除
+
+### #8 ログレベル統一 ✅
+- `eprintln!` を `tracing::warn!` に置換（auth.rs）
+- ログレベルは概ね適切に使い分けられている
+
+### #10 デッドコード削除 / Clippy警告修正 ✅
+- `service/src/implement/user_service.rs`: `if x.is_none() { return None }` を `?` に置換
+- `adapter/src/database/implement/sqlite/pota_reference.rs`: `is_err()/unwrap()` パターンを `match` に置換
+
+### #15 マジックナンバー排除 ✅
+- `api/src/handler/activation.rs`: キャッシュTTLを定数化
+  - `CACHE_TTL_SPOTS = 30`
+  - `CACHE_TTL_ALERTS = 180`
+  - `CACHE_TTL_TRACK = 60`
+
+---
+
+## スキップ / 既に対応済み
+
+### #9 コメントの言語統一
+- 日本語と英語が混在しているが、影響範囲が大きいため今回はスキップ
+
+### #11 依存関係の整理
+- `cargo-udeps` が未インストールのためスキップ
+
+### #12 型変換の共通化
+- `From`/`Into` パターンは既に統一されている
+
+### #13 クエリビルダーパターン統一
+- `FindActBuilder`, `FindRefBuilder` 等は既に一貫したAPIを持つ
+
+### #14 リポジトリトレイトの非同期化統一
+- `#[async_trait]` は既に統一されている
+
 ---
 
 ## 未着手
-
-### #5 expect() の置き換え (Adapter層)
-- `adapter/src/database/` 内の `expect()` を `?` または `anyhow::Context` に置換
-- パニックの可能性を排除
-
-### #6 認証ミドルウェアの共通化 (API層)
-- 現在各ハンドラで `route_layer(middleware::from_fn_with_state(...))` を重複記述
-- ルーター構築時に一括適用する仕組みに変更
 
 ### #7 テストの網羅性向上 (全レイヤー)
 - 現在はService層の一部のみテスト
 - API層のハンドラテスト追加
 - Adapter層のリポジトリテスト追加
-
-### #8 ログレベル統一 (全レイヤー)
-- `tracing::error!` の使用箇所を確認
-- 適切なログレベル（debug, info, warn, error）の使い分け
-
-### #9 コメントの言語統一
-- 日本語コメントと英語コメントが混在
-- プロジェクト方針として統一
-
-### #10 デッドコード削除
-- コメントアウトされたコード
-- 未使用のインポート
-- 未使用の関数
-
-### #11 依存関係の整理 (Cargo.toml)
-- 各crateの依存関係を精査
-- 未使用依存の削除
-- バージョン統一
-
-### #12 型変換の共通化 (Domain/Service層)
-- `From`/`Into` トレイトの実装パターン統一
-- 変換ロジックの重複排除
-
-### #13 クエリビルダーパターン統一 (Domain層)
-- `FindActBuilder`, `FindRefBuilder`, `FindLogBuilder` のAPI統一
-- メソッドチェーンの一貫性
-
-### #14 リポジトリトレイトの非同期化統一 (Domain層)
-- 一部同期的な実装が残っている可能性
-- `async_trait` の一貫した使用
-
-### #15 マジックナンバー排除
-- コード内のハードコードされた数値を定数化
-- 例: キャッシュTTL、デフォルト期間など
 
 ### #16 Option処理の統一
 - `unwrap_or_default()` vs `unwrap_or(0)` の使い分け
@@ -96,14 +96,3 @@
 | 高 | バグの原因になりうる、保守性に大きく影響 |
 | 中 | コードの可読性向上、将来の拡張性 |
 | 低 | 美観、一貫性のみに関わる |
-
-## 次のステップ推奨
-
-**#5 expect() の置き換え** を推奨する理由:
-1. パニックの可能性を排除し、安全性向上
-2. Adapter層に限定されるため影響範囲が明確
-3. #1-4で確立したパターンを適用可能
-
-**#6 認証ミドルウェアの共通化** も検討:
-- 各ルーターで `route_layer(middleware::from_fn_with_state(...))` が重複
-- 一括適用でコード削減と保守性向上

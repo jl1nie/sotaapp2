@@ -380,9 +380,7 @@ impl UserService for UserServiceImpl {
                 }
 
                 // 4QSO以上のアクティベーションが見つからなければフィルタリング
-                if first_activation_date.is_none() {
-                    return None;
-                }
+                first_activation_date?;
 
                 // 最初の成功したアクティベーションのQSOだけを返す
                 Some((call, (first_activation_qso_count, summit_code)))
