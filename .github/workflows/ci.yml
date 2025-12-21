@@ -94,6 +94,22 @@ jobs:
       - name: Test Docker image - help command
         run: docker run --rm sotaapp2:test --help
 
+      - name: Test Docker image - required files exist
+        run: |
+          echo "Checking required files in Docker image..."
+          docker run --rm --entrypoint="" sotaapp2:test ls -la /app/migrations/
+          docker run --rm --entrypoint="" sotaapp2:test ls -la /app/static/
+          echo "✓ Required directories exist"
+
+      - name: Test Docker image - SSL/TLS connectivity
+        run: |
+          # Test that ca-certificates is properly installed for HTTPS connections
+          # This would have caught the missing ca-certificates issue
+          docker run --rm --entrypoint="" sotaapp2:test \
+            sh -c "apt-get update -qq && apt-get install -qq -y curl > /dev/null && \
+                   curl -sf https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt > /dev/null"
+          echo "✓ SSL/TLS connectivity works (ca-certificates installed)"
+
       - name: Test Docker image - startup check
         run: |
           # Test that the app fails gracefully without required env vars
@@ -105,14 +121,14 @@ jobs:
             exit 1
           fi
 
-      - name: Test Docker image - with minimal env vars
+      - name: Test Docker image - database migration
         run: |
-          # Create a temp directory for test database
+          # mode=rwc allows SQLite to create the database file
           docker run --rm \
-            -e DATABASE_URL="sqlite:/tmp/test.db" \
+            -e DATABASE_URL="sqlite:/tmp/test.db?mode=rwc" \
             -e FIREBASE_API_KEY="test-key" \
             -e APRSUSER="testuser" \
             -e APRSPASSWORD="testpass" \
             -e MIGRATION_PATH="/app/migrations" \
-            sotaapp2:test db migrate 2>&1 || true
-          echo "✓ Docker image can execute db commands"
+            sotaapp2:test db migrate
+          echo "✓ Database migration succeeded"
