@@ -85,44 +85,28 @@
 
 ## 新規リファクタリング項目（コードレビュー結果）
 
-### 【セキュリティ - 最優先】
+### 【セキュリティ】
 
-#### #19 PostGIS SQLインジェクション対策 🔴 HIGH
+#### #19 PostGIS SQLインジェクション対策 ✅
 **ファイル**: `adapter/src/database/implement/postgis/querybuilder.rs`
 **問題**: 文字列フォーマットによるSQL生成がSQLインジェクションに脆弱
-```rust
-// 現状（危険）
-query.push_str(&format!("(summit_code = '{}') AND ", r.sota_code.clone().unwrap()))
-```
 **対策**:
-- パラメタライズドクエリに書き換え
-- SQLx の QueryBuilder を使用
-- SQLインジェクションテスト追加
-
-**優先度**: 最高
-**複雑度**: 高
-**影響ファイル**: `postgis/querybuilder.rs` (全体)
+- SQLx の `QueryBuilder<Postgres>` を使用したパラメタライズドクエリに書き換え
+- 新規API: `build_sota_ref_query()`, `build_pota_ref_query()`, `build_wwff_ref_query()`, `build_activation_query()`
+- 旧API: `#[deprecated]` 属性を付与（後方互換性維持）
 
 ---
 
-### 【コード重複 - 高優先】
+### 【コード重複】
 
-#### #20 SQLite/PostGIS実装の共通化 🟠 HIGH
-**問題**: SQLiteとPostGISの実装が90%以上重複
-**ファイル**:
-- `adapter/src/database/implement/sqlite/pota_reference.rs` (770行)
-- `adapter/src/database/implement/postgis/pota_reference.rs` (446行)
-- `adapter/src/database/implement/sqlite/sota_reference.rs` (610行)
-- `adapter/src/database/implement/postgis/sota_reference.rs` (447行)
+#### #20 SQLite/PostGIS実装の共通化 ⏭️ SKIP
+**理由**: fly.ioのメモリ制限によりPostgreSQLは使用していない
+- SQLite版のみをメンテナンス対象とする
+- PostGIS版は参考実装として保持
 
-**対策**:
-- 共通ビジネスロジックをトレイトメソッドに抽出
-- データベース固有部分のみを実装
-- `BaseRepository<T>` パターン導入
+---
 
-**優先度**: 高
-**複雑度**: 高
-**削減見込み**: 40-50%のコード削減
+### 【ファイル分割 - 高優先】
 
 #### #21 user_service.rs の分割 🟠 HIGH
 **ファイル**: `service/src/implement/user_service.rs` (1117行)
@@ -309,8 +293,8 @@ for l in logs {
 
 | カテゴリ | 項目数 | 優先度 | 複雑度 | 工数目安 |
 |----------|--------|--------|--------|----------|
-| セキュリティ | 1 | 最高 | 高 | 10-15h |
-| コード重複 | 3 | 高 | 高 | 40-60h |
+| セキュリティ | 1 | ✅完了 | - | - |
+| ファイル分割 | 2 | 高 | 高 | 20-30h |
 | エラーハンドリング | 2 | 高 | 中 | 20-25h |
 | パフォーマンス | 3 | 高 | 中 | 15-20h |
 | テスト | 1 | 高 | 高 | 40h+ |
@@ -319,10 +303,10 @@ for l in logs {
 
 ## 推奨実施順序
 
-1. **#19 SQLインジェクション対策** - セキュリティ最優先
+1. ~~**#19 SQLインジェクション対策**~~ ✅ 完了
 2. **#7 テストインフラ整備** - 大規模リファクタリング前に
 3. **#23 unwrap()一掃** - 安定性向上
 4. **#25 N+1クエリ修正** - パフォーマンス改善
-5. **#20 DB実装共通化** - 保守性向上
-6. **#21 user_service分割** - 可読性向上
+5. **#21 user_service分割** - 可読性向上
+6. **#22 ハンドラ関数の重複排除** - 保守性向上
 7. 残りは優先度順に実施
