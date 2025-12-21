@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT user_id as \"user_id: UserId\", log_id as \"log_id: LogId\", log_kind, \"update\" \n                FROM pota_log_user WHERE log_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id: UserId",
+        "ordinal": 0,
+        "type_info": "Null"
+      },
+      {
+        "name": "log_id: LogId",
+        "ordinal": 1,
+        "type_info": "Null"
+      },
+      {
+        "name": "log_kind",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "update",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "58ad8c1be921869f5cae91ea875ae0a5e1f7ed620d43e14226290a25cfbc2444"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM aprs_log WHERE time < $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "7a5c44c18bd9189771b833478be0716c4c816c90c98d5d5db8041766d4bc6acd"
+}

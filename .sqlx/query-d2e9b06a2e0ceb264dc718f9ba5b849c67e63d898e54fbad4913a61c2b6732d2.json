@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM sota_log\n                WHERE time < $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "d2e9b06a2e0ceb264dc718f9ba5b849c67e63d898e54fbad4913a61c2b6732d2"
+}

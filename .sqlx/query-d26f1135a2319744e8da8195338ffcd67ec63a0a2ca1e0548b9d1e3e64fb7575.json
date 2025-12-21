@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO sota_references (\n                    summit_code,\n                    association_name,\n                    region_name,\n                    summit_name,\n                    summit_name_j,\n                    city,\n                    city_j,\n                    alt_m,\n                    alt_ft,\n                    grid_ref1,\n                    grid_ref2,\n                    longitude,\n                    latitude,\n                    maidenhead,\n                    points,\n                    bonus_points,\n                    valid_from,\n                    valid_to,\n                    activation_count,\n                    activation_date,\n                    activation_call\n                ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)\n                ON CONFLICT (summit_code) DO UPDATE SET\n                    association_name = EXCLUDED.association_name,\n                    region_name = EXCLUDED.region_name,\n                    summit_name = sota_references.summit_name,\n                    summit_name_j = sota_references.summit_name_j,\n                    city = sota_references.city,\n                    city_j = sota_references.city_j,\n                    alt_m = sota_references.alt_m,\n                    alt_ft = EXCLUDED.alt_ft,\n                    grid_ref1 = EXCLUDED.grid_ref1,\n                    grid_ref2 = EXCLUDED.grid_ref2,\n                    longitude = sota_references.longitude,\n                    latitude = sota_references.latitude,\n                    points = sota_references.points,\n                    bonus_points = EXCLUDED.bonus_points,\n                    valid_from = EXCLUDED.valid_from,\n                    valid_to = EXCLUDED.valid_to,\n                    activation_count = EXCLUDED.activation_count,\n                    activation_date = EXCLUDED.activation_date,\n                    activation_call = EXCLUDED.activation_call\n               ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 21
+    },
+    "nullable": []
+  },
+  "hash": "d26f1135a2319744e8da8195338ffcd67ec63a0a2ca1e0548b9d1e3e64fb7575"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO pota_references(\n                    pota_code,\n                    wwff_code,\n                    park_name,\n                    park_name_j,\n                    park_location,\n                    park_locid,\n                    park_type,\n                    park_inactive,\n                    park_area,\n                    longitude,\n                    latitude,\n                    maidenhead,\n                    \"update\"\n                )\n                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,$10, $11, $12, $13)\n                ON CONFLICT (pota_code, wwff_code) DO UPDATE\n                SET pota_code = EXCLUDED.pota_code,\n                    wwff_code = EXCLUDED.wwff_code,\n                    park_name = EXCLUDED.park_name,\n                    park_name_j = EXCLUDED.park_name_j,\n                    park_location = EXCLUDED.park_location,\n                    park_locid = EXCLUDED.park_locid,\n                    park_type = EXCLUDED.park_type,\n                    park_inactive = EXCLUDED.park_inactive,\n                    park_area = EXCLUDED.park_area,\n                    longitude = EXCLUDED.longitude,\n                    latitude = EXCLUDED.latitude,\n                    maidenhead = EXCLUDED.maidenhead,\n                    \"update\" = EXCLUDED.\"update\"\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 13
+    },
+    "nullable": []
+  },
+  "hash": "53bd57695bd23a1ebe93f60f1b17503cb5a7c11a4706110542c3ed14e5956005"
+}
