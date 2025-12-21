@@ -145,7 +145,6 @@ impl AdminService for AdminServiceImpl {
 
         let associations: HashSet<String> = ja_hash
             .keys()
-            .cloned()
             .map(|s| s.split("/").next().unwrap_or("").to_owned() + "/")
             .collect();
 
