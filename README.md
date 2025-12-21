@@ -231,27 +231,88 @@ PUT    /api/v2/sota/summits/{code} # 山岳データ更新（要管理者権限�
 
 ## 🧪 テスト
 
+### ユニットテスト
+
 ```bash
 # 全テスト実行
-cargo test
+makers test
 
-# レイヤー別テスト
-cargo test --package domain
-cargo test --package service  
-cargo test --package api
+# CI用テスト（fmt-check + clippy-strict + test）
+makers ci
 ```
+
+### Docker E2Eテスト
+
+Dockerイメージに対する包括的なE2Eテストを実行します。
+
+```bash
+# Dockerイメージをビルドしてテスト実行
+makers e2e
+
+# 既存イメージでテストのみ実行
+makers e2e-test jl1nie/sotaapp2:latest
+
+# テストサーバー起動（手動確認用）
+makers e2e-server
+makers e2e-stop
+```
+
+E2Eテストは以下の4フェーズで構成されています：
+
+| フェーズ | テスト内容 |
+|---------|-----------|
+| BUILD | 実行ファイル・migrations・staticの存在確認 |
+| RUNTIME | SSL/TLS接続・ca-certificates・libssl確認 |
+| APP | CLIコマンド（help, migrate等）の動作確認 |
+| SERVER/API | サーバー起動・ヘルスチェック・主要APIエンドポイント |
+
+詳細は [docs/docker-e2e-test-plan.md](docs/docker-e2e-test-plan.md) を参照。
+
+### CI/CD
+
+GitHub Actionsで以下が自動実行されます：
+
+- **CI Pipeline**: fmt, clippy, ユニットテスト
+- **Build Release**: リリースビルド
+- **Docker Build & E2E Test**: Dockerビルド・E2Eテスト
 
 ## 🚀 デプロイ
 
-### Fly.io
+詳細は [docs/deployment-manual.md](docs/deployment-manual.md) を参照。
+
+### Fly.ioデプロイ
+
 ```bash
-fly deploy
+# 通常デプロイ（バックアップ付き）
+makers deploy
+
+# バックアップなしデプロイ
+makers deploy-no-backup
+
+# Fly.io直接デプロイ
+makers fly-deploy
+```
+
+### データベース管理
+
+```bash
+# バックアップ作成
+makers fly-backup
+
+# バックアップ一覧
+makers fly-db-list
+
+# リストア
+makers fly-db-restore /data/backup_YYYYMMDD_HHMMSS.db
+
+# 最適化
+makers fly-db-optimize
 ```
 
 ### 本番環境設定
-- データベース: PostgreSQL推奨
-- メモリ: 512MB以上
-- CPU: 1vCPU以上
+- データベース: SQLite（永続ボリューム）
+- メモリ: 256MB
+- CPU: shared-1x
 
 ## 🤝 コントリビューション
 
