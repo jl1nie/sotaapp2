@@ -20,8 +20,6 @@ pub enum AppError {
     UnprocessableEntity(String),
     #[error("{0}")]
     EntityNotFound(String),
-    // #[error("{0}")]
-    //ValidationError(#[from] garde::Report),
     #[error("トランザクションを実行できませんでした。")]
     TransactionError(#[source] sqlx::Error),
     #[error("データベース処理実行中にエラーが発生しました。")]
@@ -48,14 +46,8 @@ pub enum AppError {
     APRSError,
     #[error("JOBSchedulerにエラーが発生しました")]
     CronjobError(#[source] tokio_cron_scheduler::JobSchedulerError),
-    // #[error("{0}")]
-    // KeyValueStoreError(#[from] redis::RedisError),
-    // #[error("{0}")]
-    // BcryptError(#[from] bcrypt::BcryptError),
-    #[error("{0}")]
-    UuidError(uuid::Error),
-    #[error("{0}")]
-    ConvertToUuidError(#[from] uuid::Error),
+    #[error("UUID変換エラー: {0}")]
+    UuidError(#[from] uuid::Error),
     #[error("ログインに失敗しました")]
     UnauthenticatedError,
     #[error("認可情報が誤っています")]
@@ -86,19 +78,16 @@ impl IntoResponse for AppError {
             }
             AppError::UuidError(e) => {
                 tracing::error!("UUID Error {:?}", e);
-                (StatusCode::NOT_FOUND, "UUIDエラー".to_string(), Some("UUID_ERROR"))
-            }
-            AppError::ConvertToUuidError(_) => {
-                (StatusCode::BAD_REQUEST, "UUIDの変換に失敗しました".to_string(), Some("UUID_CONVERT_ERROR"))
+                (StatusCode::BAD_REQUEST, "UUIDの変換に失敗しました".to_string(), Some("UUID_ERROR"))
             }
             AppError::UnauthenticatedError => {
-                (StatusCode::FORBIDDEN, "ログインに失敗しました".to_string(), Some("UNAUTHENTICATED"))
+                (StatusCode::UNAUTHORIZED, "ログインに失敗しました".to_string(), Some("UNAUTHENTICATED"))
+            }
+            AppError::UnauthorizedError => {
+                (StatusCode::FORBIDDEN, "認可情報が誤っています".to_string(), Some("UNAUTHORIZED"))
             }
             AppError::ForbiddenOperation => {
                 (StatusCode::FORBIDDEN, "許可されていない操作です".to_string(), Some("FORBIDDEN"))
-            }
-            AppError::UnauthorizedError => {
-                (StatusCode::UNAUTHORIZED, "認可情報が誤っています".to_string(), Some("UNAUTHORIZED"))
             }
             AppError::TransactionError(e) => {
                 tracing::error!(error.cause_chain = ?e, "Transaction error");
