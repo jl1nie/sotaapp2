@@ -57,26 +57,41 @@ impl From<MunicipalityCenturyCode> for MunicipalityCenturyCodeRow {
 
 impl From<MunicipalityCenturyCodeRow> for MunicipalityCenturyCode {
     fn from(m: MunicipalityCenturyCodeRow) -> Self {
-        if m.jcc_code.is_some() {
+        // jcc_codeとjcc_textは同時にSome/Noneのはず（DB制約）
+        if let (Some(jcc_code), Some(jcc_text)) = (m.jcc_code, m.jcc_text) {
             MunicipalityCenturyCode {
                 muni_code: m.muni_code as i32,
                 prefecture: m.prefecture,
                 municipality: m.municipality,
                 code: CenturyCode::JCC {
-                    jcc_code: m.jcc_code.unwrap(),
+                    jcc_code,
                     ward_code: m.ward_code,
-                    jcc_text: m.jcc_text.unwrap(),
+                    jcc_text,
                 },
             }
-        } else {
+        } else if let (Some(jcg_code), Some(jcg_text)) = (m.jcg_code, m.jcg_text) {
+            // jcg_codeとjcg_textは同時にSome/Noneのはず（DB制約）
             MunicipalityCenturyCode {
                 muni_code: m.muni_code as i32,
                 prefecture: m.prefecture,
                 municipality: m.municipality,
                 code: CenturyCode::JCG {
-                    jcg_code: m.jcg_code.unwrap(),
-                    jcg_text: m.jcg_text.unwrap(),
+                    jcg_code,
+                    jcg_text,
                     hamlog_code: m.hamlog_code,
+                },
+            }
+        } else {
+            // DB制約上、JCCかJCGのいずれかは必ず存在するはず
+            // 万が一の場合は空のJCGとして扱う
+            MunicipalityCenturyCode {
+                muni_code: m.muni_code as i32,
+                prefecture: m.prefecture,
+                municipality: m.municipality,
+                code: CenturyCode::JCG {
+                    jcg_code: String::new(),
+                    jcg_text: String::new(),
+                    hamlog_code: None,
                 },
             }
         }

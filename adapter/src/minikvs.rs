@@ -46,8 +46,11 @@ impl MiniKvs {
 
     async fn set(&self, key: String, value: Value, expire: Option<Duration>) {
         let expires_at = Utc::now().naive_utc() + expire.unwrap_or(self.ttl);
+        // JSON変換失敗は致命的エラー（設計上発生しない）のためexpectを使用
+        let value_str = serde_json::to_string(&value)
+            .expect("Failed to serialize Value to JSON - this should never happen");
         let entry = Entry {
-            value: serde_json::to_string(&value).unwrap(),
+            value: value_str,
             expires_at,
         };
         let mut store = self.store.lock().await;

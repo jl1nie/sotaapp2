@@ -28,7 +28,7 @@ use crate::model::sota::{PagenatedResponse, SotaRefView, UpdateRefRequest};
 use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
-    param::{build_findref_query, GetParam},
+    param::{build_findref_query, GetParam, ValidatedQuery},
     spots::SpotView,
 };
 
@@ -137,7 +137,7 @@ async fn show_sota_reference(
 
 async fn show_all_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<SotaRefView>>> {
     let mut query = FindRefBuilder::default()
         .sota()
@@ -154,7 +154,7 @@ async fn show_all_sota_reference(
 
 async fn search_sota_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Vec<SotaRefView>>> {
     let query = FindRefBuilder::default().sota();
     let mut query = build_findref_query(param, query)?;
@@ -174,7 +174,7 @@ async fn search_sota_reference(
 
 async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Vec<ActivationView<SpotView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()
@@ -193,7 +193,7 @@ async fn show_sota_spots(
 
 async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<Vec<ActivationView<AlertView>>>> {
     let hours = param.hours_ago.unwrap_or(3);
     let query = FindActBuilder::default()

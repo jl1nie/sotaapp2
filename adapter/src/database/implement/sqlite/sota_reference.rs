@@ -549,13 +549,23 @@ impl SotaRepository for SotaRepositoryImpl {
     async fn find_reference(&self, event: &FindRef) -> AppResult<Vec<SotaReference>> {
         let mut results = self.select_by_condition(event).await?;
 
-        if event.center.is_some() {
-            let lat = event.center.as_ref().unwrap().lat;
-            let lon = event.center.as_ref().unwrap().lon;
+        if let Some(center) = &event.center {
+            let lat = center.lat;
+            let lon = center.lon;
 
             results.sort_by(|a, b| {
-                let dist1 = calculate_distance(lat, lon, a.latitude.unwrap(), a.longitude.unwrap());
-                let dist2 = calculate_distance(lat, lon, b.latitude.unwrap(), b.longitude.unwrap());
+                let dist1 = calculate_distance(
+                    lat,
+                    lon,
+                    a.latitude.unwrap_or_default(),
+                    a.longitude.unwrap_or_default(),
+                );
+                let dist2 = calculate_distance(
+                    lat,
+                    lon,
+                    b.latitude.unwrap_or_default(),
+                    b.longitude.unwrap_or_default(),
+                );
                 dist1.partial_cmp(&dist2).unwrap_or(Ordering::Equal)
             });
         }

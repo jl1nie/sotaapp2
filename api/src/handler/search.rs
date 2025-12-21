@@ -1,7 +1,7 @@
-use axum::{extract::Query, routing::get, Json, Router};
+use axum::{routing::get, Json, Router};
 use shaku_axum::Inject;
 
-use crate::model::param::{build_findref_query, GetParam};
+use crate::model::param::{build_findref_query, GetParam, ValidatedQuery};
 use crate::model::search::{SearchBriefResponse, SearchFullResponse, SearchResponse};
 use common::error::AppResult;
 use domain::model::event::{FindRefBuilder, FindResult};
@@ -23,7 +23,7 @@ async fn search(
 
 async fn search_reference(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<SearchResponse>> {
     let results = search(user_service, param).await?;
     Ok(Json(results.into()))
@@ -31,7 +31,7 @@ async fn search_reference(
 
 async fn search_reference_full(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<SearchFullResponse>> {
     let results = search(user_service, param).await?;
     Ok(Json(results.into()))
@@ -39,7 +39,7 @@ async fn search_reference_full(
 
 async fn search_reference_breif(
     user_service: Inject<AppRegistry, dyn UserService>,
-    Query(param): Query<GetParam>,
+    ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<SearchBriefResponse>> {
     let maxcount = param.max_count.unwrap_or(100);
 

@@ -105,8 +105,8 @@ impl From<PotaReferenceRow> for PotaReference {
             park_type: r.park_type,
             park_inactive: r.park_inactive,
             park_area: r.park_area as i32,
-            longitude: r.longitude.unwrap(),
-            latitude: r.latitude.unwrap(),
+            longitude: r.longitude.unwrap_or_default(),
+            latitude: r.latitude.unwrap_or_default(),
             maidenhead: r.maidenhead,
             update: r.update,
         }
@@ -207,21 +207,32 @@ pub struct PotaLegcayLogRow {
     pub activate: Option<i64>,
 }
 
-impl From<PotaLegcayLogRow> for PotaLogRow {
-    fn from(value: PotaLegcayLogRow) -> Self {
-        let date = value.date.unwrap();
-        let mut first_qso_date = NaiveDate::parse_from_str(&date, "%Y-%m-%d");
-        if first_qso_date.is_err() {
-            first_qso_date = NaiveDate::parse_from_str(&date, "%Y/%m/%d");
-        }
-        PotaLogRow {
-            log_id: LogId::from_str(&value.uuid.unwrap()).unwrap(),
-            pota_code: value.pota_code.unwrap(),
-            first_qso_date: first_qso_date.unwrap(),
-            attempts: (value.attempt.unwrap() != 0).then_some(value.attempt.unwrap() as i32),
-            activations: (value.activate.unwrap() != 0).then_some(value.activate.unwrap() as i32),
-            qsos: value.qso.unwrap() as i32,
-        }
+impl TryFrom<PotaLegcayLogRow> for PotaLogRow {
+    type Error = String;
+
+    fn try_from(value: PotaLegcayLogRow) -> Result<Self, Self::Error> {
+        let uuid = value.uuid.ok_or("uuid is missing")?;
+        let pota_code = value.pota_code.ok_or("pota_code is missing")?;
+        let date = value.date.ok_or("date is missing")?;
+        let qso = value.qso.ok_or("qso is missing")?;
+        let attempt = value.attempt.unwrap_or(0);
+        let activate = value.activate.unwrap_or(0);
+
+        let first_qso_date = NaiveDate::parse_from_str(&date, "%Y-%m-%d")
+            .or_else(|_| NaiveDate::parse_from_str(&date, "%Y/%m/%d"))
+            .map_err(|e| format!("invalid date format '{}': {}", date, e))?;
+
+        let log_id =
+            LogId::from_str(&uuid).map_err(|e| format!("invalid uuid '{}': {}", uuid, e))?;
+
+        Ok(PotaLogRow {
+            log_id,
+            pota_code,
+            first_qso_date,
+            attempts: (attempt != 0).then_some(attempt as i32),
+            activations: (activate != 0).then_some(activate as i32),
+            qsos: qso as i32,
+        })
     }
 }
 
@@ -231,18 +242,26 @@ pub struct PotaLegcayLogHistRow {
     pub time: Option<i64>,
 }
 
-impl From<PotaLegcayLogHistRow> for PotaLogHistRow {
-    fn from(value: PotaLegcayLogHistRow) -> Self {
-        let epoch = Utc.timestamp_opt(value.time.unwrap(), 0);
-        let update = match epoch {
+impl TryFrom<PotaLegcayLogHistRow> for PotaLogHistRow {
+    type Error = String;
+
+    fn try_from(value: PotaLegcayLogHistRow) -> Result<Self, Self::Error> {
+        let uuid = value.uuid.ok_or("uuid is missing")?;
+        let time = value.time.ok_or("time is missing")?;
+
+        let update = match Utc.timestamp_opt(time, 0) {
             chrono::LocalResult::Single(t) => t.naive_utc(),
             _ => Utc::now().naive_utc(),
         };
-        PotaLogHistRow {
+
+        let log_id =
+            LogId::from_str(&uuid).map_err(|e| format!("invalid uuid '{}': {}", uuid, e))?;
+
+        Ok(PotaLogHistRow {
             user_id: None,
-            log_id: LogId::from_str(&value.uuid.unwrap()).unwrap(),
+            log_id,
             log_kind: None,
             update,
-        }
+        })
     }
 }

@@ -155,8 +155,9 @@ impl AdminService for AdminServiceImpl {
             let newref: Vec<_> = result
                 .into_iter()
                 .filter(|r| ja_hash.contains_key(&r.summit_code))
-                .map(|mut r| {
-                    let ja = ja_hash.get(&r.summit_code).unwrap();
+                .filter_map(|mut r| {
+                    // filterで確認済みなのでget()は成功するはずだが、安全のためfilter_mapを使用
+                    let ja = ja_hash.get(&r.summit_code)?;
                     r.summit_name = ja.summit_name.clone();
                     r.summit_name_j = Some(ja.summit_name_j.clone());
                     r.city = Some(ja.city.clone());
@@ -164,7 +165,7 @@ impl AdminService for AdminServiceImpl {
                     r.longitude = ja.longitude;
                     r.latitude = ja.latitude;
                     r.alt_m = ja.alt_m;
-                    r
+                    Some(r)
                 })
                 .collect();
             total_count += newref.len();
