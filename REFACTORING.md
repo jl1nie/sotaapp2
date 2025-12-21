@@ -330,11 +330,214 @@ service/src/implement/
 9. ~~**#27 clone()削減**~~ ✅ (117→110箇所)
 10. ~~**#31 ハードコード日付の設定化**~~ ✅
 
-## 残り作業
+## 残り作業（既存）
 
 | 項目 | 優先度 | 複雑度 | 備考 |
 |------|--------|--------|------|
 | #24 エラーコンテキストの統一 | 中 | 中 | 133箇所、段階的移行推奨 |
-| #28 クエリビルダー抽象化 | 中 | 高 | PostGIS使用しないためスキップ可 |
-| #30 Groupingストラテジー抽象化 | 低 | 低 | 効果小 |
+| #28 クエリビルダー抽象化 | 低 | 高 | PostGIS使用しないためスキップ |
+| #30 Groupingストラテジー抽象化 | 低 | 低 | 効果小、スキップ |
 | #32 モジュールドキュメント追加 | 低 | 低 | 必要に応じて |
+
+---
+
+## 新規リファクタリング項目（2024-12-22 レビュー）
+
+### コードベース統計
+
+| 項目 | 値 |
+|------|-----|
+| 総行数 | 13,889行 |
+| テスト数 | 81個 |
+| Clippy警告 | 0件 |
+| unwrap/expect残存 | 約20箇所 |
+| 500行超ファイル | 5個 |
+
+---
+
+### 【セキュリティ - 高優先】
+
+#### #33 エラーレスポンス情報漏洩防止 🔴 HIGH
+**ファイル**: `common/src/error.rs:81-87`
+**問題**: `RowNotFound`エラーで内部の`location`情報がレスポンスに含まれる
+```rust
+// 現状
+format!("指定された行が見つかりません: {}", location)  // ← 内部詳細露出
+```
+**対策**: 汎用メッセージに変更、詳細はログのみに記録
+**複雑度**: 低
+**工数**: 1h
+
+#### #34 入力バリデーション強化 🟡 MEDIUM
+**ファイル**: `api/src/model/param.rs`
+**問題**: `limit`, `offset`, `min_elev`等の数値パラメータに範囲チェックなし
+**対策**: `validator`クレート導入、`#[validate(range(min=0, max=10000))]`
+**複雑度**: 中
+**工数**: 4h
+
+#### #35 PostGISレガシー関数削除 🟢 LOW
+**ファイル**: `adapter/src/database/implement/postgis/querybuilder.rs:220-339`
+**問題**: `#[deprecated]`のSQLインジェクション脆弱関数が残存
+**状態**: 新APIで対応済み、レガシー関数は未使用
+**対策**: 削除（PostGIS使用しないため影響なし）
+**複雑度**: 低
+**工数**: 1h
+
+---
+
+### 【コード品質 - 中優先】
+
+#### #36 残存unwrap()の置き換え 🟡 MEDIUM
+**問題箇所** (約20箇所):
+
+| ファイル | 行 | 内容 |
+|---------|-----|------|
+| `adapter/src/minikvs.rs` | 50 | `serde_json::to_string().unwrap()` |
+| `adapter/src/database/model/pota.rs` | 108-243 | 6箇所 |
+| `adapter/src/database/model/locator.rs` | 66-78 | 4箇所 |
+| `adapter/src/database/implement/sqlite/sota_reference.rs` | 553-661 | 4箇所 |
+| `src/bin/app.rs` | 170 | ヘッダ値パース |
+| `service/src/implement/admin_service.rs` | 159 | HashMap.get() |
+
+**対策**: `?`演算子、`unwrap_or_default()`、`expect()`への置き換え
+**複雑度**: 低
+**工数**: 3h
+
+#### #37 clone()最適化 🟢 LOW
+**問題**: 115箇所でclone()使用、一部は参照で代替可能
+**主な箇所**:
+- `postgis/querybuilder.rs:50-56, 119-127`: pattern.clone()を&patternに
+- `user_service.rs:144, 170`: spot.clone()
+- `admin_service.rs:97, 159`: summit_code.clone()
+
+**対策**: 参照利用に変更
+**複雑度**: 低
+**工数**: 2h
+
+#### #38 正規表現キャッシング追加 🟢 LOW
+**ファイル**: `service/src/implement/user_service.rs:115, 136`
+**問題**: 毎回`Regex::new()`を呼び出し
+**対策**: `OnceLock`またはLRUキャッシュ導入
+**複雑度**: 低
+**工数**: 1h
+
+---
+
+### 【テスト - 高優先】
+
+#### #39 APIハンドラテスト実装 🔴 HIGH
+**問題**: API層のテストカバレッジがゼロ（14個のハンドラ）
+**未テスト機能**:
+
+| ハンドラ | ファイル | 優先度 |
+|---------|---------|--------|
+| SOTA ログアップロード | `api/src/handler/sota.rs` | 高 |
+| POTA ログアップロード | `api/src/handler/pota.rs` | 高 |
+| 認証フロー | `api/src/handler/auth.rs` | 高 |
+| 検索機能 | `api/src/handler/search.rs` | 中 |
+| アクティベーション | `api/src/handler/activation.rs` | 中 |
+
+**対策**: `axum-test`クレートでハンドラテスト作成
+**複雑度**: 中
+**工数**: 16h
+
+#### #40 APRSサービステスト 🟡 MEDIUM
+**ファイル**: `adapter/src/aprs.rs`, `service/src/implement/aprs_service.rs`
+**問題**: 外部連携のテストなし
+**対策**: モックサーバーでAPRS接続テスト
+**複雑度**: 中
+**工数**: 8h
+
+---
+
+### 【アーキテクチャ - 中優先】
+
+#### #41 大規模ファイル分割 🟡 MEDIUM
+**500行超ファイル**:
+
+| ファイル | 行数 | 分割案 |
+|---------|------|--------|
+| `sqlite/sota_reference.rs` | 858 | queries + tests 分離 |
+| `sqlite/pota_reference.rs` | 757 | queries + tests 分離 |
+| `award_calculator.rs` | 708 | 70%テスト、コアロジック分離 |
+| `user_service.rs` | 674 | SOTA/POTA/APRS別サービス化 |
+| `admin_service.rs` | 350 | CSV解析ロジック分離 |
+
+**対策**:
+```
+adapter/src/database/implement/sqlite/
+  ├── sota_reference.rs (300行)
+  ├── sota_reference_queries.rs (新規)
+  └── sota_reference_tests.rs (新規)
+```
+**複雑度**: 中
+**工数**: 12h
+
+#### #42 user_serviceの責務分離 🟡 MEDIUM
+**問題**: 1ファイルに5つの責務
+1. SOTA ログ管理
+2. POTA ログ管理
+3. APRS 統合
+4. ロケータ検索
+5. 地磁気データ取得
+
+**対策**:
+```
+service/src/implement/
+  ├── user_service.rs (汎用, 300行)
+  ├── sota_log_service.rs (新規, 150行)
+  ├── pota_log_service.rs (新規, 150行)
+  └── reference_search_service.rs (新規, 100行)
+```
+**複雑度**: 高
+**工数**: 16h
+
+---
+
+### 【ドキュメント - 低優先】
+
+#### #43 OpenAPI/Swagger導入 🟢 LOW
+**問題**: APIドキュメント不足（カバレッジ71%）
+**対策**: `utoipa`クレートでOpenAPI仕様生成
+**複雑度**: 中
+**工数**: 8h
+
+#### #44 データベーススキーマドキュメント 🟢 LOW
+**問題**: スキーマ説明ドキュメントなし
+**対策**: `migrations/`からER図・仕様書生成
+**複雑度**: 低
+**工数**: 4h
+
+---
+
+## 優先順位サマリー（更新版）
+
+| 優先度 | 項目 | 工数 | 次期スプリント候補 |
+|--------|------|------|------------------|
+| 🔴 高 | #33 エラー情報漏洩防止 | 1h | ✓ |
+| 🔴 高 | #39 APIハンドラテスト | 16h | ✓ |
+| 🟡 中 | #34 入力バリデーション | 4h | ✓ |
+| 🟡 中 | #36 unwrap()置き換え | 3h | ✓ |
+| 🟡 中 | #40 APRSテスト | 8h | |
+| 🟡 中 | #41 ファイル分割 | 12h | |
+| 🟡 中 | #42 user_service責務分離 | 16h | |
+| 🟢 低 | #35 PostGISレガシー削除 | 1h | ✓ |
+| 🟢 低 | #37 clone()最適化 | 2h | |
+| 🟢 低 | #38 Regexキャッシング | 1h | |
+| 🟢 低 | #43 OpenAPI導入 | 8h | |
+| 🟢 低 | #44 スキーマドキュメント | 4h | |
+
+---
+
+## 次期スプリント推奨（24h）
+
+1. **#33 エラー情報漏洩防止** (1h) - セキュリティ
+2. **#35 PostGISレガシー削除** (1h) - セキュリティ
+3. **#36 unwrap()置き換え** (3h) - コード品質
+4. **#34 入力バリデーション** (4h) - セキュリティ
+5. **#39 APIハンドラテスト（部分）** (15h) - テスト
+   - auth.rs: 3h
+   - sota.rs: 6h
+   - pota.rs: 6h
+
+合計: 24h
