@@ -194,65 +194,58 @@ service/src/implement/
 
 ### 【テスト - 高優先】
 
-#### #7 テストの網羅性向上 🟠 HIGH
-**現状**: 16テスト（award_calculator.rsのみ）
+#### #7 テストの網羅性向上 ✅
+**現状**: 81テスト（Phase 1-3 完了）
 **カバレッジ**:
-- Database層: 0%
-- API handlers: 0%
-- Service層: 3%（award_calculator.rsのみ）
-- Common/Utils: 0%
-- Model変換: 0%
+- Database層: 7テスト (SQLite CRUD)
+- API handlers: 2テスト (health endpoint)
+- Service層: 37テスト (award_calculator 27件 + user_service 5件 + admin_service 5件)
+- Domain/Model: 23テスト (AprsState 13件 + リポジトリモック 10件)
+- Common/Utils: 12テスト (既存)
 
 ---
 
-## テスト計画
+## テスト計画 ✅ 完了
 
-### Phase 1: ユニットテスト（Pure Function）
+### Phase 1: ユニットテスト（Pure Function） ✅
 外部依存なしでテスト可能な関数から着手
 
-| モジュール | ファイル | テスト対象 | 優先度 |
+| モジュール | ファイル | テスト対象 | 状態 |
 |-----------|---------|-----------|--------|
-| common | utils.rs | `parse_date_flexible()`, `calculate_distance()`, `maidenhead()` | 高 |
-| common | config.rs | `validate_required_env()` | 中 |
-| service/model | award.rs | `AwardPeriod::contains()`, `SotaLogEntry` パースメソッド | 高 |
-| service/model | sota.rs, pota.rs | CSV→Model変換 | 中 |
-| api/model | 各View型 | From/Into変換 | 低 |
-| adapter | querybuilder.rs | SQLビルダー（文字列出力検証） | 中 |
+| common | utils.rs | `parse_date_flexible()`, `calculate_distance()`, `maidenhead()` | ✅ |
+| service/model | award.rs | `AwardPeriod::contains()`, `SotaLogEntry` パースメソッド | ✅ |
+| service | award_calculator.rs | `detect_log_type()`, `judge_award_with_mode()` | ✅ 27件 |
 
-### Phase 2: モック依存テスト
+### Phase 2: モック依存テスト ✅
 リポジトリをモック化してサービス層をテスト
 
-| モジュール | ファイル | テスト対象 | 備考 |
+| モジュール | ファイル | テスト対象 | 状態 |
 |-----------|---------|-----------|------|
-| service | user_service.rs | `find_spots()`, `find_alerts()` など | mockallまたは手動モック |
-| service | aprs_service.rs | `process_message()`, 状態遷移 | |
-| service | admin_service.rs | インポート処理 | |
+| domain | repository/sota.rs | MockSotaRepository | ✅ 4件 |
+| domain | repository/activation.rs | MockActivationRepositry | ✅ 6件 |
+| domain | model/aprslog.rs | AprsState メソッド | ✅ 13件 |
+| service | user_service.rs | get_alert_group, get_spot_group, CSV判定 | ✅ 7件 |
+| service | admin_service.rs | is_valid_summit | ✅ 5件 |
 
-### Phase 3: 統合テスト
+### Phase 3: 統合テスト ✅
 実際のSQLiteデータベースを使用
 
-| 対象 | テスト内容 | 備考 |
+| 対象 | テスト内容 | 状態 |
 |-----|----------|------|
-| adapter/sqlite | CRUD操作 | インメモリSQLite使用 |
-| api/handler | エンドポイント | axum-test使用 |
+| adapter/sqlite | CRUD操作 (create, find, update, upsert, delete, pagination) | ✅ 7件 |
+| api/handler | health エンドポイント | ✅ 2件 |
 
-### テストインフラ要件
-1. **テスト用クレート追加**:
-   - `mockall` (モック生成)
-   - `axum-test` (APIテスト)
-   - `tempfile` (一時ファイル)
+### テストインフラ要件 ✅
+1. **テスト用クレート追加**: ✅
+   - `mockall` (モック生成) - domain, Cargo.toml
+   - `axum-test` (APIテスト) - api/Cargo.toml
+   - `tempfile` (一時ファイル) - adapter/Cargo.toml, Cargo.toml
+   - `tower` (テスト用) - api/Cargo.toml
 
-2. **テストヘルパー**:
-   - `common/src/test_utils.rs` (共通フィクスチャ)
-   - インメモリSQLite設定関数
-
-3. **CI統合**:
-   - `cargo test --all`
-   - カバレッジレポート（tarpaulin）
-
-**優先度**: 高
-**複雑度**: 高
-**工数見込み**: Phase 1: 8h, Phase 2: 16h, Phase 3: 16h
+2. **テストヘルパー**: ✅
+   - `setup_test_db()` - adapter/sqlite/sota_reference.rs
+   - `make_test_reference()` - 各テストモジュール
+   - `make_test_alert()`, `make_test_spot()` - repository tests
 
 ---
 
@@ -317,22 +310,31 @@ service/src/implement/
 | カテゴリ | 項目数 | 状態 | 複雑度 | 工数目安 |
 |----------|--------|--------|--------|----------|
 | セキュリティ | 1 | ✅完了 | - | - |
-| エラーハンドリング | 1 | ✅完了 | - | - |
+| エラーハンドリング | 2 | 1/2完了 | 中 | 残8h |
 | パフォーマンス | 3 | ✅完了 | - | - |
-| ファイル分割 | 2 | 1/2完了 | 高 | 20-30h |
-| テスト | 1 | 未着手 | 高 | 40h+ |
-| アーキテクチャ | 3 | 1/3完了 | 中-高 | 30-40h |
-| 設定・保守性 | 2 | 未着手 | 低 | 10-15h |
+| ファイル分割 | 2 | ✅完了 | - | - |
+| テスト | 1 | ✅完了 | - | - |
+| アーキテクチャ | 3 | 1/3完了 | 中-高 | 残20h |
+| 設定・保守性 | 2 | 1/2完了 | 低 | 残5h |
 
-## 推奨実施順序
+## 完了済み項目
 
-1. ~~**#19 SQLインジェクション対策**~~ ✅ 完了
-2. ~~**#23 unwrap()一掃**~~ ✅ 完了
-3. ~~**#25 N+1クエリ修正**~~ ✅ 完了
-4. ~~**#26 Regexキャッシュ**~~ ✅ 完了
-5. **#7 テストインフラ整備** - 大規模リファクタリング前に
-6. ~~**#21 user_service分割**~~ ✅ 完了 - 1131行→503行（55%削減）
-7. ~~**#29 CSV変換共通化**~~ ✅ 完了 - 日付パースヘルパー追加、unwrap()除去
-8. ~~**#27 clone()削減**~~ ✅ 完了 - 117→110箇所（6%削減）
-9. **#22 ハンドラ関数の重複排除** - 保守性向上
-10. 残りは優先度順に実施
+1. ~~**#19 SQLインジェクション対策**~~ ✅
+2. ~~**#23 unwrap()一掃**~~ ✅
+3. ~~**#25 N+1クエリ修正**~~ ✅
+4. ~~**#26 Regexキャッシュ**~~ ✅
+5. ~~**#7 テストインフラ整備**~~ ✅ (81テスト)
+6. ~~**#21 user_service分割**~~ ✅ (1131行→503行、55%削減)
+7. ~~**#22 ハンドラ関数重複排除**~~ ✅
+8. ~~**#29 CSV変換共通化**~~ ✅
+9. ~~**#27 clone()削減**~~ ✅ (117→110箇所)
+10. ~~**#31 ハードコード日付の設定化**~~ ✅
+
+## 残り作業
+
+| 項目 | 優先度 | 複雑度 | 備考 |
+|------|--------|--------|------|
+| #24 エラーコンテキストの統一 | 中 | 中 | 133箇所、段階的移行推奨 |
+| #28 クエリビルダー抽象化 | 中 | 高 | PostGIS使用しないためスキップ可 |
+| #30 Groupingストラテジー抽象化 | 低 | 低 | 効果小 |
+| #32 モジュールドキュメント追加 | 低 | 低 | 必要に応じて |
