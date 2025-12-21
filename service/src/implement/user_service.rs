@@ -496,36 +496,59 @@ impl UserService for UserServiceImpl {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::award::LogType;
+    use domain::model::activation::Spot;
+    use domain::model::event::{FindActBuilder, GroupBy};
+    use domain::model::AwardProgram;
 
-    /// ヘルパー関数のテスト: get_alert_group
-    #[test]
-    fn test_get_alert_group_by_callsign() {
-        use domain::model::event::{FindActBuilder, GroupBy};
-        use domain::model::activation::Alert;
-        use domain::model::AwardProgram;
-
-        let event = FindActBuilder::default()
-            .sota()
-            .group_by_callsign(Some("JA1ABC".to_string()))
-            .build();
-
-        let alert = Alert {
+    /// テスト用Alertを生成するヘルパー
+    fn make_test_alert(activator: &str, reference: &str) -> Alert {
+        Alert {
             program: AwardProgram::SOTA,
             alert_id: 1,
             user_id: 1,
-            activator: "JA1ABC".to_string(),
+            activator: activator.to_string(),
             activator_name: None,
-            operator: "JA1ABC".to_string(),
-            reference: "JA/TK-001".to_string(),
+            operator: activator.to_string(),
+            reference: reference.to_string(),
             reference_detail: "Test Summit".to_string(),
             location: "Tokyo".to_string(),
             start_time: Utc::now(),
             end_time: None,
             frequencies: "14.280".to_string(),
             comment: Some("Test".to_string()),
-            poster: Some("JA1ABC".to_string()),
-        };
+            poster: Some(activator.to_string()),
+        }
+    }
 
+    /// テスト用Spotを生成するヘルパー
+    fn make_test_spot(activator: &str, reference: &str) -> Spot {
+        Spot {
+            program: AwardProgram::SOTA,
+            spot_id: 1,
+            activator: activator.to_string(),
+            activator_name: None,
+            operator: activator.to_string(),
+            reference: reference.to_string(),
+            reference_detail: "Test Summit".to_string(),
+            spot_time: Utc::now(),
+            frequency: "14.280".to_string(),
+            mode: "SSB".to_string(),
+            spotter: "JA2XYZ".to_string(),
+            comment: Some("Test".to_string()),
+        }
+    }
+
+    // ==================== ヘルパー関数テスト ====================
+
+    #[test]
+    fn test_get_alert_group_by_callsign() {
+        let event = FindActBuilder::default()
+            .sota()
+            .group_by_callsign(Some("JA1ABC".to_string()))
+            .build();
+
+        let alert = make_test_alert("JA1ABC", "JA/TK-001");
         let group = get_alert_group(&event, &alert);
 
         match group {
@@ -534,40 +557,114 @@ mod tests {
         }
     }
 
-    /// ヘルパー関数のテスト: get_alert_group（リファレンス）
     #[test]
     fn test_get_alert_group_by_reference() {
-        use domain::model::event::{FindActBuilder, GroupBy};
-        use domain::model::activation::Alert;
-        use domain::model::AwardProgram;
-
         let event = FindActBuilder::default()
             .sota()
             .group_by_reference(Some("JA/TK-001".to_string()))
             .build();
 
-        let alert = Alert {
-            program: AwardProgram::SOTA,
-            alert_id: 1,
-            user_id: 1,
-            activator: "JA1ABC".to_string(),
-            activator_name: None,
-            operator: "JA1ABC".to_string(),
-            reference: "JA/TK-001".to_string(),
-            reference_detail: "Test Summit".to_string(),
-            location: "Tokyo".to_string(),
-            start_time: Utc::now(),
-            end_time: None,
-            frequencies: "14.280".to_string(),
-            comment: Some("Test".to_string()),
-            poster: Some("JA1ABC".to_string()),
-        };
-
+        let alert = make_test_alert("JA1ABC", "JA/TK-001");
         let group = get_alert_group(&event, &alert);
 
         match group {
             GroupBy::Reference(Some(ref_code)) => assert_eq!(ref_code, "JA/TK-001"),
             _ => panic!("Expected GroupBy::Reference"),
         }
+    }
+
+    #[test]
+    fn test_get_alert_group_no_group_defaults_to_callsign() {
+        let event = FindActBuilder::default().sota().build();
+        let alert = make_test_alert("JA1ABC", "JA/TK-001");
+        let group = get_alert_group(&event, &alert);
+
+        match group {
+            GroupBy::Callsign(None) => {} // デフォルトはCallsign(None)
+            _ => panic!("Expected GroupBy::Callsign(None)"),
+        }
+    }
+
+    #[test]
+    fn test_get_spot_group_by_callsign() {
+        let event = FindActBuilder::default()
+            .sota()
+            .group_by_callsign(Some("JA1ABC".to_string()))
+            .build();
+
+        let spot = make_test_spot("JA1ABC", "JA/TK-001");
+        let group = get_spot_group(&event, &spot);
+
+        match group {
+            GroupBy::Callsign(Some(call)) => assert_eq!(call, "JA1ABC"),
+            _ => panic!("Expected GroupBy::Callsign"),
+        }
+    }
+
+    #[test]
+    fn test_get_spot_group_by_reference() {
+        let event = FindActBuilder::default()
+            .sota()
+            .group_by_reference(Some("JA/TK-001".to_string()))
+            .build();
+
+        let spot = make_test_spot("JA1ABC", "JA/TK-001");
+        let group = get_spot_group(&event, &spot);
+
+        match group {
+            GroupBy::Reference(Some(ref_code)) => assert_eq!(ref_code, "JA/TK-001"),
+            _ => panic!("Expected GroupBy::Reference"),
+        }
+    }
+
+    // ==================== 10周年アワード判定テスト ====================
+
+    #[test]
+    fn test_judge_10th_anniversary_award_activator_csv() {
+        // 10カラムのアクティベータログ
+        let csv = r#"V2,JA1ABC/P,JA/TK-001,01/07/2025,1000,14.280,SSB,JA2XYZ,,
+V2,JA1ABC/P,JA/TK-001,01/07/2025,1001,14.280,SSB,JA3DEF,,
+V2,JA1ABC/P,JA/TK-001,01/07/2025,1002,14.280,SSB,JA4GHI,,
+V2,JA1ABC/P,JA/TK-001,01/07/2025,1003,14.280,SSB,JA5JKL,,
+"#;
+
+        let log_type = detect_log_type(csv);
+        assert_eq!(log_type, LogType::Activator);
+
+        let logs: Vec<SotaLogEntry> = csv_reader(csv.to_string(), false, 0).unwrap();
+        let period = AwardPeriod::default();
+        let result = judge_award_with_mode(logs, &period, JudgmentMode::Strict, log_type);
+
+        assert_eq!(result.total_qsos, 4);
+        assert!(result.activator.is_some());
+        assert!(result.chaser.is_none());
+
+        let activator = result.activator.unwrap();
+        assert!(!activator.achieved); // 10座必要だが1座のみ
+        assert_eq!(activator.summits.len(), 1);
+        assert_eq!(activator.summits[0].unique_stations, 4);
+    }
+
+    #[test]
+    fn test_judge_10th_anniversary_award_chaser_csv() {
+        // 11カラムのチェイサーログ（末尾にポイント列）
+        // 実際のフォーマット: V2,コール,空欄,日付,時刻,周波数,モード,相手コール,リファレンス,コメント,ポイント
+        let csv = r#"V2,JA1ABC,,01/07/2025,1000,14.280,SSB,JA2XYZ/P,JA/TK-001,FB 59!,10
+V2,JA1ABC,,01/07/2025,1001,14.280,SSB,JA3DEF/P,JA/TK-001,,4
+"#;
+
+        let log_type = detect_log_type(csv);
+        assert_eq!(log_type, LogType::Chaser);
+
+        let logs: Vec<SotaLogEntry> = csv_reader(csv.to_string(), false, 0).unwrap();
+        let period = AwardPeriod::default();
+        let result = judge_award_with_mode(logs, &period, JudgmentMode::Strict, log_type);
+
+        assert_eq!(result.total_qsos, 2);
+        assert!(result.activator.is_none());
+        assert!(result.chaser.is_some());
+
+        let chaser = result.chaser.unwrap();
+        assert!(!chaser.achieved); // 10人のアクティベータが必要だが2人のみ
     }
 }

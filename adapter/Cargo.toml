@@ -26,3 +26,5 @@ tokio-cron-scheduler.workspace = true
 [dev-dependencies]
 csv.workspace = true
 serde.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
+tempfile.workspace = true

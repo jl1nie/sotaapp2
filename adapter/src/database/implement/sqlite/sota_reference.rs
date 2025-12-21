@@ -608,3 +608,261 @@ impl SotaRepository for SotaRepositoryImpl {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use domain::model::event::FindRefBuilder;
+    use sqlx::migrate::Migrator;
+    use sqlx::sqlite::SqlitePool;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    /// テスト用の一時データベースを作成
+    async fn setup_test_db() -> (SqlitePool, tempfile::TempDir) {
+        let temp_dir = tempdir().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let db_url = format!("sqlite:{}", db_path.display());
+
+        // データベースファイル作成
+        std::fs::File::create(&db_path).expect("Failed to create db file");
+
+        let pool = SqlitePool::connect(&db_url)
+            .await
+            .expect("Failed to connect to test db");
+
+        // マイグレーション実行
+        let migration_path = Path::new("migrations/sqlite");
+        let migrator = Migrator::new(migration_path)
+            .await
+            .expect("Failed to load migrations");
+        migrator.run(&pool).await.expect("Failed to run migrations");
+
+        (pool, temp_dir)
+    }
+
+    /// テスト用SotaReferenceを作成
+    fn make_test_reference(code: &str, name: &str) -> SotaReference {
+        SotaReference {
+            summit_code: code.to_string(),
+            association_name: "Japan".to_string(),
+            region_name: "Tokyo".to_string(),
+            summit_name: name.to_string(),
+            summit_name_j: Some("テスト山".to_string()),
+            city: Some("Tokyo".to_string()),
+            city_j: Some("東京都".to_string()),
+            alt_m: 1000,
+            alt_ft: 3280,
+            grid_ref1: "PM95".to_string(),
+            grid_ref2: "".to_string(),
+            longitude: 139.0,
+            latitude: 35.0,
+            maidenhead: "PM95wv".to_string(),
+            points: 10,
+            bonus_points: 3,
+            valid_from: NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            valid_to: NaiveDate::from_ymd_opt(2099, 12, 31).unwrap(),
+            activation_count: 0,
+            activation_date: None,
+            activation_call: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_and_find_reference() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        // テストデータ作成
+        let reference = make_test_reference("JA/TK-001", "Mt. Test");
+        repo.create_reference(vec![reference.clone()])
+            .await
+            .expect("Failed to create reference");
+
+        // 検索
+        let query = FindRefBuilder::default()
+            .sota()
+            .name("JA/TK-001".to_string())
+            .build();
+        let result = repo.find_reference(&query).await.expect("Failed to find");
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].summit_code, "JA/TK-001");
+        assert_eq!(result[0].summit_name, "Mt. Test");
+    }
+
+    #[tokio::test]
+    async fn test_count_reference() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        // 複数のテストデータを作成
+        let refs = vec![
+            make_test_reference("JA/TK-001", "Mt. A"),
+            make_test_reference("JA/TK-002", "Mt. B"),
+            make_test_reference("JA/TK-003", "Mt. C"),
+        ];
+        repo.create_reference(refs)
+            .await
+            .expect("Failed to create references");
+
+        // カウント
+        let query = FindRefBuilder::default().sota().build();
+        let count = repo.count_reference(&query).await.expect("Failed to count");
+
+        assert_eq!(count, 3);
+    }
+
+    #[tokio::test]
+    async fn test_update_reference() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        // 作成
+        let reference = make_test_reference("JA/TK-001", "Mt. Test");
+        repo.create_reference(vec![reference])
+            .await
+            .expect("Failed to create");
+
+        // 更新
+        let mut updated = make_test_reference("JA/TK-001", "Mt. Updated");
+        updated.points = 20;
+        repo.update_reference(vec![updated])
+            .await
+            .expect("Failed to update");
+
+        // 確認
+        let query = FindRefBuilder::default()
+            .sota()
+            .name("JA/TK-001".to_string())
+            .build();
+        let result = repo.find_reference(&query).await.expect("Failed to find");
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].summit_name, "Mt. Updated");
+        assert_eq!(result[0].points, 20);
+    }
+
+    #[tokio::test]
+    async fn test_delete_reference() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        // 作成
+        let refs = vec![
+            make_test_reference("JA/TK-001", "Mt. A"),
+            make_test_reference("JA/TK-002", "Mt. B"),
+        ];
+        repo.create_reference(refs)
+            .await
+            .expect("Failed to create");
+
+        // 1つ削除
+        repo.delete_reference(DeleteRef::Delete(SummitCode::new("JA/TK-001".to_string())))
+            .await
+            .expect("Failed to delete");
+
+        // 確認
+        let query = FindRefBuilder::default().sota().build();
+        let count = repo.count_reference(&query).await.expect("Failed to count");
+        assert_eq!(count, 1);
+
+        let result = repo.find_reference(&query).await.expect("Failed to find");
+        assert_eq!(result[0].summit_code, "JA/TK-002");
+    }
+
+    #[tokio::test]
+    async fn test_delete_all_references() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        // 作成
+        let refs = vec![
+            make_test_reference("JA/TK-001", "Mt. A"),
+            make_test_reference("JA/TK-002", "Mt. B"),
+            make_test_reference("JA/TK-003", "Mt. C"),
+        ];
+        repo.create_reference(refs)
+            .await
+            .expect("Failed to create");
+
+        // 全削除
+        repo.delete_reference(DeleteRef::DeleteAll)
+            .await
+            .expect("Failed to delete all");
+
+        // 確認
+        let query = FindRefBuilder::default().sota().build();
+        let count = repo.count_reference(&query).await.expect("Failed to count");
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_upsert_reference() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        // 新規作成
+        let reference = make_test_reference("JA/TK-001", "Mt. Test");
+        repo.upsert_reference(vec![reference])
+            .await
+            .expect("Failed to upsert");
+
+        // 存在確認
+        let query = FindRefBuilder::default().sota().build();
+        let count = repo.count_reference(&query).await.expect("Failed to count");
+        assert_eq!(count, 1);
+
+        // 再度upsert（更新）
+        let mut updated = make_test_reference("JA/TK-001", "Mt. Test");
+        updated.activation_count = 5;
+        repo.upsert_reference(vec![updated])
+            .await
+            .expect("Failed to upsert again");
+
+        // カウント変わらず
+        let count = repo.count_reference(&query).await.expect("Failed to count");
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_show_all_references_pagenated() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        // 10件作成
+        let refs: Vec<_> = (1..=10)
+            .map(|i| make_test_reference(&format!("JA/TK-{:03}", i), &format!("Mt. {}", i)))
+            .collect();
+        repo.create_reference(refs)
+            .await
+            .expect("Failed to create");
+
+        // ページネーション確認
+        let query = FindRefBuilder::default().sota().limit(3).offset(0).build();
+        let result = repo
+            .show_all_references(&query)
+            .await
+            .expect("Failed to show all");
+
+        assert_eq!(result.total, 10);
+        assert_eq!(result.limit, 3);
+        assert_eq!(result.offset, 0);
+        assert_eq!(result.results.len(), 3);
+    }
+}

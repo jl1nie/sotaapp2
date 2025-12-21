@@ -87,3 +87,135 @@ pub struct AprsTrack {
     pub spot_mode: Option<String>,
     pub spot_comment: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDateTime;
+
+    fn make_test_time() -> NaiveDateTime {
+        NaiveDateTime::parse_from_str("2025-01-01 12:00:00", "%Y-%m-%d %H:%M:%S").unwrap()
+    }
+
+    #[test]
+    fn test_aprs_state_travelling_distance() {
+        let state = AprsState::Travelling {
+            time: make_test_time(),
+        };
+        assert_eq!(state.distance(), 0.0);
+    }
+
+    #[test]
+    fn test_aprs_state_approaching_distance() {
+        let state = AprsState::Approaching {
+            time: make_test_time(),
+            distance: 1500.0,
+        };
+        assert_eq!(state.distance(), 1500.0);
+    }
+
+    #[test]
+    fn test_aprs_state_climbing_distance() {
+        let state = AprsState::Climbing {
+            time: make_test_time(),
+            distance: 800.0,
+        };
+        assert_eq!(state.distance(), 800.0);
+    }
+
+    #[test]
+    fn test_aprs_state_near_summit_distance() {
+        let state = AprsState::NearSummit {
+            time: make_test_time(),
+            distance: 150.0,
+            message: "Approaching summit".to_string(),
+        };
+        assert_eq!(state.distance(), 150.0);
+    }
+
+    #[test]
+    fn test_aprs_state_on_summit_distance() {
+        let state = AprsState::OnSummit {
+            time: make_test_time(),
+            distance: 50.0,
+            message: "Welcome to summit".to_string(),
+        };
+        assert_eq!(state.distance(), 50.0);
+    }
+
+    #[test]
+    fn test_aprs_state_descending_distance() {
+        let state = AprsState::Descending {
+            time: make_test_time(),
+            distance: 300.0,
+        };
+        assert_eq!(state.distance(), 300.0);
+    }
+
+    #[test]
+    fn test_aprs_state_time() {
+        let time = make_test_time();
+        let state = AprsState::Approaching {
+            time,
+            distance: 1000.0,
+        };
+        assert_eq!(state.time(), time);
+    }
+
+    #[test]
+    fn test_aprs_state_message_none_for_travelling() {
+        let state = AprsState::Travelling {
+            time: make_test_time(),
+        };
+        assert!(state.message().is_none());
+    }
+
+    #[test]
+    fn test_aprs_state_message_none_for_approaching() {
+        let state = AprsState::Approaching {
+            time: make_test_time(),
+            distance: 1000.0,
+        };
+        assert!(state.message().is_none());
+    }
+
+    #[test]
+    fn test_aprs_state_message_none_for_climbing() {
+        let state = AprsState::Climbing {
+            time: make_test_time(),
+            distance: 500.0,
+        };
+        assert!(state.message().is_none());
+    }
+
+    #[test]
+    fn test_aprs_state_message_some_for_near_summit() {
+        let msg = "Approaching JA/TK-001".to_string();
+        let state = AprsState::NearSummit {
+            time: make_test_time(),
+            distance: 150.0,
+            message: msg.clone(),
+        };
+        assert_eq!(state.message(), Some(&msg));
+    }
+
+    #[test]
+    fn test_aprs_state_message_some_for_on_summit() {
+        let msg = "Welcome to JA/TK-001".to_string();
+        let state = AprsState::OnSummit {
+            time: make_test_time(),
+            distance: 50.0,
+            message: msg.clone(),
+        };
+        assert_eq!(state.message(), Some(&msg));
+    }
+
+    #[test]
+    fn test_aprs_state_message_none_for_descending() {
+        let state = AprsState::Descending {
+            time: make_test_time(),
+            distance: 300.0,
+        };
+        assert!(state.message().is_none());
+    }
+}
