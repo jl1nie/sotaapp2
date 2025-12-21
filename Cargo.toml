@@ -86,3 +86,5 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 aprs-message.workspace = true
 firebase-auth-sdk.workspace = true
+clap = { version = "4", features = ["derive"] }
+sqlx.workspace = true

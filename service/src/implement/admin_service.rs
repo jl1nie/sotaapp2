@@ -47,7 +47,7 @@ impl AdminService for AdminServiceImpl {
     async fn import_summit_list(
         &self,
         UploadSOTASummit { data }: UploadSOTASummit,
-    ) -> AppResult<()> {
+    ) -> AppResult<usize> {
         let csv: Vec<SOTASummitCSV> = csv_reader(data, false, 2)?;
         let req: Vec<_> = csv
             .into_iter()
@@ -55,20 +55,21 @@ impl AdminService for AdminServiceImpl {
             .filter(is_valid_summit)
             .collect();
 
-        tracing::info!("import {} references.", req.len());
+        let count = req.len();
+        tracing::info!("import {} references.", count);
         self.sota_repo
             .delete_reference(DeleteRef::DeleteAll)
             .await?;
 
         self.sota_repo.create_reference(req).await?;
 
-        Ok(())
+        Ok(count)
     }
 
     async fn update_summit_list(
         &self,
         UploadSOTASummit { data }: UploadSOTASummit,
-    ) -> AppResult<()> {
+    ) -> AppResult<usize> {
         let partial_equal = |r: &SotaReference, other: &SotaReference| {
             r.activation_count == other.activation_count
                 && r.activation_date == other.activation_date
@@ -123,17 +124,18 @@ impl AdminService for AdminServiceImpl {
         }
 
         let updated: Vec<_> = new_hash.into_values().collect();
+        let count = updated.len();
 
-        tracing::info!("update {} summits.", updated.len());
+        tracing::info!("update {} summits.", count);
         self.sota_repo.upsert_reference(updated).await?;
 
-        Ok(())
+        Ok(count)
     }
 
     async fn import_summit_opt_list(
         &self,
         UploadSOTASummitOpt { data }: UploadSOTASummitOpt,
-    ) -> AppResult<()> {
+    ) -> AppResult<usize> {
         let csv: Vec<SOTASumitOptCSV> = csv_reader(data, false, 1)?;
 
         let ja_hash: HashMap<_, _> = csv
@@ -147,10 +149,11 @@ impl AdminService for AdminServiceImpl {
             .map(|s| s.split("/").next().unwrap_or("").to_owned() + "/")
             .collect();
 
+        let mut total_count = 0;
         for assoc in associations {
             let query = FindRefBuilder::new().sota().name(assoc).build();
             let result = self.sota_repo.find_reference(&query).await?;
-            let newref = result
+            let newref: Vec<_> = result
                 .into_iter()
                 .filter(|r| ja_hash.contains_key(&r.summit_code))
                 .map(|mut r| {
@@ -165,16 +168,17 @@ impl AdminService for AdminServiceImpl {
                     r
                 })
                 .collect();
+            total_count += newref.len();
             self.sota_repo.update_reference(newref).await?;
         }
 
-        Ok(())
+        Ok(total_count)
     }
 
     async fn import_pota_park_list(
         &self,
         UploadPOTAReference { data }: UploadPOTAReference,
-    ) -> AppResult<()> {
+    ) -> AppResult<usize> {
         let requests: Vec<POTAAllCSVFile> = csv_reader(data, false, 1)?;
         let newref: Vec<_> = requests
             .into_iter()
@@ -182,37 +186,40 @@ impl AdminService for AdminServiceImpl {
             .filter(|r| !r.pota_code.starts_with("JP-"))
             .collect();
 
-        tracing::info!("update {} parks.", newref.len());
+        let count = newref.len();
+        tracing::info!("update {} parks.", count);
         self.pota_repo.create_reference(newref).await?;
 
-        Ok(())
+        Ok(count)
     }
 
     async fn import_pota_park_list_ja(
         &self,
         UploadPOTAReference { data }: UploadPOTAReference,
-    ) -> AppResult<()> {
+    ) -> AppResult<usize> {
         let requests: Vec<POTACSVFile> = csv_reader(data, false, 1)?;
         let newref: Vec<_> = requests.into_iter().map(PotaReference::from).collect();
 
-        tracing::info!("update {} JA parks.", newref.len());
+        let count = newref.len();
+        tracing::info!("update {} JA parks.", count);
         self.pota_repo.create_reference(newref).await?;
 
-        Ok(())
+        Ok(count)
     }
 
     async fn import_muni_century_list(
         &self,
         UploadMuniCSV { data }: UploadMuniCSV,
-    ) -> AppResult<()> {
+    ) -> AppResult<usize> {
         let requests: Vec<MuniCSVFile> = csv_reader(data, false, 1)?;
-        let newtable = requests
+        let newtable: Vec<_> = requests
             .into_iter()
             .map(MunicipalityCenturyCode::from)
             .collect();
+        let count = newtable.len();
         self.loc_repo.upload_muni_century_list(newtable).await?;
 
-        Ok(())
+        Ok(count)
     }
 
     async fn show_sota_reference(&self, event: FindRef) -> AppResult<SotaReference> {

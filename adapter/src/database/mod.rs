@@ -53,13 +53,6 @@ pub mod connect {
         let pool = ConnectionPool(SqlitePool::connect_lazy(&cfg.database)?);
         let mut force_migrate = false;
 
-        if cfg.init_database {
-            tracing::info!("Drop database file {}", database_path.display());
-            if fs::remove_file(database_path).is_err() {
-                tracing::warn!("Failed to remove database file {}", database_path.display());
-            }
-        }
-
         if fs::metadata(database_path).is_err() {
             tracing::warn!(
                 "Database file {} not found. Create it.",
@@ -85,5 +78,48 @@ pub mod connect {
         tracing::info!("Database optimization completed.");
 
         Ok(pool)
+    }
+
+    /// データベースのバックアップを作成
+    pub fn backup_database(db_path: &str, backup_path: &str) -> Result<()> {
+        let source = Path::new(db_path);
+        let dest = Path::new(backup_path);
+        fs::copy(source, dest)?;
+        tracing::info!("Database backed up to {}", backup_path);
+        Ok(())
+    }
+
+    /// データベースをリストア
+    pub fn restore_database(backup_path: &str, db_path: &str) -> Result<()> {
+        let source = Path::new(backup_path);
+        let dest = Path::new(db_path);
+        fs::copy(source, dest)?;
+        tracing::info!("Database restored from {}", backup_path);
+        Ok(())
+    }
+
+    /// データベースを初期化（削除して再作成）
+    pub async fn reset_database(cfg: &AppConfig) -> Result<()> {
+        let m = Migrator::new(std::path::Path::new(&cfg.migration_path)).await?;
+        let dbname = cfg.database.replace("sqlite:", "");
+        let database_path = Path::new(&dbname);
+
+        // 既存のDBを削除
+        if fs::metadata(database_path).is_ok() {
+            tracing::warn!("Removing existing database: {}", database_path.display());
+            fs::remove_file(database_path)?;
+        }
+
+        // 新規作成
+        let _file = fs::File::create(database_path)?;
+        tracing::info!("Created new database file: {}", database_path.display());
+
+        // マイグレーション実行
+        let pool = SqlitePool::connect(&cfg.database).await?;
+        tracing::info!("Running migrations...");
+        m.run(&pool).await?;
+        tracing::info!("Database reset completed.");
+
+        Ok(())
     }
 }

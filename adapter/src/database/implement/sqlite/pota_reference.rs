@@ -19,7 +19,7 @@ use super::querybuilder::findref_query_builder;
 use crate::database::connect::ConnectionPool;
 use crate::database::model::pota::{
     PotaLegcayLogHistRow, PotaLegcayLogRow, PotaLogHistRow, PotaLogRow, PotaRefLogRow,
-    PotaReferenceRow
+    PotaReferenceRow,
 };
 
 #[derive(Component)]
@@ -187,9 +187,9 @@ impl PotaRepositoryImpl {
         .fetch_one(self.pool.inner_ref())
         .await
         .map_err(|e| AppError::RowNotFound {
-                source: e,
-                location: format!("{}:{}", file!(), line!()),
-            })
+            source: e,
+            location: format!("{}:{}", file!(), line!()),
+        })
     }
 
     async fn update_logid(
@@ -451,11 +451,10 @@ impl PotaRepositoryImpl {
             row.qsos)
             .execute(&mut *tx).await?;
             }
-            
+
             offset += limit;
-        
         }
-        
+
         tx.commit().await.map_err(AppError::TransactionError)?;
         tracing::info!("done");
 
@@ -482,15 +481,16 @@ impl PotaRepositoryImpl {
 
         let mut builder = findref_query_builder(POTA, None, select, query);
         let sql_query = builder.build_query_as::<PotaReferenceRow>();
-        
-        let row: PotaReferenceRow = sql_query
-            .fetch_one(self.pool.inner_ref())
-            .await
-            .map_err(|e| AppError::RowNotFound {
-                source: e,
-                location: format!("{}:{}", file!(), line!()),
-            })?;
-        
+
+        let row: PotaReferenceRow =
+            sql_query
+                .fetch_one(self.pool.inner_ref())
+                .await
+                .map_err(|e| AppError::RowNotFound {
+                    source: e,
+                    location: format!("{}:{}", file!(), line!()),
+                })?;
+
         Ok(row)
     }
 
@@ -501,7 +501,7 @@ impl PotaRepositoryImpl {
             .map_err(AppError::SpecificOperationError)?;
         let total: i64 = row.count;
 
-        let  select = r#"
+        let select = r#"
             SELECT
                 pota_code,
                 wwff_code,
@@ -520,7 +520,7 @@ impl PotaRepositoryImpl {
 
         let mut builder = findref_query_builder(POTA, None, select, query);
         let sql_query = builder.build_query_as::<PotaReferenceRow>();
-      
+
         let rows: Vec<PotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
@@ -532,16 +532,14 @@ impl PotaRepositoryImpl {
         Ok((total, rows))
     }
 
-     async fn count_by_condition(&self, query: &FindRef) -> AppResult<i64> {
+    async fn count_by_condition(&self, query: &FindRef) -> AppResult<i64> {
         let select = r#"
             SELECT COUNT(*) FROM pota_references WHERE "#;
-        
+
         let mut builder = findref_query_builder(POTA, None, select, query);
         let sql_query = builder.build_query_scalar::<i64>();
 
-        let row: Result<i64, _> = sql_query
-            .fetch_one(self.pool.inner_ref())
-            .await;
+        let row: Result<i64, _> = sql_query.fetch_one(self.pool.inner_ref()).await;
         Ok(row.unwrap_or(0))
     }
 
@@ -550,9 +548,8 @@ impl PotaRepositoryImpl {
         log_id: Option<LogId>,
         query: &FindRef,
     ) -> AppResult<Vec<PotaRefLogRow>> {
-        let select = 
-        if log_id.is_none() {
-                r#"
+        let select = if log_id.is_none() {
+            r#"
                 SELECT
                     pota_code,
                     wwff_code,
@@ -572,7 +569,7 @@ impl PotaRepositoryImpl {
                     NULL as qsos
                 FROM pota_references AS p WHERE "#
         } else {
-                r#"
+            r#"
                 SELECT
                     p.pota_code AS pota_code,
                     p.wwff_code AS wwff_code,
@@ -593,24 +590,24 @@ impl PotaRepositoryImpl {
                 FROM pota_references AS p 
                 LEFT JOIN pota_log AS l ON p.pota_code = l.pota_code AND l.log_id = "#
         };
-  
+
         let mut builder = findref_query_builder(POTA, log_id, select, query);
         let sql_query = builder.build_query_as::<PotaRefLogRow>();
 
-        let rows: Vec<PotaRefLogRow> = sql_query
-            .fetch_all(self.pool.inner_ref())
-            .await
-            .map_err(|e| AppError::RowNotFound {
-                source: e,
-                location: format!("{}:{}", file!(), line!()),
-            })?;
+        let rows: Vec<PotaRefLogRow> =
+            sql_query
+                .fetch_all(self.pool.inner_ref())
+                .await
+                .map_err(|e| AppError::RowNotFound {
+                    source: e,
+                    location: format!("{}:{}", file!(), line!()),
+                })?;
         Ok(rows)
     }
 }
 
 #[async_trait]
 impl PotaRepository for PotaRepositoryImpl {
-
     async fn count_reference(&self, event: &FindRef) -> AppResult<i64> {
         Ok(self.count_by_condition(event).await?)
     }

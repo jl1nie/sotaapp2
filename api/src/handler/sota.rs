@@ -19,6 +19,11 @@ use registry::{AppRegistry, AppState};
 use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use service::services::{AdminService, UserService};
 
+use crate::model::award::{
+    ActivatorAwardResult, AwardJudgmentResult, ChaserAwardResult, JudgmentMode, LogType,
+    SummitActivation, SummitChase,
+};
+use crate::model::import::ImportResult;
 use crate::model::sota::{PagenatedResponse, SotaRefView, UpdateRefRequest};
 use crate::model::{
     activation::ActivationView,
@@ -42,55 +47,76 @@ async fn update_sota_reference(
 async fn import_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
-) -> AppResult<StatusCode> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
+) -> AppResult<Json<ImportResult>> {
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
+        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
 
-        let reqs = UploadSOTASummit { data };
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
 
-        return admin_service
-            .import_summit_list(reqs)
-            .await
-            .map(|_| StatusCode::CREATED);
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = String::from_utf8(data.to_vec())
+        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+
+    let reqs = UploadSOTASummit { data };
+
+    let count = admin_service.import_summit_list(reqs).await?;
+
+    Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
 async fn update_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
-) -> AppResult<StatusCode> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
+) -> AppResult<Json<ImportResult>> {
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
+        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
 
-        let reqs = UploadSOTASummit { data };
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
 
-        return admin_service
-            .update_summit_list(reqs)
-            .await
-            .map(|_| StatusCode::CREATED);
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = String::from_utf8(data.to_vec())
+        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+
+    let reqs = UploadSOTASummit { data };
+
+    let count = admin_service.update_summit_list(reqs).await?;
+
+    Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
 async fn import_sota_opt_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
-) -> AppResult<StatusCode> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
+) -> AppResult<Json<ImportResult>> {
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
+        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
 
-        let reqs = UploadSOTASummitOpt { data };
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
 
-        return admin_service
-            .import_summit_opt_list(reqs)
-            .await
-            .map(|_| StatusCode::CREATED);
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = String::from_utf8(data.to_vec())
+        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+
+    let reqs = UploadSOTASummitOpt { data };
+
+    let count = admin_service.import_summit_opt_list(reqs).await?;
+
+    Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
 async fn upload_log(
@@ -126,7 +152,7 @@ async fn show_progress(
     Extension(user_id): Extension<UserId>,
 ) -> AppResult<Json<String>> {
     let mut query = FindLogBuilder::default();
-    let from = Utc.with_ymd_and_hms(2024, 7, 1, 0, 0, 0).unwrap();
+    let from = Utc.with_ymd_and_hms(2024, 6, 1, 0, 0, 0).unwrap();
     let to = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
 
     query = query.after(from).before(to);
@@ -238,6 +264,95 @@ async fn show_sota_alerts(
     Ok(Json(alerts))
 }
 
+/// アワード判定クエリパラメータ
+#[derive(Debug, serde::Deserialize, Default)]
+pub struct AwardJudgeQuery {
+    /// 判定モード: strict（デフォルト）または lenient
+    #[serde(default)]
+    pub mode: Option<String>,
+}
+
+/// SOTA日本支部設立10周年記念アワード判定エンドポイント
+/// CSVをアップロードしてin-memoryで判定、結果を返す（DBに保存しない）
+async fn judge_10th_anniversary_award(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(query): Query<AwardJudgeQuery>,
+    mut multipart: Multipart,
+) -> AppResult<Json<AwardJudgmentResult>> {
+    // モードを解析（デフォルトは厳格モード）
+    let api_mode = match query.mode.as_deref() {
+        Some("lenient") => JudgmentMode::Lenient,
+        _ => JudgmentMode::Strict,
+    };
+
+    // API層のモードをサービス層のモードに変換
+    let service_mode = match api_mode {
+        JudgmentMode::Strict => service::model::award::JudgmentMode::Strict,
+        JudgmentMode::Lenient => service::model::award::JudgmentMode::Lenient,
+    };
+
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| {
+            AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e))
+        })?
+        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
+
+    let data = field.bytes().await.map_err(|e| {
+        AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e))
+    })?;
+
+    let data = String::from_utf8(data.to_vec())
+        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+
+    // in-memoryで判定（モード指定）
+    let result = user_service.judge_10th_anniversary_award(&data, service_mode)?;
+
+    // サービス層のログタイプをAPI層の型に変換
+    let log_type = match result.log_type {
+        service::model::award::LogType::Activator => LogType::Activator,
+        service::model::award::LogType::Chaser => LogType::Chaser,
+        service::model::award::LogType::Unknown => LogType::Unknown,
+    };
+
+    // サービス層の結果をAPI層の型に変換
+    let response = AwardJudgmentResult {
+        success: true,
+        callsign: result.callsign,
+        total_qsos: result.total_qsos,
+        log_type,
+        activator: result.activator.map(|a| ActivatorAwardResult {
+            achieved: a.achieved,
+            qualified_summits: a.qualified_summits,
+            summits: a
+                .summits
+                .into_iter()
+                .map(|s| SummitActivation {
+                    summit_code: s.summit_code,
+                    unique_stations: s.unique_stations,
+                    qualified: s.qualified,
+                })
+                .collect(),
+        }),
+        chaser: result.chaser.map(|c| ChaserAwardResult {
+            achieved: c.achieved,
+            qualified_summits: c
+                .qualified_summits
+                .into_iter()
+                .map(|s| SummitChase {
+                    summit_code: s.summit_code,
+                    unique_activators: s.unique_activators,
+                    activators: s.activators,
+                })
+                .collect(),
+        }),
+        mode: api_mode,
+    };
+
+    Ok(Json(response))
+}
+
 pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
     let protected = Router::new()
         .route("/import", post(import_summit_list))
@@ -255,7 +370,8 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         .route("/alerts", get(show_sota_alerts))
         .route("/summits", get(show_all_sota_reference))
         .route("/summits/{summit_code}", get(show_sota_reference))
-        .route("/summits/search", get(search_sota_reference));
+        .route("/summits/search", get(search_sota_reference))
+        .route("/award/10th-anniversary/judge", post(judge_10th_anniversary_award));
 
     let routers = Router::new().merge(protected).merge(public);
 

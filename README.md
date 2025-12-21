@@ -255,6 +255,8 @@ fly deploy
 
 ## 🤝 コントリビューション
 
+詳しい開発フローは [Repository Guidelines](AGENTS.md) を参照してください。
+
 1. Issueまたは機能提案作成
 2. フィーチャーブランチ作成
 3. 変更実装（テスト含む）
