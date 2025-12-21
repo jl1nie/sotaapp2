@@ -180,9 +180,7 @@ async fn bootstrap() -> Result<()> {
         .merge(v2::routes(firebase))
         .with_state(app_state)
         .layer(cors)
-        .fallback_service(
-            ServeDir::new("static").fallback(ServeFile::new("static/index.html")),
-        );
+        .fallback_service(ServeDir::new("static").fallback(ServeFile::new("static/index.html")));
 
     let ip_addr: IpAddr = config.host.parse().context("無効なIPアドレス")?;
     let addr = SocketAddr::new(ip_addr, config.port);

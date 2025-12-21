@@ -46,8 +46,7 @@ mod tests {
         let mut mock = MockSotaRepository::new();
 
         // count_referenceが呼ばれたら42を返すように設定
-        mock.expect_count_reference()
-            .returning(|_| Ok(42));
+        mock.expect_count_reference().returning(|_| Ok(42));
 
         let query = FindRefBuilder::default().sota().build();
         let result = mock.count_reference(&query).await;
@@ -77,8 +76,7 @@ mod tests {
     async fn test_mock_find_reference_empty() {
         let mut mock = MockSotaRepository::new();
 
-        mock.expect_find_reference()
-            .returning(|_| Ok(vec![]));
+        mock.expect_find_reference().returning(|_| Ok(vec![]));
 
         let query = FindRefBuilder::default().sota().build();
         let result = mock.find_reference(&query).await;

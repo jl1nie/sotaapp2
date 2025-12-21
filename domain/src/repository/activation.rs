@@ -67,8 +67,7 @@ mod tests {
     async fn test_mock_find_alerts_empty() {
         let mut mock = MockActivationRepositry::new();
 
-        mock.expect_find_alerts()
-            .returning(|_| Ok(vec![]));
+        mock.expect_find_alerts().returning(|_| Ok(vec![]));
 
         let query = FindActBuilder::default().sota().build();
         let result = mock.find_alerts(&query).await;
@@ -94,8 +93,7 @@ mod tests {
     async fn test_mock_find_spots_empty() {
         let mut mock = MockActivationRepositry::new();
 
-        mock.expect_find_spots()
-            .returning(|_| Ok(vec![]));
+        mock.expect_find_spots().returning(|_| Ok(vec![]));
 
         let query = FindActBuilder::default().sota().build();
         let result = mock.find_spots(&query).await;
@@ -122,9 +120,7 @@ mod tests {
     async fn test_mock_update_alerts() {
         let mut mock = MockActivationRepositry::new();
 
-        mock.expect_update_alerts()
-            .times(1)
-            .returning(|_| Ok(()));
+        mock.expect_update_alerts().times(1).returning(|_| Ok(()));
 
         let alerts = vec![make_test_alert("JA1ABC", "JA/TK-001")];
         let result = mock.update_alerts(alerts).await;
@@ -136,9 +132,7 @@ mod tests {
     async fn test_mock_update_spots() {
         let mut mock = MockActivationRepositry::new();
 
-        mock.expect_update_spots()
-            .times(1)
-            .returning(|_| Ok(()));
+        mock.expect_update_spots().times(1).returning(|_| Ok(()));
 
         let spots = vec![make_test_spot("JA1ABC", "JA/TK-001")];
         let result = mock.update_spots(spots).await;

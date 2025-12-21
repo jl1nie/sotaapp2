@@ -306,7 +306,10 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         .route("/summits", get(show_all_sota_reference))
         .route("/summits/{summit_code}", get(show_sota_reference))
         .route("/summits/search", get(search_sota_reference))
-        .route("/award/10th-anniversary/judge", post(judge_10th_anniversary_award));
+        .route(
+            "/award/10th-anniversary/judge",
+            post(judge_10th_anniversary_award),
+        );
 
     let routers = Router::new().merge(protected).merge(public);
 

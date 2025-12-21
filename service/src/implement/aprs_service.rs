@@ -22,7 +22,9 @@ fn get_cached_regex(pattern: &str) -> Option<&'static Regex> {
     static ANY_PATTERN: OnceLock<Regex> = OnceLock::new();
 
     match pattern {
-        r"^JA.*" => Some(JA_PATTERN.get_or_init(|| Regex::new(r"^JA.*").expect("Invalid JA regex"))),
+        r"^JA.*" => {
+            Some(JA_PATTERN.get_or_init(|| Regex::new(r"^JA.*").expect("Invalid JA regex")))
+        }
         r".*" => Some(ANY_PATTERN.get_or_init(|| Regex::new(r".*").expect("Invalid any regex"))),
         _ => None,
     }
@@ -39,7 +41,8 @@ impl AdminPeriodicServiceImpl {
         let pat_regex = match get_cached_regex(pat) {
             Some(r) => r,
             None => {
-                compiled_regex = Regex::new(pat).unwrap_or_else(|_| Regex::new("$.").expect("Fallback regex"));
+                compiled_regex =
+                    Regex::new(pat).unwrap_or_else(|_| Regex::new("$.").expect("Fallback regex"));
                 &compiled_regex
             }
         };

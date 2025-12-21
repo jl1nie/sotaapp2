@@ -462,7 +462,11 @@ impl UserService for UserServiceImpl {
         self.generate_track(aprslog).await
     }
 
-    fn judge_10th_anniversary_award(&self, csv_data: &str, mode: JudgmentMode) -> AppResult<AwardResult> {
+    fn judge_10th_anniversary_award(
+        &self,
+        csv_data: &str,
+        mode: JudgmentMode,
+    ) -> AppResult<AwardResult> {
         // ログ種別を自動判定（最初の行のカラム数で判断）
         let log_type = detect_log_type(csv_data);
         tracing::info!("Detected log type: {:?}", log_type);

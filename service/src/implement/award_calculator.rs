@@ -277,7 +277,12 @@ mod tests {
             make_log(Some("JA/TK-001"), "JH6JKL", None, "01/07/2025"),
         ];
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert_eq!(result.total_qsos, 5);
@@ -292,10 +297,22 @@ mod tests {
     fn test_activator_one_summit_qualified() {
         // 1山岳で10局（達成だが、10座必要なのでアワード未達成）
         let logs: Vec<SotaLogEntry> = (0..10)
-            .map(|i| make_log(Some("JA/TK-001"), &format!("JH{}XYZ", i), None, "01/07/2025"))
+            .map(|i| {
+                make_log(
+                    Some("JA/TK-001"),
+                    &format!("JH{}XYZ", i),
+                    None,
+                    "01/07/2025",
+                )
+            })
             .collect();
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert_eq!(result.total_qsos, 10);
@@ -319,7 +336,12 @@ mod tests {
             }
         }
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert_eq!(result.total_qsos, 100);
@@ -336,7 +358,8 @@ mod tests {
             make_log(None, "JH4DEF/P", Some("JA/NN-001"), "01/07/2025"),
         ];
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
+        let result =
+            judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
 
         let chaser = result.chaser.unwrap();
         assert_eq!(result.total_qsos, 3);
@@ -348,17 +371,11 @@ mod tests {
     fn test_chaser_qualified() {
         // 1山岳から10人のアクティベータ
         let logs: Vec<SotaLogEntry> = (0..10)
-            .map(|i| {
-                make_log(
-                    None,
-                    &format!("JH{}/P", i),
-                    Some("JA/NN-001"),
-                    "01/07/2025",
-                )
-            })
+            .map(|i| make_log(None, &format!("JH{}/P", i), Some("JA/NN-001"), "01/07/2025"))
             .collect();
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
+        let result =
+            judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
 
         let chaser = result.chaser.unwrap();
         assert_eq!(result.total_qsos, 10);
@@ -376,7 +393,12 @@ mod tests {
             make_log(Some("JA/TK-001"), "JH2XYZ", None, "01/07/2025"),
         ];
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert_eq!(result.total_qsos, 3);
@@ -391,7 +413,8 @@ mod tests {
             make_log(None, "JH2XYZ/P", Some("JA/NN-001"), "03/07/2025"), // 同じアクティベータ、別の日
         ];
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
+        let result =
+            judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
 
         // chaser_mapはサミットごとにアクティベータをHashSetで管理するため、
         // 同じアクティベータは1回としてカウントされる
@@ -427,7 +450,8 @@ mod tests {
             ));
         }
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
+        let result =
+            judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Chaser);
 
         let chaser = result.chaser.unwrap();
         assert_eq!(result.total_qsos, 20);
@@ -444,7 +468,12 @@ mod tests {
             make_log(Some("JA/TK-001"), "JH3ABC", None, "01/07/2025"), // 期間内
         ];
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert_eq!(result.total_qsos, 1);
@@ -476,7 +505,12 @@ mod tests {
             ));
         }
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert!(activator.summits[0].qualified);
@@ -506,7 +540,12 @@ mod tests {
             ));
         }
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert!(!activator.summits[0].qualified);
@@ -537,7 +576,12 @@ mod tests {
             ));
         }
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Lenient, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Lenient,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert!(activator.summits[0].qualified);
@@ -568,9 +612,18 @@ mod tests {
         }
 
         // 厳格モードでも緩和モードでも、Day3は評価対象外
-        let result_strict =
-            judge_award_with_mode(logs.clone(), &test_period(), JudgmentMode::Strict, LogType::Activator);
-        let result_lenient = judge_award_with_mode(logs, &test_period(), JudgmentMode::Lenient, LogType::Activator);
+        let result_strict = judge_award_with_mode(
+            logs.clone(),
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
+        let result_lenient = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Lenient,
+            LogType::Activator,
+        );
 
         let activator_strict = result_strict.activator.unwrap();
         let activator_lenient = result_lenient.activator.unwrap();
@@ -604,7 +657,12 @@ mod tests {
             ));
         }
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         // Day1のアクティベーションのみ評価、翌日がないので4局のみ
@@ -621,7 +679,12 @@ mod tests {
             make_log(Some("JA/TK-001"), "JH3CCC", None, "01/07/2025"),
         ];
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::Strict, LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::Strict,
+            LogType::Activator,
+        );
 
         let activator = result.activator.unwrap();
         assert!(!activator.summits[0].qualified);
@@ -633,7 +696,12 @@ mod tests {
         // デフォルトは厳格モード
         let logs = vec![make_log(Some("JA/TK-001"), "JH1AAA", None, "01/07/2025")];
 
-        let result = judge_award_with_mode(logs, &test_period(), JudgmentMode::default(), LogType::Activator);
+        let result = judge_award_with_mode(
+            logs,
+            &test_period(),
+            JudgmentMode::default(),
+            LogType::Activator,
+        );
 
         assert_eq!(result.mode, JudgmentMode::Strict);
     }

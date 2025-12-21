@@ -11,9 +11,7 @@ pub async fn extract_text_file(multipart: &mut Multipart) -> AppResult<String> {
         .map_err(|e| {
             AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e))
         })?
-        .ok_or_else(|| {
-            AppError::UnprocessableEntity("ファイルが送信されていません".to_string())
-        })?;
+        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
 
     let data = field.bytes().await.map_err(|e| {
         AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e))

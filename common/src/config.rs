@@ -123,7 +123,10 @@ impl AppConfig {
 
             // POTA エンドポイント
             pota_alert_endpoint: env_or("POTA_ALERT_ENDPOINT", "https://api.pota.app/activation/"),
-            pota_spot_endpoint: env_or("POTA_SPOT_ENDPOINT", "https://api.pota.app/spot/activator/"),
+            pota_spot_endpoint: env_or(
+                "POTA_SPOT_ENDPOINT",
+                "https://api.pota.app/spot/activator/",
+            ),
             pota_parklist_endpoint: env_or(
                 "POTA_PARKLIST_ENDPOINT",
                 "https://pota.app/all_parks_ext.csv",

@@ -25,7 +25,11 @@ const CACHE_TTL_ALERTS: i64 = 180;
 const CACHE_TTL_TRACK: i64 = 60;
 
 /// パラメータからFindActBuilderにグルーピングとフィルタを適用
-fn apply_common_filters(param: &GetParam, mut query: FindActBuilder, default_hours: i64) -> FindActBuilder {
+fn apply_common_filters(
+    param: &GetParam,
+    mut query: FindActBuilder,
+    default_hours: i64,
+) -> FindActBuilder {
     // グルーピング設定
     if let Some(callsign) = &param.by_call {
         if callsign.starts_with("null") {
@@ -83,8 +87,8 @@ async fn show_spots(
 
     spots.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value = serde_json::to_value(spots)
-        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
+    let value =
+        serde_json::to_value(spots).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_SPOTS)))
         .await;
@@ -115,10 +119,14 @@ async fn show_alerts(
 
     alerts.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value = serde_json::to_value(alerts)
-        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
+    let value =
+        serde_json::to_value(alerts).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_ALERTS)))
+        .set(
+            key,
+            value.clone(),
+            Some(Duration::seconds(CACHE_TTL_ALERTS)),
+        )
         .await;
 
     Ok(Json(value))
@@ -228,8 +236,8 @@ async fn show_aprs_track(
     let tracks = user_service.get_aprs_track(request).await?;
     let tracks = tracks.into_iter().map(Track::from).collect();
     let value = Tracks { tracks };
-    let value = serde_json::to_value(value)
-        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
+    let value =
+        serde_json::to_value(value).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
 
     kvs_repo
         .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_TRACK)))

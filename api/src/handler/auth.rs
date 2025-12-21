@@ -13,7 +13,10 @@ use domain::model::id::UserId;
 use registry::AppState;
 
 /// 認証ミドルウェアをルーターに適用
-pub fn with_auth<S: Clone + Send + Sync + 'static>(router: Router<S>, auth: &FireAuth) -> Router<S> {
+pub fn with_auth<S: Clone + Send + Sync + 'static>(
+    router: Router<S>,
+    auth: &FireAuth,
+) -> Router<S> {
     router.route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle))
 }
 
