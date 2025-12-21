@@ -1,7 +1,7 @@
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use common::utils::maidenhead;
+use common::utils::{maidenhead, parse_date_flexible};
 use domain::model::id::LogId;
 use domain::model::pota::{PotaActLog, PotaHuntLog, PotaReference};
 
@@ -37,19 +37,21 @@ impl From<POTACSVFile> for PotaReference {
             latitude,
         } = value;
         let update: DateTime<Utc> = Utc::now();
+        let lon = longitude.unwrap_or_default();
+        let lat = latitude.unwrap_or_default();
         Self {
-            pota_code: pota_code.unwrap_or("".to_string()),
-            wwff_code: wwff_code.unwrap_or("".to_string()),
+            pota_code: pota_code.unwrap_or_default(),
+            wwff_code: wwff_code.unwrap_or_default(),
             park_name,
             park_name_j,
             park_location,
-            park_locid: park_locid.unwrap_or("".to_string()),
+            park_locid: park_locid.unwrap_or_default(),
             park_type,
             park_inactive: park_inactive.is_some(),
             park_area,
-            longitude: longitude.unwrap(),
-            latitude: latitude.unwrap(),
-            maidenhead: maidenhead(longitude.unwrap_or_default(), latitude.unwrap_or_default()),
+            longitude: lon,
+            latitude: lat,
+            maidenhead: maidenhead(lon, lat),
             update,
         }
     }
@@ -121,7 +123,7 @@ pub struct POTAActivatorLogCSV {
 }
 
 impl POTAActivatorLogCSV {
-    pub fn to_log(log_id: LogId, value: POTAActivatorLogCSV) -> PotaActLog {
+    pub fn to_log(log_id: LogId, value: POTAActivatorLogCSV) -> Option<PotaActLog> {
         let POTAActivatorLogCSV {
             dx_entity,
             location,
@@ -133,22 +135,19 @@ impl POTAActivatorLogCSV {
             activations,
             qsos,
         } = value;
-        let mut date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d");
-        if date.is_err() {
-            date = NaiveDate::parse_from_str(&first_qso_date, "%Y/%m/%d");
-        }
-        PotaActLog {
+        let date = parse_date_flexible(&first_qso_date)?;
+        Some(PotaActLog {
             log_id,
             dx_entity,
             location,
             hasc,
             pota_code,
             park_name,
-            first_qso_date: date.unwrap(),
+            first_qso_date: date,
             attempts,
             activations,
             qsos,
-        }
+        })
     }
 }
 
@@ -164,7 +163,7 @@ pub struct POTAHunterLogCSV {
     pub qsos: i32,
 }
 impl POTAHunterLogCSV {
-    pub fn to_log(log_id: LogId, value: POTAHunterLogCSV) -> PotaHuntLog {
+    pub fn to_log(log_id: LogId, value: POTAHunterLogCSV) -> Option<PotaHuntLog> {
         let POTAHunterLogCSV {
             dx_entity,
             location,
@@ -174,20 +173,17 @@ impl POTAHunterLogCSV {
             first_qso_date,
             qsos,
         } = value;
-        let mut date = NaiveDate::parse_from_str(&first_qso_date, "%Y-%m-%d");
-        if date.is_err() {
-            date = NaiveDate::parse_from_str(&first_qso_date, "%Y/%m/%d");
-        }
-        PotaHuntLog {
+        let date = parse_date_flexible(&first_qso_date)?;
+        Some(PotaHuntLog {
             log_id,
             dx_entity,
             location,
             hasc,
             pota_code,
             park_name,
-            first_qso_date: date.unwrap(),
+            first_qso_date: date,
             qsos,
-        }
+        })
     }
 }
 pub struct UploadPOTAReference {

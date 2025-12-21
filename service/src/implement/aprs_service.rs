@@ -47,14 +47,16 @@ impl AdminPeriodicServiceImpl {
 
         let mut latest: HashMap<String, Spot> = HashMap::new();
         for s in spots {
-            latest
-                .entry(s.activator.clone())
-                .and_modify(|t| {
-                    if s.spot_time > t.spot_time {
-                        *t = s.clone();
+            match latest.entry(s.activator.clone()) {
+                std::collections::hash_map::Entry::Occupied(mut e) => {
+                    if s.spot_time > e.get().spot_time {
+                        e.insert(s);
                     }
-                })
-                .or_insert(s);
+                }
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    e.insert(s);
+                }
+            }
         }
 
         let mut spots: Vec<_> = latest.into_values().collect();
@@ -169,9 +171,9 @@ impl AdminPeriodicServiceImpl {
         let patstr = self
             .config
             .aprs_arrival_mesg_regex
-            .clone()
-            .unwrap_or("$.".to_string());
-        let patref = Regex::new(&patstr);
+            .as_deref()
+            .unwrap_or("$.");
+        let patref = Regex::new(patstr);
 
         let mesg_enabled = patref.is_ok_and(|r| r.is_match(&destination))
             && !self
@@ -324,22 +326,24 @@ impl UserServiceImpl {
             let mut coordinates: Vec<_> = coords.to_vec();
             coordinates.reverse();
 
+            let callsign_cloned = callsign.clone();
             let aprstrack = if let Some(spot) = spot.first() {
+                let reference = spot.reference.clone();
                 AprsTrack {
-                    callsign: callsign.clone(),
+                    callsign: callsign_cloned,
                     coordinates,
-                    summit: Some(spot.reference.clone()),
+                    summit: Some(reference.clone()),
                     distance: Some(log.state.distance()),
                     lastseen,
                     spot_time: Some(spot.spot_time),
-                    spot_summit: Some(spot.reference.clone()),
+                    spot_summit: Some(reference),
                     spot_freq: Some(spot.frequency.clone()),
                     spot_mode: Some(spot.mode.clone()),
                     spot_comment: spot.comment.clone(),
                 }
             } else {
                 AprsTrack {
-                    callsign: callsign.clone(),
+                    callsign: callsign_cloned,
                     coordinates,
                     summit: log.destination.clone(),
                     distance: Some(log.state.distance()),

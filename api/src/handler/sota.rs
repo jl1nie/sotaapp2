@@ -4,17 +4,18 @@ use axum::{
     routing::{delete, get, post, put},
     Extension, Json, Router,
 };
-use chrono::{Duration, TimeZone, Utc};
+use chrono::{Duration, Utc};
 use firebase_auth_sdk::FireAuth;
 use shaku_axum::Inject;
 
-use common::error::{AppError, AppResult};
+use common::error::AppResult;
 use domain::model::sota::SummitCode;
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindLogBuilder, FindRefBuilder},
     id::UserId,
 };
 use registry::{AppRegistry, AppState};
+use service::model::award::AwardPeriod;
 use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use service::services::{AdminService, UserService};
 
@@ -101,18 +102,11 @@ async fn show_progress(
     user_service: Inject<AppRegistry, dyn UserService>,
     Extension(user_id): Extension<UserId>,
 ) -> AppResult<Json<String>> {
-    let mut query = FindLogBuilder::default();
-    let from = Utc
-        .with_ymd_and_hms(2024, 6, 1, 0, 0, 0)
-        .single()
-        .ok_or_else(|| AppError::UnprocessableEntity("無効な日付".to_string()))?;
-    let to = Utc
-        .with_ymd_and_hms(2025, 1, 1, 0, 0, 0)
-        .single()
-        .ok_or_else(|| AppError::UnprocessableEntity("無効な日付".to_string()))?;
-
-    query = query.after(from).before(to);
-    let query = query.build();
+    let period = AwardPeriod::default();
+    let query = FindLogBuilder::default()
+        .after(period.start)
+        .before(period.end)
+        .build();
 
     let result = user_service.award_progress(user_id, query).await?;
     Ok(Json(result))

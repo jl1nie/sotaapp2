@@ -143,3 +143,50 @@ impl IntoResponse for AppError {
 
 // エラー型が `AppError` なものを扱える `Result` 型
 pub type AppResult<T> = Result<T, AppError>;
+
+/// データベース操作エラー用のコンテキスト付きクロージャを生成
+///
+/// # 使用例
+/// ```ignore
+/// sqlx::query("SELECT * FROM users")
+///     .fetch_one(&pool)
+///     .await
+///     .map_err(db_error("fetch user by id"))?;
+/// ```
+pub fn db_error(context: &'static str) -> impl Fn(sqlx::Error) -> AppError {
+    move |e| {
+        tracing::debug!("DB error in {}: {:?}", context, e);
+        AppError::SpecificOperationError(e)
+    }
+}
+
+/// トランザクションエラー用のコンテキスト付きクロージャを生成
+///
+/// # 使用例
+/// ```ignore
+/// tx.commit()
+///     .await
+///     .map_err(tx_error("commit user update"))?;
+/// ```
+pub fn tx_error(context: &'static str) -> impl Fn(sqlx::Error) -> AppError {
+    move |e| {
+        tracing::debug!("Transaction error in {}: {:?}", context, e);
+        AppError::TransactionError(e)
+    }
+}
+
+/// 行が見つからないエラー用のコンテキスト付きクロージャを生成
+///
+/// # 使用例
+/// ```ignore
+/// sqlx::query("SELECT * FROM users WHERE id = ?")
+///     .fetch_one(&pool)
+///     .await
+///     .map_err(row_not_found("user lookup"))?;
+/// ```
+pub fn row_not_found(location: &'static str) -> impl Fn(sqlx::Error) -> AppError {
+    move |source| AppError::RowNotFound {
+        source,
+        location: location.to_string(),
+    }
+}

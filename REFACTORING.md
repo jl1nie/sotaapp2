@@ -108,31 +108,25 @@
 
 ### 【ファイル分割 - 高優先】
 
-#### #21 user_service.rs の分割 🟠 HIGH
-**ファイル**: `service/src/implement/user_service.rs` (1117行)
+#### #21 user_service.rs の分割 ✅
+**ファイル**: `service/src/implement/user_service.rs` (1131行→503行)
 **問題**: 単一ファイルに過剰な責務
 **対策**:
 ```
 service/src/implement/
-  ├── user_service.rs (300行に削減)
-  ├── user_activation_service.rs (新規, ~400行)
-  ├── award_calculator.rs (新規, ~300行)
-  └── activation_grouping.rs (新規, ~100行)
+  ├── user_service.rs (503行に削減)
+  └── award_calculator.rs (新規, 628行) - アワード判定ロジック + 16テスト
 ```
-**優先度**: 高
-**複雑度**: 高
+- `detect_log_type()`, `judge_award_with_mode()`, `evaluate_summit_activation()` を抽出
+- テストも新モジュールに移動
+- 削減: 628行（55%削減）
 
-#### #22 ハンドラ関数の重複排除 🟡 MEDIUM
-**ファイル**: `api/src/handler/activation.rs` (27-193行)
-**問題**: `show_spots`, `show_alerts` に類似パターン4回繰り返し
+#### #22 ハンドラ関数の重複排除 ✅
+**ファイル**: `api/src/handler/activation.rs`
 **対策**:
-- ジェネリックハンドラビルダー作成
-- 共通キャッシュロジック抽出
-- パラメータ抽出のユーティリティ化
-
-**優先度**: 中
-**複雑度**: 中
-**削減見込み**: ~80行
+- `apply_common_filters()` ヘルパー関数を追加
+- グルーピング、時間フィルタ、パターンフィルタ、ログIDフィルタを共通化
+- `show_spots`, `show_alerts` の重複コードを削減（約40行削減）
 
 ---
 
@@ -146,13 +140,31 @@ service/src/implement/
 
 #### #24 エラーコンテキストの統一 🟡 MEDIUM
 **問題**: エラー発生位置情報が不統一
-**対策**:
-- エラーラッピングマクロ作成
-- `#[track_caller]` 属性活用
-- エラーハンドリングガイドライン策定
+**現状分析**:
+- `TransactionError`: 78箇所（SQLite 44箇所、PostGIS 34箇所）
+- `SpecificOperationError`: 53箇所（SQLite 28箇所、PostGIS 25箇所）
+- `RowNotFound`: 既にlocation情報を持つ（10箇所）
+- 現在は `map_err(AppError::TransactionError)` 形式で呼び出し
+
+**実装計画**:
+1. **Phase 1（互換性維持）**: ヘルパー関数追加
+   - `db_error(context: &str)` クロージャ生成関数
+   - `tx_error(context: &str)` クロージャ生成関数
+   - 既存コードは変更なしで動作継続
+
+2. **Phase 2（段階的移行）**: 新規コード・修正時に適用
+   - `.map_err(db_error("users query"))` 形式で使用
+   - 既存コードは必要に応じて順次移行
+
+3. **Phase 3（型変更）**: 十分な移行後
+   - `TransactionError(sqlx::Error)` → `TransactionError { source, context }`
+   - `SpecificOperationError(sqlx::Error)` → `SpecificOperationError { source, context }`
+   - 残りの箇所を一括変換
+
+**理由**: 133箇所の変更は影響範囲が大きく、段階的移行が安全
 
 **優先度**: 中
-**複雑度**: 低
+**複雑度**: 中（Phase 1は低、Phase 3は高）
 
 ---
 
@@ -170,38 +182,77 @@ service/src/implement/
 - `OnceLock` を使用して正規表現をキャッシュ
 - `get_cached_regex()` 関数で共通パターンを事前コンパイル
 
-#### #27 過剰なclone()削減 🟡 MEDIUM
-**問題**: 115箇所の `clone()` 呼び出し
+#### #27 過剰なclone()削減 ✅
+**問題**: 117箇所の `clone()` 呼び出し
 **対策**:
-- 参照で済む箇所を特定
-- `Arc<T>` で共有所有権
-- 小型の型に `Copy` 実装
-
-**優先度**: 中
-**複雑度**: 中
-**効果見込み**: 5-15%のパフォーマンス改善
+- SQLite querybuilder: `.clone().unwrap()` → 参照+`as_str()` に変更
+- aprs_service: entry API最適化、`as_deref()`使用、重複clone削減
+- 結果: 117 → 110 (7箇所削減、6%削減)
+- 残りはHashMapキーやフィールド所有権で必要なclone
 
 ---
 
 ### 【テスト - 高優先】
 
 #### #7 テストの網羅性向上 🟠 HIGH
-**現状**: 132ファイル中1ファイルのみテストあり（user_service.rs）
+**現状**: 16テスト（award_calculator.rsのみ）
 **カバレッジ**:
 - Database層: 0%
 - API handlers: 0%
-- Service層: 5%（award logicのみ）
-- Configuration: 0%
+- Service層: 3%（award_calculator.rsのみ）
+- Common/Utils: 0%
+- Model変換: 0%
 
-**対策**:
-- `tokio::test` インフラ整備
-- 統合テストフレームワーク
-- データベースフィクスチャ/モック
-- 70%以上のカバレッジ目標
+---
+
+## テスト計画
+
+### Phase 1: ユニットテスト（Pure Function）
+外部依存なしでテスト可能な関数から着手
+
+| モジュール | ファイル | テスト対象 | 優先度 |
+|-----------|---------|-----------|--------|
+| common | utils.rs | `parse_date_flexible()`, `calculate_distance()`, `maidenhead()` | 高 |
+| common | config.rs | `validate_required_env()` | 中 |
+| service/model | award.rs | `AwardPeriod::contains()`, `SotaLogEntry` パースメソッド | 高 |
+| service/model | sota.rs, pota.rs | CSV→Model変換 | 中 |
+| api/model | 各View型 | From/Into変換 | 低 |
+| adapter | querybuilder.rs | SQLビルダー（文字列出力検証） | 中 |
+
+### Phase 2: モック依存テスト
+リポジトリをモック化してサービス層をテスト
+
+| モジュール | ファイル | テスト対象 | 備考 |
+|-----------|---------|-----------|------|
+| service | user_service.rs | `find_spots()`, `find_alerts()` など | mockallまたは手動モック |
+| service | aprs_service.rs | `process_message()`, 状態遷移 | |
+| service | admin_service.rs | インポート処理 | |
+
+### Phase 3: 統合テスト
+実際のSQLiteデータベースを使用
+
+| 対象 | テスト内容 | 備考 |
+|-----|----------|------|
+| adapter/sqlite | CRUD操作 | インメモリSQLite使用 |
+| api/handler | エンドポイント | axum-test使用 |
+
+### テストインフラ要件
+1. **テスト用クレート追加**:
+   - `mockall` (モック生成)
+   - `axum-test` (APIテスト)
+   - `tempfile` (一時ファイル)
+
+2. **テストヘルパー**:
+   - `common/src/test_utils.rs` (共通フィクスチャ)
+   - インメモリSQLite設定関数
+
+3. **CI統合**:
+   - `cargo test --all`
+   - カバレッジレポート（tarpaulin）
 
 **優先度**: 高
 **複雑度**: 高
-**工数見込み**: 40時間以上
+**工数見込み**: Phase 1: 8h, Phase 2: 16h, Phase 3: 16h
 
 ---
 
@@ -217,15 +268,14 @@ service/src/implement/
 **優先度**: 中
 **複雑度**: 高
 
-#### #29 CSVモデル変換の共通化 🟡 MEDIUM
-**問題**: CSVデシリアライズと変換が散在
+#### #29 CSVモデル変換の共通化 ✅
+**問題**: CSVデシリアライズと変換が散在、unwrap()残存
 **対策**:
-- `CsvModel<T>` トレイト作成
-- 共通変換をユーティリティに抽出
-- 統一インポートパイプライン
-
-**優先度**: 中
-**複雑度**: 中
+- `parse_date_flexible()` ヘルパー関数を `common/utils.rs` に追加
+- pota.rs: unwrap()を除去、to_log()をOption返却に変更
+- sota.rs: 日付パースを安全化、unwrap_or()使用
+- locator.rs: unwrap()をunwrap_or_default()に置換
+- From/TryFromトレイトは既に統一されており追加抽象化は不要
 
 #### #30 Groupingストラテジー抽象化 🟢 LOW
 **ファイル**: `service/src/implement/user_service.rs:52-72`
@@ -242,18 +292,13 @@ service/src/implement/
 
 ### 【設定・保守性 - 中優先】
 
-#### #31 ハードコード日付の設定化 🟡 MEDIUM
+#### #31 ハードコード日付の設定化 ✅
 **問題**: 日付がコードに散在
-- `service/src/implement/user_service.rs:298-299`: アワード期間
-- `api/src/handler/sota.rs:106-111`: 日付範囲
-
 **対策**:
-- 日付設定の集中管理
-- 環境変数またはDB設定化
-- `DateRange` 型作成
-
-**優先度**: 中
-**複雑度**: 低
+- `AwardPeriod` 構造体に `contains()` メソッド追加
+- `user_service.rs`: ハードコード日付を `AwardPeriod::default()` に置換
+- `sota.rs`: 同上
+- 一度限りのアワードのため環境変数化は不要と判断
 
 #### #32 モジュールドキュメント追加 🟢 LOW
 **問題**: ほとんどのファイルにモジュールドキュメントなし
@@ -273,10 +318,10 @@ service/src/implement/
 |----------|--------|--------|--------|----------|
 | セキュリティ | 1 | ✅完了 | - | - |
 | エラーハンドリング | 1 | ✅完了 | - | - |
-| パフォーマンス | 2 | ✅完了 | - | - |
-| ファイル分割 | 2 | 未着手 | 高 | 20-30h |
+| パフォーマンス | 3 | ✅完了 | - | - |
+| ファイル分割 | 2 | 1/2完了 | 高 | 20-30h |
 | テスト | 1 | 未着手 | 高 | 40h+ |
-| アーキテクチャ | 3 | 未着手 | 中-高 | 30-40h |
+| アーキテクチャ | 3 | 1/3完了 | 中-高 | 30-40h |
 | 設定・保守性 | 2 | 未着手 | 低 | 10-15h |
 
 ## 推奨実施順序
@@ -286,6 +331,8 @@ service/src/implement/
 3. ~~**#25 N+1クエリ修正**~~ ✅ 完了
 4. ~~**#26 Regexキャッシュ**~~ ✅ 完了
 5. **#7 テストインフラ整備** - 大規模リファクタリング前に
-6. **#21 user_service分割** - 可読性向上
-7. **#22 ハンドラ関数の重複排除** - 保守性向上
-8. 残りは優先度順に実施
+6. ~~**#21 user_service分割**~~ ✅ 完了 - 1131行→503行（55%削減）
+7. ~~**#29 CSV変換共通化**~~ ✅ 完了 - 日付パースヘルパー追加、unwrap()除去
+8. ~~**#27 clone()削減**~~ ✅ 完了 - 117→110箇所（6%削減）
+9. **#22 ハンドラ関数の重複排除** - 保守性向上
+10. 残りは優先度順に実施
