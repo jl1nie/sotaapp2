@@ -1,7 +1,6 @@
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
-    middleware,
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -35,7 +34,8 @@ use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadPOTALog, UploadPOTAReference};
 use service::services::{AdminService, UserService};
 
-use super::auth::auth_middle;
+use super::auth::with_auth;
+use super::multipart::extract_text_file;
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -51,24 +51,9 @@ async fn import_pota_reference_ja(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<Json<ImportResult>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field
-        .bytes()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
-
+    let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadPOTAReference { data };
-
     let count = admin_service.import_pota_park_list_ja(reqs).await?;
-
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
@@ -77,23 +62,14 @@ async fn upload_pota_log(
     Path((activator_logid, hunter_logid)): Path<(String, String)>,
     mut multipart: Multipart,
 ) -> AppResult<Json<PotaLogHistView>> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        if let Ok(data) = String::from_utf8(data.to_vec()) {
-            let reqs = UploadPOTALog {
-                activator_logid,
-                hunter_logid,
-                data,
-            };
-
-            let res = user_service.upload_pota_log(reqs).await;
-
-            if let Ok(loguser) = res {
-                return Ok(Json(loguser.into()));
-            }
-        }
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = extract_text_file(&mut multipart).await?;
+    let reqs = UploadPOTALog {
+        activator_logid,
+        hunter_logid,
+        data,
+    };
+    let loguser = user_service.upload_pota_log(reqs).await?;
+    Ok(Json(loguser.into()))
 }
 
 async fn get_pota_logid(
@@ -147,16 +123,12 @@ async fn show_all_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<PotaRefView>>> {
-    let mut query = FindRefBuilder::default().pota();
+    let mut query = FindRefBuilder::default()
+        .pota()
+        .limit(param.limit.unwrap_or(500));
 
-    if param.limit.is_some() {
-        query = query.limit(param.limit.unwrap());
-    } else {
-        query = query.limit(500);
-    }
-
-    if param.offset.is_some() {
-        query = query.offset(param.offset.unwrap());
+    if let Some(offset) = param.offset {
+        query = query.offset(offset);
     }
 
     let result = admin_service
@@ -288,12 +260,14 @@ async fn log_migrate(
 }
 
 pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
-    let protected = Router::new()
-        .route("/import", post(import_pota_reference_ja))
-        .route("/parks/{park_code}", put(update_pota_reference))
-        .route("/parks/{park_code}", delete(delete_pota_reference))
-        .route("/log-migrate", get(log_migrate))
-        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+    let protected = with_auth(
+        Router::new()
+            .route("/import", post(import_pota_reference_ja))
+            .route("/parks/{park_code}", put(update_pota_reference))
+            .route("/parks/{park_code}", delete(delete_pota_reference))
+            .route("/log-migrate", get(log_migrate)),
+        auth,
+    );
 
     let public = Router::new()
         .route("/log/{act_id}/{hntr_id}", post(upload_pota_log))

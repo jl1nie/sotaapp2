@@ -1,9 +1,9 @@
-use reqwest;
 use shaku::HasComponent;
 use std::sync::Arc;
 
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
+use common::http;
 use domain::model::activation::{Alert, Spot};
 use registry::AppRegistry;
 use service::services::AdminPeriodicService;
@@ -13,9 +13,12 @@ use crate::model::spots::{PotaSpot, SotaSpot};
 
 pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> AppResult<()> {
     let service: &dyn AdminPeriodicService = registry.resolve_ref();
+    let client = http::client();
 
     let endpoint = config.sota_alert_endpoint.clone();
-    let response = reqwest::get(&endpoint)
+    let response = client
+        .get(&endpoint)
+        .send()
         .await
         .map_err(AppError::GetError)?
         .json::<Vec<SotaAlert>>()
@@ -28,7 +31,9 @@ pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> A
         .collect();
 
     let endpoint = config.pota_alert_endpoint.clone();
-    let response = reqwest::get(&endpoint)
+    let response = client
+        .get(&endpoint)
+        .send()
         .await
         .map_err(AppError::GetError)?
         .json::<Vec<PotaAlert>>()
@@ -50,9 +55,12 @@ pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> A
 
 pub async fn update_spots(config: &AppConfig, registry: &Arc<AppRegistry>) -> AppResult<()> {
     let service: &dyn AdminPeriodicService = registry.resolve_ref();
+    let client = http::client();
 
     let endpoint = config.sota_spot_endpoint.clone();
-    let response = reqwest::get(&endpoint)
+    let response = client
+        .get(&endpoint)
+        .send()
         .await
         .map_err(AppError::GetError)?
         .json::<Vec<SotaSpot>>()
@@ -65,7 +73,9 @@ pub async fn update_spots(config: &AppConfig, registry: &Arc<AppRegistry>) -> Ap
         .collect();
 
     let endpoint = config.pota_spot_endpoint.clone();
-    let response = reqwest::get(&endpoint)
+    let response = client
+        .get(&endpoint)
+        .send()
         .await
         .map_err(AppError::GetError)?
         .json::<Vec<PotaSpot>>()

@@ -5,7 +5,7 @@ use sqlx::{query_as, SqliteConnection, SqlitePool};
 use std::time::{Duration, Instant};
 
 use common::config::AppConfig;
-use common::error::{AppError, AppResult};
+use common::error::{db_error, row_not_found, tx_error, AppResult};
 use domain::model::event::{DeleteLog, DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
 use domain::model::id::{LogId, UserId};
 use domain::model::pota::{
@@ -80,7 +80,7 @@ impl PotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert/update pota_references"))?;
         Ok(())
     }
 
@@ -118,7 +118,7 @@ impl PotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("update pota_references"))?;
         Ok(())
     }
 
@@ -133,7 +133,7 @@ impl PotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("delete pota_references"))?;
         Ok(())
     }
 
@@ -145,7 +145,7 @@ impl PotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("delete all pota_references"))?;
         Ok(())
     }
 
@@ -171,7 +171,7 @@ impl PotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert/update pota_log"))?;
         Ok(())
     }
 
@@ -186,10 +186,7 @@ impl PotaRepositoryImpl {
         )
         .fetch_one(self.pool.inner_ref())
         .await
-        .map_err(|e| AppError::RowNotFound {
-            source: e,
-            location: format!("{}:{}", file!(), line!()),
-        })
+        .map_err(row_not_found("fetch pota_log_user by log_id"))
     }
 
     async fn update_logid(
@@ -212,7 +209,7 @@ impl PotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert/update pota_log_user"))?;
         Ok(())
     }
 
@@ -230,7 +227,7 @@ impl PotaRepositoryImpl {
             )
             .execute(&mut *db)
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(db_error("delete pota_log by date"))?;
             return Ok(());
         }
 
@@ -248,7 +245,7 @@ impl PotaRepositoryImpl {
             )
             .execute(&mut *db)
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(db_error("delete pota_log by log_id"))?;
             return Ok(());
         }
         Ok(())
@@ -275,35 +272,27 @@ impl PotaRepositoryImpl {
             .await;
         let log_entries = r.map_or(0, |v| v.count);
 
+        // N+1クエリ問題を解決: JOINで一括取得
         let (mut longest_id, mut longest_entry, mut log_error) =
             (Option::<LogId>::None, 0i64, 0i64);
 
-        let r = sqlx::query_as!(
-            PotaLogHistRow,
-            r#"SELECT user_id as "user_id: UserId", log_id as "log_id: LogId", log_kind, "update" 
-            FROM pota_log_user"#
+        let r = sqlx::query!(
+            r#"SELECT u.log_id as "log_id: LogId", COUNT(l.log_id) as count
+               FROM pota_log_user u
+               LEFT JOIN pota_log l ON u.log_id = l.log_id
+               GROUP BY u.log_id"#
         )
         .fetch_all(self.pool.inner_ref())
         .await;
 
         if let Ok(logs) = r {
-            for l in logs {
-                let r = sqlx::query!(
-                    r#"SELECT COUNT(log_id) as count FROM pota_log WHERE log_id = $1"#,
-                    l.log_id
-                )
-                .fetch_one(self.pool.inner_ref())
-                .await;
-                if r.is_err() {
+            for row in logs {
+                let loglen = row.count;
+                if loglen == 0 {
                     log_error += 1;
-                } else {
-                    let loglen = r.unwrap().count;
-                    if loglen == 0 {
-                        log_error += 1;
-                    } else if loglen > longest_entry {
-                        longest_entry = loglen;
-                        longest_id = Some(l.log_id)
-                    }
+                } else if loglen > longest_entry {
+                    longest_entry = loglen;
+                    longest_id = Some(row.log_id)
                 }
             }
         }
@@ -325,32 +314,24 @@ impl PotaRepositoryImpl {
 
         let end_date = Utc::now().naive_utc();
 
+        // N+1クエリ問題を解決: 日付ごとの統計を一括取得
         let days: Vec<NaiveDateTime> = (0..14)
-            .map(|i| end_date.checked_sub_days(Days::new(i)).unwrap())
+            .filter_map(|i| end_date.checked_sub_days(Days::new(i)))
             .collect();
 
         for day in days {
-            let loglist = sqlx::query!(
-                r#"SELECT log_id as "log_id: LogId" FROM pota_log_user WHERE "update" <= $1"#,
+            // JOINで一括取得
+            let r = sqlx::query!(
+                r#"SELECT COUNT(DISTINCT u.log_id) as users, COUNT(l.log_id) as logs
+                   FROM pota_log_user u
+                   LEFT JOIN pota_log l ON u.log_id = l.log_id
+                   WHERE u."update" <= $1"#,
                 day
             )
-            .fetch_all(self.pool.inner_ref())
-            .await
-            .map_or(Vec::new(), |r| r.into_iter().map(|r| r.log_id).collect());
+            .fetch_one(self.pool.inner_ref())
+            .await;
 
-            let (mut logs, mut users) = (0i64, 0i64);
-            for id in loglist {
-                let r = sqlx::query!(
-                    r#"SELECT COUNT(*) as count FROM pota_log WHERE log_id = $1"#,
-                    id
-                )
-                .fetch_one(self.pool.inner_ref())
-                .await;
-                if let Ok(r) = r {
-                    logs += r.count;
-                    users += 1;
-                }
-            }
+            let (users, logs) = r.map_or((0i64, 0i64), |r| (r.users, r.logs));
             let time = day.and_utc().to_rfc3339();
             log_history.push(PotaLogStatEnt { time, users, logs });
         }
@@ -377,7 +358,7 @@ impl PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin migrate_legacy pota_log_user"))?;
 
         let data = query_as!(PotaLegcayLogHistRow, r#"SELECT uuid,time FROM potauser"#)
             .fetch_all(&pool)
@@ -401,14 +382,16 @@ impl PotaRepositoryImpl {
             .execute(&mut *tx)
             .await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit migrate_legacy pota_log_user"))?;
 
         let mut tx = self
             .pool
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin migrate_legacy pota_log"))?;
 
         let limit = 5000;
         let mut offset = 0;
@@ -446,8 +429,8 @@ impl PotaRepositoryImpl {
             "#,
             row.log_id, row.pota_code,
             row.first_qso_date,
-            row.attempts, 
-            row.activations, 
+            row.attempts,
+            row.activations,
             row.qsos)
             .execute(&mut *tx).await?;
             }
@@ -455,7 +438,9 @@ impl PotaRepositoryImpl {
             offset += limit;
         }
 
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit migrate_legacy pota_log"))?;
         tracing::info!("done");
 
         Ok(())
@@ -482,14 +467,10 @@ impl PotaRepositoryImpl {
         let mut builder = findref_query_builder(POTA, None, select, query);
         let sql_query = builder.build_query_as::<PotaReferenceRow>();
 
-        let row: PotaReferenceRow =
-            sql_query
-                .fetch_one(self.pool.inner_ref())
-                .await
-                .map_err(|e| AppError::RowNotFound {
-                    source: e,
-                    location: format!("{}:{}", file!(), line!()),
-                })?;
+        let row: PotaReferenceRow = sql_query
+            .fetch_one(self.pool.inner_ref())
+            .await
+            .map_err(row_not_found("fetch pota_references"))?;
 
         Ok(row)
     }
@@ -498,7 +479,7 @@ impl PotaRepositoryImpl {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM pota_references")
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(db_error("count pota_references"))?;
         let total: i64 = row.count;
 
         let select = r#"
@@ -524,10 +505,7 @@ impl PotaRepositoryImpl {
         let rows: Vec<PotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(|e| AppError::RowNotFound {
-                source: e,
-                location: format!("{}:{}", file!(), line!()),
-            })?;
+            .map_err(row_not_found("fetch pota_references pagenated"))?;
 
         Ok((total, rows))
     }
@@ -594,14 +572,10 @@ impl PotaRepositoryImpl {
         let mut builder = findref_query_builder(POTA, log_id, select, query);
         let sql_query = builder.build_query_as::<PotaRefLogRow>();
 
-        let rows: Vec<PotaRefLogRow> =
-            sql_query
-                .fetch_all(self.pool.inner_ref())
-                .await
-                .map_err(|e| AppError::RowNotFound {
-                    source: e,
-                    location: format!("{}:{}", file!(), line!()),
-                })?;
+        let rows: Vec<PotaRefLogRow> = sql_query
+            .fetch_all(self.pool.inner_ref())
+            .await
+            .map_err(row_not_found("fetch pota_references by condition"))?;
         Ok(rows)
     }
 }
@@ -625,7 +599,7 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin create_reference pota"))?;
 
         let len = references.len();
         for r in references.into_iter().enumerate() {
@@ -634,7 +608,9 @@ impl PotaRepository for PotaRepositoryImpl {
                 tracing::info!("upsert pota {}/{}", r.0, len);
             }
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit create_reference pota"))?;
         Ok(())
     }
 
@@ -664,11 +640,13 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin update_reference pota"))?;
         for r in references.into_iter() {
             self.update(PotaReferenceRow::from(r), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit update_reference pota"))?;
         Ok(())
     }
 
@@ -678,12 +656,14 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin delete_reference pota"))?;
         match query {
             DeleteRef::Delete(code) => self.delete(code, &mut tx).await?,
             DeleteRef::DeleteAll => self.delete_all(&mut tx).await?,
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit delete_reference pota"))?;
         Ok(())
     }
 
@@ -693,14 +673,16 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin upload_activator_log pota"))?;
 
         tracing::info!("upload activator log {} rescords", logs.len());
 
         for r in logs.into_iter() {
             self.update_log(PotaLogRow::from(r), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit upload_activator_log pota"))?;
         Ok(())
     }
 
@@ -710,14 +692,16 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin upload_hunter_log pota"))?;
 
         tracing::info!("upload hunter log {} rescords", logs.len());
 
         for r in logs.into_iter() {
             self.update_log(PotaLogRow::from(r), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit upload_hunter_log pota"))?;
         Ok(())
     }
 
@@ -727,9 +711,11 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin delete_log pota"))?;
         self.delete_log(query, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit delete_log pota"))?;
         Ok(())
     }
 
@@ -760,10 +746,12 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin update_logid pota"))?;
         self.update_logid(PotaLogHistRow::from(log), &mut tx)
             .await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit update_logid pota"))?;
         Ok(())
     }
 }

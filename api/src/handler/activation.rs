@@ -1,7 +1,7 @@
 use aprs_message::AprsCallsign;
 use axum::{extract::Query, routing::get, Json, Router};
 use chrono::{Duration, Utc};
-use common::error::AppResult;
+use common::error::{AppError, AppResult};
 use serde_json::Value;
 use shaku_axum::Inject;
 
@@ -19,45 +19,63 @@ use crate::model::{
     spots::SpotView,
 };
 
+/// キャッシュTTL定数
+const CACHE_TTL_SPOTS: i64 = 30;
+const CACHE_TTL_ALERTS: i64 = 180;
+const CACHE_TTL_TRACK: i64 = 60;
+
+/// パラメータからFindActBuilderにグルーピングとフィルタを適用
+fn apply_common_filters(
+    param: &GetParam,
+    mut query: FindActBuilder,
+    default_hours: i64,
+) -> FindActBuilder {
+    // グルーピング設定
+    if let Some(callsign) = &param.by_call {
+        if callsign.starts_with("null") {
+            query = query.group_by_callsign(None)
+        } else {
+            query = query.group_by_callsign(Some(callsign.clone()))
+        }
+    } else if let Some(reference) = &param.by_ref {
+        if reference.starts_with("null") {
+            query = query.group_by_reference(None)
+        } else {
+            query = query.group_by_reference(Some(reference.clone()))
+        }
+    } else {
+        query = query.group_by_callsign(None)
+    }
+
+    // 時間フィルタ
+    let hours = param.hours_ago.unwrap_or(default_hours);
+    query = query.issued_after(Utc::now() - Duration::hours(hours));
+
+    // パターンフィルタ
+    if let Some(pat) = &param.pat_ref {
+        query = query.pattern(pat);
+    }
+
+    // ログIDフィルタ
+    if let Some(log_id) = &param.log_id {
+        query = query.log_id(log_id);
+    }
+
+    query
+}
+
 async fn show_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     param: GetParam,
-    mut query: FindActBuilder,
+    query: FindActBuilder,
 ) -> AppResult<Json<Value>> {
     let key = param.to_key();
     if let Some(val) = kvs_repo.get(&key).await {
         return Ok(Json(val));
     };
 
-    if let Some(callsign) = param.by_call {
-        if callsign.starts_with("null") {
-            query = query.group_by_callsign(None)
-        } else {
-            query = query.group_by_callsign(Some(callsign))
-        }
-    } else if let Some(reference) = param.by_ref {
-        if reference.starts_with("null") {
-            query = query.group_by_reference(None)
-        } else {
-            query = query.group_by_reference(Some(reference))
-        }
-    } else {
-        query = query.group_by_callsign(None)
-    }
-
-    let hours = param.hours_ago.unwrap_or(3);
-    query = query.issued_after(Utc::now() - Duration::hours(hours));
-
-    if let Some(pat) = param.pat_ref {
-        query = query.pattern(&pat);
-    }
-
-    if let Some(log_id) = param.log_id {
-        query = query.log_id(&log_id);
-    }
-
-    let query = query.build();
+    let query = apply_common_filters(&param, query, 3).build();
 
     let result = user_service.find_spots(query).await?;
     let mut spots: Vec<_> = result
@@ -69,9 +87,10 @@ async fn show_spots(
 
     spots.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value = serde_json::to_value(spots).unwrap();
+    let value =
+        serde_json::to_value(spots).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(30)))
+        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_SPOTS)))
         .await;
 
     Ok(Json(value))
@@ -81,37 +100,14 @@ async fn show_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     param: GetParam,
-    mut query: FindActBuilder,
+    query: FindActBuilder,
 ) -> AppResult<Json<Value>> {
     let key = param.to_key();
     if let Some(val) = kvs_repo.get(&key).await {
         return Ok(Json(val));
     };
 
-    if let Some(callsign) = param.by_call {
-        if callsign.starts_with("null") {
-            query = query.group_by_callsign(None)
-        } else {
-            query = query.group_by_callsign(Some(callsign))
-        }
-    } else if let Some(reference) = param.by_ref {
-        if reference.starts_with("null") {
-            query = query.group_by_reference(None)
-        } else {
-            query = query.group_by_reference(Some(reference))
-        }
-    } else {
-        query = query.group_by_callsign(None)
-    }
-
-    if let Some(pat) = param.pat_ref {
-        query = query.pattern(&pat);
-    }
-
-    let hours = param.hours_ago.unwrap_or(24);
-    query = query.issued_after(Utc::now() - Duration::hours(hours));
-
-    let query = query.build();
+    let query = apply_common_filters(&param, query, 24).build();
 
     let result = user_service.find_alerts(query).await?;
     let mut alerts: Vec<_> = result
@@ -123,9 +119,14 @@ async fn show_alerts(
 
     alerts.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value = serde_json::to_value(alerts).unwrap();
+    let value =
+        serde_json::to_value(alerts).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(180)))
+        .set(
+            key,
+            value.clone(),
+            Some(Duration::seconds(CACHE_TTL_ALERTS)),
+        )
         .await;
 
     Ok(Json(value))
@@ -235,10 +236,11 @@ async fn show_aprs_track(
     let tracks = user_service.get_aprs_track(request).await?;
     let tracks = tracks.into_iter().map(Track::from).collect();
     let value = Tracks { tracks };
-    let value = serde_json::to_value(value).unwrap();
+    let value =
+        serde_json::to_value(value).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
 
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(60)))
+        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_TRACK)))
         .await;
 
     Ok(Json(value))

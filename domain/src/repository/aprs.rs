@@ -2,11 +2,14 @@ use aprs_message::{AprsCallsign, AprsData};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use common::error::AppResult;
+#[cfg(test)]
+use mockall::automock;
 use shaku::Interface;
 
 use crate::model::aprslog::AprsLog;
 use crate::model::event::FindAprs;
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait AprsRepositry: Send + Sync + Interface {
     async fn write_message(&self, addressee: &AprsCallsign, message: &str) -> AppResult<()>;
@@ -14,6 +17,8 @@ pub trait AprsRepositry: Send + Sync + Interface {
     async fn set_filter(&self, filter: String) -> AppResult<()>;
     async fn get_aprs_packet(&self) -> AppResult<AprsData>;
 }
+
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait AprsLogRepository: Send + Sync + Interface {
     async fn find_aprs_log(&self, query: &FindAprs) -> AppResult<Vec<AprsLog>>;

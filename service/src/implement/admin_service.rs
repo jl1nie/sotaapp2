@@ -267,3 +267,85 @@ impl AdminService for AdminServiceImpl {
         Ok(self.check_repo.check_database().await?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use domain::model::sota::SotaReference;
+
+    /// is_valid_summit関数のテスト用ヘルパー
+    fn make_test_summit(valid_from: NaiveDate, valid_to: NaiveDate) -> SotaReference {
+        SotaReference {
+            summit_code: "JA/TK-001".to_string(),
+            association_name: "Japan".to_string(),
+            region_name: "Tokyo".to_string(),
+            summit_name: "Mt. Test".to_string(),
+            summit_name_j: None,
+            alt_m: 1000,
+            alt_ft: 3280,
+            grid_ref1: "PM95".to_string(),
+            grid_ref2: "".to_string(),
+            longitude: 139.0,
+            latitude: 35.0,
+            maidenhead: "PM95wv".to_string(),
+            points: 10,
+            bonus_points: 0,
+            valid_from,
+            valid_to,
+            activation_count: 0,
+            activation_date: None,
+            activation_call: None,
+            city: None,
+            city_j: None,
+        }
+    }
+
+    #[test]
+    fn test_is_valid_summit_currently_valid() {
+        let today = Local::now().date_naive();
+        let valid_from = today - chrono::Duration::days(30);
+        let valid_to = today + chrono::Duration::days(30);
+        let summit = make_test_summit(valid_from, valid_to);
+
+        assert!(is_valid_summit(&summit));
+    }
+
+    #[test]
+    fn test_is_valid_summit_today_is_start_date() {
+        let today = Local::now().date_naive();
+        let valid_to = today + chrono::Duration::days(30);
+        let summit = make_test_summit(today, valid_to);
+
+        assert!(is_valid_summit(&summit));
+    }
+
+    #[test]
+    fn test_is_valid_summit_today_is_end_date() {
+        let today = Local::now().date_naive();
+        let valid_from = today - chrono::Duration::days(30);
+        let summit = make_test_summit(valid_from, today);
+
+        assert!(is_valid_summit(&summit));
+    }
+
+    #[test]
+    fn test_is_valid_summit_expired() {
+        let today = Local::now().date_naive();
+        let valid_from = today - chrono::Duration::days(60);
+        let valid_to = today - chrono::Duration::days(30);
+        let summit = make_test_summit(valid_from, valid_to);
+
+        assert!(!is_valid_summit(&summit));
+    }
+
+    #[test]
+    fn test_is_valid_summit_not_yet_valid() {
+        let today = Local::now().date_naive();
+        let valid_from = today + chrono::Duration::days(30);
+        let valid_to = today + chrono::Duration::days(60);
+        let summit = make_test_summit(valid_from, valid_to);
+
+        assert!(!is_valid_summit(&summit));
+    }
+}

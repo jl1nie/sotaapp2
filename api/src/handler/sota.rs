@@ -1,21 +1,21 @@
 use axum::{
     extract::{Multipart, Path, Query},
     http::StatusCode,
-    middleware,
     routing::{delete, get, post, put},
     Extension, Json, Router,
 };
-use chrono::{Duration, TimeZone, Utc};
+use chrono::{Duration, Utc};
 use firebase_auth_sdk::FireAuth;
 use shaku_axum::Inject;
 
-use common::error::{AppError, AppResult};
+use common::error::AppResult;
 use domain::model::sota::SummitCode;
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindLogBuilder, FindRefBuilder},
     id::UserId,
 };
 use registry::{AppRegistry, AppState};
+use service::model::award::AwardPeriod;
 use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use service::services::{AdminService, UserService};
 
@@ -32,7 +32,8 @@ use crate::model::{
     spots::SpotView,
 };
 
-use super::auth::auth_middle;
+use super::auth::with_auth;
+use super::multipart::extract_text_file;
 
 async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -48,24 +49,9 @@ async fn import_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<Json<ImportResult>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field
-        .bytes()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
-
+    let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadSOTASummit { data };
-
     let count = admin_service.import_summit_list(reqs).await?;
-
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
@@ -73,24 +59,9 @@ async fn update_summit_list(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<Json<ImportResult>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field
-        .bytes()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
-
+    let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadSOTASummit { data };
-
     let count = admin_service.update_summit_list(reqs).await?;
-
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
@@ -98,24 +69,9 @@ async fn import_sota_opt_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     mut multipart: Multipart,
 ) -> AppResult<Json<ImportResult>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e)))?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field
-        .bytes()
-        .await
-        .map_err(|e| AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e)))?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
-
+    let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadSOTASummitOpt { data };
-
     let count = admin_service.import_summit_opt_list(reqs).await?;
-
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
@@ -124,17 +80,12 @@ async fn upload_log(
     Extension(user_id): Extension<UserId>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let data = field.bytes().await.unwrap();
-        let data = String::from_utf8(data.to_vec()).unwrap();
-        let reqs = UploadSOTALog { data };
-
-        return user_service
-            .upload_sota_log(user_id, reqs)
-            .await
-            .map(|_| StatusCode::CREATED);
-    }
-    Err(AppError::ForbiddenOperation)
+    let data = extract_text_file(&mut multipart).await?;
+    let reqs = UploadSOTALog { data };
+    user_service
+        .upload_sota_log(user_id, reqs)
+        .await
+        .map(|_| StatusCode::CREATED)
 }
 
 async fn delete_log(
@@ -151,12 +102,11 @@ async fn show_progress(
     user_service: Inject<AppRegistry, dyn UserService>,
     Extension(user_id): Extension<UserId>,
 ) -> AppResult<Json<String>> {
-    let mut query = FindLogBuilder::default();
-    let from = Utc.with_ymd_and_hms(2024, 6, 1, 0, 0, 0).unwrap();
-    let to = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
-
-    query = query.after(from).before(to);
-    let query = query.build();
+    let period = AwardPeriod::default();
+    let query = FindLogBuilder::default()
+        .after(period.start)
+        .before(period.end)
+        .build();
 
     let result = user_service.award_progress(user_id, query).await?;
     Ok(Json(result))
@@ -189,16 +139,12 @@ async fn show_all_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Query(param): Query<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<SotaRefView>>> {
-    let mut query = FindRefBuilder::default().sota();
+    let mut query = FindRefBuilder::default()
+        .sota()
+        .limit(param.limit.unwrap_or(500));
 
-    if param.limit.is_some() {
-        query = query.limit(param.limit.unwrap());
-    } else {
-        query = query.limit(500);
-    }
-
-    if param.offset.is_some() {
-        query = query.offset(param.offset.unwrap());
+    if let Some(offset) = param.offset {
+        query = query.offset(offset);
     }
     let result = admin_service
         .show_all_sota_references(query.build())
@@ -291,20 +237,7 @@ async fn judge_10th_anniversary_award(
         JudgmentMode::Lenient => service::model::award::JudgmentMode::Lenient,
     };
 
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| {
-            AppError::UnprocessableEntity(format!("マルチパートの読み込みに失敗しました: {}", e))
-        })?
-        .ok_or_else(|| AppError::UnprocessableEntity("ファイルが送信されていません".to_string()))?;
-
-    let data = field.bytes().await.map_err(|e| {
-        AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e))
-    })?;
-
-    let data = String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))?;
+    let data = extract_text_file(&mut multipart).await?;
 
     // in-memoryで判定（モード指定）
     let result = user_service.judge_10th_anniversary_award(&data, service_mode)?;
@@ -354,16 +287,18 @@ async fn judge_10th_anniversary_award(
 }
 
 pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
-    let protected = Router::new()
-        .route("/import", post(import_summit_list))
-        .route("/import/ja", post(import_sota_opt_reference))
-        .route("/log", post(upload_log))
-        .route("/log", delete(delete_log))
-        .route("/log", get(show_progress))
-        .route("/update", post(update_summit_list))
-        .route("/summits/{summit_code}", put(update_sota_reference))
-        .route("/summits/{summit_code}", delete(delete_sota_reference))
-        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle));
+    let protected = with_auth(
+        Router::new()
+            .route("/import", post(import_summit_list))
+            .route("/import/ja", post(import_sota_opt_reference))
+            .route("/log", post(upload_log))
+            .route("/log", delete(delete_log))
+            .route("/log", get(show_progress))
+            .route("/update", post(update_summit_list))
+            .route("/summits/{summit_code}", put(update_sota_reference))
+            .route("/summits/{summit_code}", delete(delete_sota_reference)),
+        auth,
+    );
 
     let public = Router::new()
         .route("/spots", get(show_sota_spots))
@@ -371,7 +306,10 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         .route("/summits", get(show_all_sota_reference))
         .route("/summits/{summit_code}", get(show_sota_reference))
         .route("/summits/search", get(search_sota_reference))
-        .route("/award/10th-anniversary/judge", post(judge_10th_anniversary_award));
+        .route(
+            "/award/10th-anniversary/judge",
+            post(judge_10th_anniversary_award),
+        );
 
     let routers = Router::new().merge(protected).merge(public);
 

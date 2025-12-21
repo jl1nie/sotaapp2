@@ -10,7 +10,7 @@ pub fn findref_query_builder<'a>(
     mode: AwardProgram,
     logid: Option<LogId>,
     query: &str,
-    r: &FindRef,
+    r: &'a FindRef,
 ) -> QueryBuilder<'a, Sqlite> {
     let mut builder = QueryBuilder::new(query);
 
@@ -19,18 +19,24 @@ pub fn findref_query_builder<'a>(
         builder.push(" WHERE ");
     }
 
-    if r.sota_code.is_some() && mode == SOTA {
-        builder.push(" (summit_code = ");
-        builder.push_bind(r.sota_code.clone().unwrap());
-        builder.push(" ) AND ");
-    } else if r.pota_code.is_some() && mode == POTA {
-        builder.push(" (p.pota_code =");
-        builder.push_bind(r.pota_code.clone().unwrap());
-        builder.push(" ) AND ");
-    } else if r.wwff_code.is_some() && mode == WWFF {
-        builder.push("(p.wwff_code =");
-        builder.push_bind(r.wwff_code.clone().unwrap());
-        builder.push(" ) AND ");
+    if let Some(code) = &r.sota_code {
+        if mode == SOTA {
+            builder.push(" (summit_code = ");
+            builder.push_bind(code.as_str());
+            builder.push(" ) AND ");
+        }
+    } else if let Some(code) = &r.pota_code {
+        if mode == POTA {
+            builder.push(" (p.pota_code =");
+            builder.push_bind(code.as_str());
+            builder.push(" ) AND ");
+        }
+    } else if let Some(code) = &r.wwff_code {
+        if mode == WWFF {
+            builder.push("(p.wwff_code =");
+            builder.push_bind(code.as_str());
+            builder.push(" ) AND ");
+        }
     } else {
         if let Some(name) = &r.name {
             if r.is_sota() && mode == SOTA {
@@ -128,7 +134,7 @@ pub fn findref_query_builder<'a>(
 pub fn findact_query_builder<'a>(
     is_alert: bool,
     query: &str,
-    r: &FindAct,
+    r: &'a FindAct,
 ) -> QueryBuilder<'a, Sqlite> {
     let mut builder = QueryBuilder::new(query);
 
@@ -138,9 +144,9 @@ pub fn findact_query_builder<'a>(
         builder.push(" AND ");
     }
 
-    if let Some(pat) = r.operator.clone() {
+    if let Some(pat) = &r.operator {
         builder.push(" operator = ");
-        builder.push_bind(pat);
+        builder.push_bind(pat.as_str());
         builder.push(" AND ");
     }
 

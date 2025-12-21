@@ -38,7 +38,11 @@ pub trait UserService: Send + Sync + Interface {
     async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;
 
     /// SOTA日本支部設立10周年記念アワード判定（in-memory、DBに保存しない）
-    fn judge_10th_anniversary_award(&self, csv_data: &str, mode: JudgmentMode) -> AppResult<AwardResult>;
+    fn judge_10th_anniversary_award(
+        &self,
+        csv_data: &str,
+        mode: JudgmentMode,
+    ) -> AppResult<AwardResult>;
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;

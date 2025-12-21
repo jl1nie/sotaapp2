@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::{Context, Error, Result};
 use axum::{http::HeaderValue, Router};
 use chrono::Local;
 use clap::{Parser, Subcommand};
@@ -180,11 +180,9 @@ async fn bootstrap() -> Result<()> {
         .merge(v2::routes(firebase))
         .with_state(app_state)
         .layer(cors)
-        .fallback_service(
-            ServeDir::new("static").fallback(ServeFile::new("static/index.html")),
-        );
+        .fallback_service(ServeDir::new("static").fallback(ServeFile::new("static/index.html")));
 
-    let ip_addr: IpAddr = config.host.parse().expect("Invalid IP Address");
+    let ip_addr: IpAddr = config.host.parse().context("無効なIPアドレス")?;
     let addr = SocketAddr::new(ip_addr, config.port);
     let listener = TcpListener::bind(&addr).await?;
     let http = async {
