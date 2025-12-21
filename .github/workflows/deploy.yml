@@ -49,9 +49,9 @@ jobs:
 
       - name: Run CI checks
         run: |
-          makers fmt-check
-          makers clippy-strict
-          makers test-ci
+          cargo make fmt-check
+          cargo make clippy-strict
+          cargo make test-ci
 
   build-and-push:
     name: Build and Push Docker Image

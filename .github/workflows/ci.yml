@@ -33,13 +33,13 @@ jobs:
           tool: cargo-make
 
       - name: Check formatting
-        run: makers fmt-check
+        run: cargo make fmt-check
 
       - name: Run clippy
-        run: makers clippy-strict
+        run: cargo make clippy-strict
 
       - name: Run tests
-        run: makers test-ci
+        run: cargo make test-ci
 
   build:
     name: Build Release
@@ -62,7 +62,7 @@ jobs:
           tool: cargo-make
 
       - name: Build release
-        run: makers build-release
+        run: cargo make build-release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
