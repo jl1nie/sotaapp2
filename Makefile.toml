@@ -296,3 +296,45 @@ script = '''
 #!/bin/bash
 fly ssh console -C "./target/release/app db migrate"
 '''
+
+# =============================================================================
+# E2Eテストタスク
+# =============================================================================
+[tasks.e2e]
+description = "Run Docker E2E tests on local image"
+script = '''
+#!/bin/bash
+set -e
+IMAGE="${1:-sotaapp2:test}"
+echo "Building Docker image: $IMAGE"
+docker build -t "$IMAGE" .
+echo "Running E2E tests..."
+./scripts/docker-e2e-test.sh "$IMAGE"
+'''
+
+[tasks.e2e-test]
+description = "Run E2E tests on existing Docker image (no build)"
+script = '''
+#!/bin/bash
+IMAGE="${1:-sotaapp2:test}"
+./scripts/docker-e2e-test.sh "$IMAGE"
+'''
+
+[tasks.e2e-build]
+description = "Build Docker image for E2E testing"
+command = "docker"
+args = ["build", "-t", "sotaapp2:test", "."]
+
+[tasks.e2e-server]
+description = "Start test server with docker-compose.test.yml"
+script = '''
+#!/bin/bash
+TEST_IMAGE="${1:-sotaapp2:test}" docker compose -f docker-compose.test.yml up -d
+echo "Test server started on http://localhost:18080"
+echo "Stop with: makers e2e-stop"
+'''
+
+[tasks.e2e-stop]
+description = "Stop test server"
+command = "docker"
+args = ["compose", "-f", "docker-compose.test.yml", "down"]
