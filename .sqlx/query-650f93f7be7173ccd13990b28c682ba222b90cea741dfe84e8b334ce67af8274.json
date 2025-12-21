@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT muni_code, prefecture, municipality, jcc_code, ward_code, jcc_text, jcg_code, jcg_text, hamlog_code\n                FROM municipality_century_codes\n                WHERE muni_code = $1            \n                ",
+  "describe": {
+    "columns": [
+      {
+        "name": "muni_code",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "prefecture",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "municipality",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "jcc_code",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "ward_code",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "jcc_text",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "jcg_code",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "jcg_text",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "hamlog_code",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "650f93f7be7173ccd13990b28c682ba222b90cea741dfe84e8b334ce67af8274"
+}

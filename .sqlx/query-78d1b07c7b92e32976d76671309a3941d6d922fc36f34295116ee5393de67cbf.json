@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO pota_log_user (user_id, log_id, log_kind, \"update\")\n                VALUES($1, $2, $3, $4)\n                ON CONFLICT (log_id) DO UPDATE\n                SET \"update\" = EXCLUDED.\"update\",\n                    log_kind = EXCLUDED.log_kind\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "78d1b07c7b92e32976d76671309a3941d6d922fc36f34295116ee5393de67cbf"
+}

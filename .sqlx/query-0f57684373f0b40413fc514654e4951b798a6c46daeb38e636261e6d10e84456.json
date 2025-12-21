@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT\n                    time,\n                    callsign,\n                    ssid,\n                    destination,\n                    distance,\n                    state,\n                    message,\n                    longitude,\n                    latitude\n                FROM aprs_log WHERE callsign = $1 AND ssid = $2\n                ORDER BY time DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "time",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "callsign",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "ssid",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "destination",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "distance",
+        "ordinal": 4,
+        "type_info": "Float"
+      },
+      {
+        "name": "state",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "message",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "longitude",
+        "ordinal": 7,
+        "type_info": "Float"
+      },
+      {
+        "name": "latitude",
+        "ordinal": 8,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0f57684373f0b40413fc514654e4951b798a6c46daeb38e636261e6d10e84456"
+}

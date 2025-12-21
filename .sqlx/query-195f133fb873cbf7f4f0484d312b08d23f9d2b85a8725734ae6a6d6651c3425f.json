@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(DISTINCT u.log_id) as users, COUNT(l.log_id) as logs\n                   FROM pota_log_user u\n                   LEFT JOIN pota_log l ON u.log_id = l.log_id\n                   WHERE u.\"update\" <= $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "users",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "logs",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "195f133fb873cbf7f4f0484d312b08d23f9d2b85a8725734ae6a6d6651c3425f"
+}

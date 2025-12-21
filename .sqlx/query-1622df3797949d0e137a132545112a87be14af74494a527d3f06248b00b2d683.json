@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO pota_log (log_id, pota_code, first_qso_date, attempts, activations, qsos)\n                VALUES($1, $2, $3, $4, $5, $6)\n                ON CONFLICT (log_id, pota_code) DO UPDATE\n                SET pota_code = EXCLUDED.pota_code,\n                    first_qso_date = EXCLUDED.first_qso_date,\n                    attempts = EXCLUDED.attempts,\n                    activations = EXCLUDED.activations,\n                    qsos = EXCLUDED.qsos\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "1622df3797949d0e137a132545112a87be14af74494a527d3f06248b00b2d683"
+}

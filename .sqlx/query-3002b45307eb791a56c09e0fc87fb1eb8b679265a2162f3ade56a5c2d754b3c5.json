@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE sota_references SET\n                    association_name = $2,\n                    region_name = $3,\n                    summit_name = $4,\n                    summit_name_j = $5,\n                    city = $6,\n                    city_j = $7,\n                    alt_m = $8,\n                    alt_ft = $9,\n                    grid_ref1 = $10,\n                    grid_ref2 = $11,\n                    longitude = $12, \n                    latitude = $13,\n                    maidenhead = $14,\n                    points = $15,\n                    bonus_points = $16,\n                    valid_from = $17,\n                    valid_to = $18,\n                    activation_count = $19,\n                    activation_date = $20,\n                    activation_call = $21\n                WHERE summit_code = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 21
+    },
+    "nullable": []
+  },
+  "hash": "3002b45307eb791a56c09e0fc87fb1eb8b679265a2162f3ade56a5c2d754b3c5"
+}

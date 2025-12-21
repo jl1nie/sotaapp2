@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM sota_references\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "75e64e77a665653f0bbae69b55d1f7fe7a9b552c2b15d393d4cd8962c4468b63"
+}

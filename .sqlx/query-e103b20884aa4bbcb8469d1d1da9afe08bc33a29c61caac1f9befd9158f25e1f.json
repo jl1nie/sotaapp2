@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM pota_log\n                WHERE log_id IN (SELECT log_id FROM pota_log_user WHERE \"update\" < $1);\n                DELETE FROM pota_log_user\n                WHERE \"update\" < $2;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "e103b20884aa4bbcb8469d1d1da9afe08bc33a29c61caac1f9befd9158f25e1f"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO sota_references(\n                    summit_code,\n                    association_name,\n                    region_name,\n                    summit_name,\n                    summit_name_j,\n                    city,\n                    city_j,\n                    alt_m,\n                    alt_ft,\n                    grid_ref1,\n                    grid_ref2,\n                    longitude,\n                    latitude,\n                    maidenhead,\n                    points,\n                    bonus_points,\n                    valid_from,\n                    valid_to,\n                    activation_count,\n                    activation_date,\n                    activation_call\n                )\n                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 21
+    },
+    "nullable": []
+  },
+  "hash": "5297829c607167866f0780fe3815d50f1ae88dd059aaabd032f76b7d167ebed2"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM pota_log\n                WHERE log_id = $1;\n                DELETE FROM pota_log_user\n                WHERE log_id = $2;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "6f50f6bd88437094bad6e5934cc1e5614a622881377fc4ea96ac5ce0ae04234e"
+}

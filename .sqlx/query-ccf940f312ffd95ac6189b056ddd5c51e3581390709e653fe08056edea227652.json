@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT uuid,ref as \"pota_code\",type as \"log_type\",date,qso,attempt,activate\n                FROM potalog\n                LIMIT $1 OFFSET $2",
+  "describe": {
+    "columns": [
+      {
+        "name": "uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "pota_code",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "log_type",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "date",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "qso",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "attempt",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "activate",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "ccf940f312ffd95ac6189b056ddd5c51e3581390709e653fe08056edea227652"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO alerts (program, alert_id, user_id, reference, reference_detail, \n                                   \"location\", activator, activator_name, operator, start_time, end_time, frequencies,comment,poster)\n                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)\n                ON CONFLICT (program, alert_id ) DO UPDATE             \n                SET program = EXCLUDED.program,\n                    alert_id = EXCLUDED.alert_id,\n                    user_id = EXCLUDED.user_id,\n                    reference = EXCLUDED.reference,\n                    reference_detail = EXCLUDED.reference_detail,\n                    \"location\" = EXCLUDED.\"location\",\n                    activator = EXCLUDED. activator,\n                    activator_name = EXCLUDED.activator_name,\n                    operator = EXCLUDED.operator,\n                    start_time = EXCLUDED.start_time,\n                    end_time = EXCLUDED.end_time,\n                    frequencies = EXCLUDED.frequencies,\n                    comment = EXCLUDED.comment,\n                    poster = EXCLUDED.poster\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 14
+    },
+    "nullable": []
+  },
+  "hash": "13b9f28c8eaf12e7c1b7826e0c05f4237b234d35d80b75b6c767aed190cf951f"
+}

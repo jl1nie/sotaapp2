@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM alerts\n               WHERE start_time < $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "a1ce0eabb2032738d24805f257e3fca8f14aa8fc8edfaaf7eb60ec1b35640b67"
+}

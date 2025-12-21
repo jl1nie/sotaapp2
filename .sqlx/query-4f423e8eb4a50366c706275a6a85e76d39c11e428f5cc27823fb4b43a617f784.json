@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT u.log_id as \"log_id: LogId\", COUNT(l.log_id) as count\n               FROM pota_log_user u\n               LEFT JOIN pota_log l ON u.log_id = l.log_id\n               GROUP BY u.log_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "log_id: LogId",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "count",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "4f423e8eb4a50366c706275a6a85e76d39c11e428f5cc27823fb4b43a617f784"
+}

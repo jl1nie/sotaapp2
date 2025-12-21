@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO sota_log(\n                      user_id,\n                      my_callsign,\n                      operator,\n                      my_summit_code,\n                      time,\n                      frequency,\n                      mode,\n                      his_callsign,\n                      his_summit_code,\n                      comment,\n                      \"update\"\n                )\n                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "c87a591bda60e95eb2923b20d3e0213bb3d51fa7722f01f37a4ed7097062b56d"
+}

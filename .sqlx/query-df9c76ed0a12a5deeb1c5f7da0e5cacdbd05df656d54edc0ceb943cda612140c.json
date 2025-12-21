@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM spots\n               WHERE spot_time < $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "df9c76ed0a12a5deeb1c5f7da0e5cacdbd05df656d54edc0ceb943cda612140c"
+}

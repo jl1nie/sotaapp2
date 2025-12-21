@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO spots (program, spot_id, reference, reference_detail, activator, activator_name, operator, spot_time, frequency, mode, spotter,comment) \n                VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n                ON CONFLICT (program, spot_id ) DO UPDATE             \n                SET program = EXCLUDED.program,\n                    spot_id = EXCLUDED.spot_id,\n                    reference = EXCLUDED.reference,\n                    reference_detail = EXCLUDED.reference_detail,\n                    activator = EXCLUDED.activator,\n                    activator_name = EXCLUDED.activator_name,\n                    operator = EXCLUDED.operator,\n                    spot_time = EXCLUDED.spot_time,\n                    frequency = EXCLUDED.frequency,\n                    mode = EXCLUDED.mode,\n                    spotter = EXCLUDED.spotter,\n                    comment = EXCLUDED.comment\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "bbf52bf32c3fd52e1d752af9491304ce639cdcad359f4bdfb257e0cd3a04a9c9"
+}

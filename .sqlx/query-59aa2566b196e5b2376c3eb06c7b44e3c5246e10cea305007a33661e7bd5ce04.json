@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(log_id) as count FROM pota_log_user WHERE \"update\" < $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "count",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "59aa2566b196e5b2376c3eb06c7b44e3c5246e10cea305007a33661e7bd5ce04"
+}

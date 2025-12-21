@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM pota_references\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "73eeedf3f86b54dcd88e1c40a08441598019c2175b8c702d3cc77381306a1bd6"
+}
