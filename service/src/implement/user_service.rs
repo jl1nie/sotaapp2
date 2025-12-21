@@ -493,3 +493,81 @@ impl UserService for UserServiceImpl {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ヘルパー関数のテスト: get_alert_group
+    #[test]
+    fn test_get_alert_group_by_callsign() {
+        use domain::model::event::{FindActBuilder, GroupBy};
+        use domain::model::activation::Alert;
+        use domain::model::AwardProgram;
+
+        let event = FindActBuilder::default()
+            .sota()
+            .group_by_callsign(Some("JA1ABC".to_string()))
+            .build();
+
+        let alert = Alert {
+            program: AwardProgram::SOTA,
+            alert_id: 1,
+            user_id: 1,
+            activator: "JA1ABC".to_string(),
+            activator_name: None,
+            operator: "JA1ABC".to_string(),
+            reference: "JA/TK-001".to_string(),
+            reference_detail: "Test Summit".to_string(),
+            location: "Tokyo".to_string(),
+            start_time: Utc::now(),
+            end_time: None,
+            frequencies: "14.280".to_string(),
+            comment: Some("Test".to_string()),
+            poster: Some("JA1ABC".to_string()),
+        };
+
+        let group = get_alert_group(&event, &alert);
+
+        match group {
+            GroupBy::Callsign(Some(call)) => assert_eq!(call, "JA1ABC"),
+            _ => panic!("Expected GroupBy::Callsign"),
+        }
+    }
+
+    /// ヘルパー関数のテスト: get_alert_group（リファレンス）
+    #[test]
+    fn test_get_alert_group_by_reference() {
+        use domain::model::event::{FindActBuilder, GroupBy};
+        use domain::model::activation::Alert;
+        use domain::model::AwardProgram;
+
+        let event = FindActBuilder::default()
+            .sota()
+            .group_by_reference(Some("JA/TK-001".to_string()))
+            .build();
+
+        let alert = Alert {
+            program: AwardProgram::SOTA,
+            alert_id: 1,
+            user_id: 1,
+            activator: "JA1ABC".to_string(),
+            activator_name: None,
+            operator: "JA1ABC".to_string(),
+            reference: "JA/TK-001".to_string(),
+            reference_detail: "Test Summit".to_string(),
+            location: "Tokyo".to_string(),
+            start_time: Utc::now(),
+            end_time: None,
+            frequencies: "14.280".to_string(),
+            comment: Some("Test".to_string()),
+            poster: Some("JA1ABC".to_string()),
+        };
+
+        let group = get_alert_group(&event, &alert);
+
+        match group {
+            GroupBy::Reference(Some(ref_code)) => assert_eq!(ref_code, "JA/TK-001"),
+            _ => panic!("Expected GroupBy::Reference"),
+        }
+    }
+}

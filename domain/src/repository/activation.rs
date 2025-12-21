@@ -1,10 +1,13 @@
 use async_trait::async_trait;
 use common::error::AppResult;
+#[cfg(test)]
+use mockall::automock;
 use shaku::Interface;
 
 use crate::model::activation::{Alert, Spot};
 use crate::model::event::{DeleteAct, FindAct};
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait ActivationRepositry: Send + Sync + Interface {
     async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()>;

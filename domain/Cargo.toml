@@ -17,3 +17,7 @@ uuid.workspace = true
 aprs-message.workspace = true
 tracing.workspace = true
 typeshare.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
