@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
 use shaku::Component;
@@ -7,6 +6,7 @@ use sqlx::SqliteConnection;
 
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
+use common::http;
 use domain::model::locator::MunicipalityCenturyCode;
 
 use crate::database::connect::ConnectionPool;
@@ -107,7 +107,7 @@ impl LocatorRepositry for LocatorRepositryImpl {
     }
 
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String> {
-        let client = Client::new();
+        let client = http::client();
         let response = client
             .post(self.config.mapcode_endpoint.clone())
             .json(&json!({
