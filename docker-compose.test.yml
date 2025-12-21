@@ -1,0 +1,39 @@
+version: '3.8'
+
+# Docker Compose configuration for E2E testing
+# Usage:
+#   TEST_IMAGE=sotaapp2:test docker-compose -f docker-compose.test.yml up -d
+#   docker-compose -f docker-compose.test.yml down
+
+services:
+  app:
+    image: ${TEST_IMAGE:-sotaapp2:test}
+    ports:
+      - "${TEST_PORT:-18080}:8080"
+    environment:
+      DATABASE_URL: "sqlite:/tmp/test.db?mode=rwc"
+      FIREBASE_API_KEY: "test-key"
+      APRSUSER: "testuser"
+      APRSPASSWORD: "testpass"
+      MIGRATION_PATH: "/app/migrations"
+      HOST: "0.0.0.0"
+      PORT: "8080"
+      GEOMAG_ENDPOINT: "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
+      GEOMAG_SCHEDULE: "0 0 */3 * * *"
+      SOTA_SPOT_ENDPOINT: "https://api2.sota.org.uk/api/spots/20?"
+      SOTA_ALERT_ENDPOINT: "https://api2.sota.org.uk/api/alerts"
+      POTA_SPOT_ENDPOINT: "https://api.pota.app/spot/activator"
+      POTA_ALERT_ENDPOINT: "https://api.pota.app/activation"
+      SPOT_INTERVAL: "60"
+      ALERT_INTERVAL: "300"
+      SPOT_EXPIRE: "3600"
+      ALERT_EXPIRE: "86400"
+      APRS_LOG_EXPIRE: "86400"
+      POTA_LOG_EXPIRE: "86400"
+      AUTH_TOKEN_TTL: "3600"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s

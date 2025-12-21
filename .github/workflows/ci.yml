@@ -72,7 +72,7 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Docker Build & Test
+    name: Docker Build & E2E Test
     runs-on: ubuntu-latest
     needs: ci
     steps:
@@ -91,44 +91,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Test Docker image - help command
-        run: docker run --rm sotaapp2:test --help
-
-      - name: Test Docker image - required files exist
-        run: |
-          echo "Checking required files in Docker image..."
-          docker run --rm --entrypoint="" sotaapp2:test ls -la /app/migrations/
-          docker run --rm --entrypoint="" sotaapp2:test ls -la /app/static/
-          echo "✓ Required directories exist"
-
-      - name: Test Docker image - SSL/TLS connectivity
-        run: |
-          # Test that ca-certificates is properly installed for HTTPS connections
-          # This would have caught the missing ca-certificates issue
-          docker run --rm --entrypoint="" sotaapp2:test \
-            sh -c "apt-get update -qq && apt-get install -qq -y curl > /dev/null && \
-                   curl -sf https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt > /dev/null"
-          echo "✓ SSL/TLS connectivity works (ca-certificates installed)"
-
-      - name: Test Docker image - startup check
-        run: |
-          # Test that the app fails gracefully without required env vars
-          OUTPUT=$(docker run --rm sotaapp2:test serve 2>&1 || true)
-          if echo "$OUTPUT" | grep -q "必須環境変数が設定されていません"; then
-            echo "✓ App correctly reports missing environment variables"
-          else
-            echo "✗ Unexpected output: $OUTPUT"
-            exit 1
-          fi
-
-      - name: Test Docker image - database migration
-        run: |
-          # mode=rwc allows SQLite to create the database file
-          docker run --rm \
-            -e DATABASE_URL="sqlite:/tmp/test.db?mode=rwc" \
-            -e FIREBASE_API_KEY="test-key" \
-            -e APRSUSER="testuser" \
-            -e APRSPASSWORD="testpass" \
-            -e MIGRATION_PATH="/app/migrations" \
-            sotaapp2:test db migrate
-          echo "✓ Database migration succeeded"
+      - name: Run E2E tests
+        run: ./scripts/docker-e2e-test.sh sotaapp2:test
