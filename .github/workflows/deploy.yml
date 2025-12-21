@@ -1,0 +1,195 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      skip_backup:
+        description: 'Skip database backup before deploy'
+        required: false
+        default: 'false'
+        type: boolean
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: jl1nie/sotaapp2
+
+jobs:
+  # CIチェックを必須にする
+  ci-check:
+    name: CI Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install cargo-make
+        run: cargo install cargo-make
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run CI checks
+        run: |
+          makers fmt-check
+          makers clippy-strict
+          makers test-ci
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: ci-check
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  backup-database:
+    name: Backup Production Database
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: ${{ github.event.inputs.skip_backup != 'true' }}
+    outputs:
+      backup_file: ${{ steps.backup.outputs.backup_file }}
+      backup_success: ${{ steps.backup.outputs.success }}
+
+    steps:
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Check VM status and create backup
+        id: backup
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          # Check if VM is running
+          VM_STATE=$(flyctl status --json 2>/dev/null | jq -r '.Machines[0].state // "unknown"' || echo "unknown")
+          echo "VM state: $VM_STATE"
+
+          if [ "$VM_STATE" != "started" ]; then
+            echo "VM is not running (state: ${VM_STATE}). Skipping backup."
+            echo "success=skipped" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="/data/backup_predeploy_${TIMESTAMP}.db"
+          echo "Creating backup: ${BACKUP_FILE}"
+
+          if flyctl ssh console -C "./target/release/app db backup -o ${BACKUP_FILE}"; then
+            echo "Backup completed: ${BACKUP_FILE}"
+            echo "backup_file=${BACKUP_FILE}" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Backup failed, but continuing with deploy"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-fly:
+    name: Deploy to Fly.io
+    runs-on: ubuntu-latest
+    needs: [build-and-push, backup-database]
+    if: always() && needs.build-and-push.result == 'success'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Display backup status
+        run: |
+          echo "Backup status: ${{ needs.backup-database.outputs.backup_success }}"
+          echo "Backup file: ${{ needs.backup-database.outputs.backup_file }}"
+
+      - name: Deploy to Fly.io
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          echo "Deploying to Fly.io..."
+          flyctl deploy --remote-only
+
+      - name: Verify deployment health
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+
+          # Health check
+          HEALTH_URL="https://sotaapp2.fly.dev/health"
+          echo "Checking health endpoint: ${HEALTH_URL}"
+
+          for i in 1 2 3 4 5; do
+            if curl -sf "${HEALTH_URL}" > /dev/null; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "::error::Health check failed after 5 attempts"
+          echo "Consider rolling back with: fly deploy --image <previous-image>"
+          exit 1
+
+      - name: Post-deploy notification
+        if: success()
+        run: |
+          echo "::notice::Deployment successful!"
+          echo "Backup file: ${{ needs.backup-database.outputs.backup_file }}"
+          echo "To rollback: fly deploy --image jl1nie/sotaapp2:<previous-sha>"

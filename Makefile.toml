@@ -66,6 +66,11 @@ description = "Format code"
 command = "cargo"
 args = ["fmt", "--all", "${@}"]
 
+[tasks.fmt-check]
+description = "Check code formatting"
+command = "cargo"
+args = ["fmt", "--all", "--", "--check"]
+
 [tasks.clippy]
 description = "Run clippy linter"
 command = "cargo"
@@ -92,13 +97,27 @@ cargo nextest run --workspace --status-level all --test-threads=1 "$@"
 '''
 
 [tasks.ci]
-description = "Run CI checks (clippy + test)"
+description = "Run full CI pipeline (fmt-check + clippy-strict + test)"
+run_task = { name = ["fmt-check", "clippy-strict", "test"] }
+
+[tasks.ci-quick]
+description = "Run quick CI checks (clippy + test, no fmt)"
 run_task = { name = ["clippy-strict", "test"] }
 
 [tasks.clippy-strict]
 description = "Run clippy with strict settings for CI"
 command = "cargo"
-args = ["clippy", "--all", "--all-targets", "--", "--no-deps", "-Dwarnings"]
+args = ["clippy", "--all-targets", "--all-features", "--", "-D", "warnings"]
+
+[tasks.test-ci]
+description = "Run tests for CI (with cargo test instead of nextest)"
+command = "cargo"
+args = ["test", "--all", "--verbose"]
+
+[tasks.build-release]
+description = "Build release binary"
+command = "cargo"
+args = ["build", "--release"]
 
 # =============================================================================
 # フロントエンドタスク

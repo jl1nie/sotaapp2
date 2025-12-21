@@ -30,10 +30,7 @@ impl ImportResult {
     pub fn success(imported: u32, skipped: u32) -> Self {
         Self {
             success: true,
-            message: format!(
-                "インポート完了: {}件追加, {}件スキップ",
-                imported, skipped
-            ),
+            message: format!("インポート完了: {}件追加, {}件スキップ", imported, skipped),
             imported,
             skipped,
             errors: vec![],

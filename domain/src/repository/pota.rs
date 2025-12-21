@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 use common::error::AppResult;
+#[cfg(test)]
+use mockall::automock;
 use shaku::Interface;
 
 use crate::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
@@ -8,6 +10,7 @@ use crate::model::pota::{
     ParkCode, PotaActLog, PotaHuntLog, PotaLogHist, PotaLogStat, PotaRefLog, PotaReference,
 };
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait PotaRepository: Send + Sync + Interface {
     async fn count_reference(&self, query: &FindRef) -> AppResult<i64>;

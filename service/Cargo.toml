@@ -17,3 +17,7 @@ tracing.workspace = true
 regex.workspace = true
 maidenhead.workspace = true
 aprs-message.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }

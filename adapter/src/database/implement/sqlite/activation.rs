@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use shaku::Component;
 use sqlx::SqliteConnection;
 
-use common::error::{AppError, AppResult};
+use common::error::{db_error, row_not_found, tx_error, AppResult};
 
 use domain::model::activation::{Alert, Spot};
 use domain::model::event::{DeleteAct, FindAct};
@@ -59,7 +59,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert/update alert"))?;
         Ok(())
     }
 
@@ -98,7 +98,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert/update spot"))?;
         Ok(())
     }
 
@@ -113,7 +113,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("delete old alerts"))?;
         Ok(())
     }
 
@@ -128,7 +128,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("delete old spots"))?;
         Ok(())
     }
 
@@ -157,7 +157,7 @@ impl ActivationRepositryImpl {
         let rows: Vec<AlertRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(db_error("fetch alerts"))?;
 
         Ok(rows.into_iter().map(Alert::from).collect())
     }
@@ -185,10 +185,7 @@ impl ActivationRepositryImpl {
         let rows: Vec<SpotRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(|e| AppError::RowNotFound {
-                source: e,
-                location: format!("{}:{}", file!(), line!()),
-            })?;
+            .map_err(row_not_found("fetch spots"))?;
 
         Ok(rows.into_iter().map(Spot::from).collect())
     }
@@ -202,12 +199,14 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin update_alerts"))?;
 
         for r in alerts.into_iter().enumerate() {
             self.update_alert_impl(AlertRow::from(r.1), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit update_alerts"))?;
         Ok(())
     }
 
@@ -217,12 +216,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin update_spots"))?;
 
         for r in spots.into_iter().enumerate() {
             self.update_spot_impl(SpotRow::from(r.1), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit().await.map_err(tx_error("commit update_spots"))?;
         Ok(())
     }
     async fn delete_alerts(&self, query: DeleteAct) -> AppResult<()> {
@@ -231,10 +230,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin delete_alerts"))?;
 
         self.delete_alerts_impl(query, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit delete_alerts"))?;
         Ok(())
     }
 
@@ -244,10 +245,10 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin delete_spots"))?;
 
         self.delete_spots_impl(query, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit().await.map_err(tx_error("commit delete_spots"))?;
         Ok(())
     }
 

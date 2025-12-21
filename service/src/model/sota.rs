@@ -1,7 +1,7 @@
-use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono::{NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
-use common::utils::{call_to_operator, maidenhead};
+use common::utils::{call_to_operator, maidenhead, parse_date_flexible};
 use domain::model::{
     id::UserId,
     sota::{SotaLog, SotaReference},
@@ -50,6 +50,8 @@ impl From<SOTASummitCSV> for SotaReference {
             activation_date,
             activation_call,
         } = csv;
+        // デフォルト日付（1970-01-01）をフォールバックとして使用
+        let default_date = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).expect("valid default date");
         Self {
             summit_code,
             association_name,
@@ -67,8 +69,8 @@ impl From<SOTASummitCSV> for SotaReference {
             maidenhead: maidenhead(longitude, latitude),
             points,
             bonus_points,
-            valid_from: NaiveDate::parse_from_str(&valid_from, "%d/%m/%Y").unwrap(),
-            valid_to: NaiveDate::parse_from_str(&valid_to, "%d/%m/%Y").unwrap(),
+            valid_from: parse_date_flexible(&valid_from).unwrap_or(default_date),
+            valid_to: parse_date_flexible(&valid_to).unwrap_or(default_date),
             activation_count,
             activation_date,
             activation_call,
@@ -123,15 +125,15 @@ impl SOTALogCSV {
             tracing::warn!("SOTA LOG CSV format version error: {}", version)
         }
 
-        let mut parsed = NaiveDateTime::parse_from_str("01/01/1900 0000", "%d/%m/%Y %H%M").unwrap();
-        let date = date.clone() + " " + &time;
+        // デフォルト日時（1900-01-01 00:00）
+        let default_datetime = NaiveDateTime::parse_from_str("01/01/1900 0000", "%d/%m/%Y %H%M")
+            .expect("valid default datetime");
+        let date_str = format!("{} {}", date, time);
 
-        for pat in ["%d/%m/%Y %H:%M", "%d/%m/%Y %H%M"] {
-            if let Ok(update) = NaiveDateTime::parse_from_str(&date, pat) {
-                parsed = update;
-                break;
-            }
-        }
+        let parsed = ["%d/%m/%Y %H:%M", "%d/%m/%Y %H%M"]
+            .iter()
+            .find_map(|pat| NaiveDateTime::parse_from_str(&date_str, pat).ok())
+            .unwrap_or(default_datetime);
 
         let time = Utc.from_utc_datetime(&parsed);
 

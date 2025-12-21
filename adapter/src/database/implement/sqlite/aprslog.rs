@@ -6,7 +6,7 @@ use sqlx::SqliteConnection;
 
 use crate::database::connect::ConnectionPool;
 use crate::database::model::aprslog::AprsLogRow;
-use common::error::{AppError, AppResult};
+use common::error::{db_error, tx_error, AppResult};
 use domain::model::{aprslog::AprsLog, event::FindAprs};
 use domain::repository::aprs::AprsLogRepository;
 
@@ -40,7 +40,7 @@ impl AprsLogRepositoryImpl {
             )
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?
+            .map_err(db_error("fetch aprs_log by callsign+ssid"))?
         } else {
             sqlx::query_as!(
                 AprsLogRow,
@@ -62,7 +62,7 @@ impl AprsLogRepositoryImpl {
             )
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?
+            .map_err(db_error("fetch aprs_log by callsign"))?
         };
 
         Ok(result)
@@ -94,7 +94,7 @@ impl AprsLogRepositoryImpl {
         )
         .fetch_all(self.pool.inner_ref())
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("fetch aprs_log by reference_time"))?;
 
         Ok(result)
     }
@@ -126,7 +126,7 @@ impl AprsLogRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert aprs_log"))?;
         Ok(())
     }
 
@@ -139,7 +139,7 @@ impl AprsLogRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("delete aprs_log"))?;
         Ok(())
     }
 }
@@ -170,10 +170,12 @@ impl AprsLogRepository for AprsLogRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin insert_aprs_log"))?;
 
         self.insert(aprs_log.into(), &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit insert_aprs_log"))?;
 
         Ok(())
     }
@@ -184,10 +186,12 @@ impl AprsLogRepository for AprsLogRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin delete_aprs_log"))?;
 
         self.delete(before, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit delete_aprs_log"))?;
 
         Ok(())
     }

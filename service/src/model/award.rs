@@ -83,18 +83,32 @@ pub struct SummitChaseResult {
 }
 
 /// アワード期間
+/// SOTA日本支部設立10周年記念アワード: 2025/6/1 - 2025/12/31 (JST)
 pub struct AwardPeriod {
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
 }
 
+impl AwardPeriod {
+    /// 期間内かどうかを判定
+    pub fn contains(&self, dt: DateTime<Utc>) -> bool {
+        dt >= self.start && dt < self.end
+    }
+}
+
 impl Default for AwardPeriod {
     fn default() -> Self {
         // SOTA日本支部設立10周年記念アワード期間: 2025/6/1 - 2025/12/31 (JST)
-        // JSTなので UTC+9、UTCでは2025/5/31 15:00 - 2025/12/31 14:59:59
+        // JSTなので UTC+9、UTCでは2025/5/31 15:00 - 2025/12/31 15:00
         Self {
-            start: Utc.with_ymd_and_hms(2025, 5, 31, 15, 0, 0).unwrap(),
-            end: Utc.with_ymd_and_hms(2025, 12, 31, 15, 0, 0).unwrap(),
+            start: Utc
+                .with_ymd_and_hms(2025, 5, 31, 15, 0, 0)
+                .single()
+                .expect("Invalid award start date"),
+            end: Utc
+                .with_ymd_and_hms(2025, 12, 31, 15, 0, 0)
+                .single()
+                .expect("Invalid award end date"),
         }
     }
 }
@@ -124,11 +138,134 @@ impl SotaLogEntry {
 
     /// アクティベーションログかどうか
     pub fn is_activation(&self) -> bool {
-        self.my_summit_code.is_some() && !self.my_summit_code.as_ref().unwrap().is_empty()
+        self.my_summit_code
+            .as_ref()
+            .is_some_and(|code| !code.is_empty())
     }
 
     /// チェイスログかどうか
     pub fn is_chase(&self) -> bool {
-        self.his_summit_code.is_some() && !self.his_summit_code.as_ref().unwrap().is_empty()
+        self.his_summit_code
+            .as_ref()
+            .is_some_and(|code| !code.is_empty())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{Datelike, Timelike};
+
+    #[test]
+    fn test_award_period_contains_within() {
+        let period = AwardPeriod::default();
+        // 2025/7/1 00:00 UTC（期間内）
+        let dt = Utc.with_ymd_and_hms(2025, 7, 1, 0, 0, 0).unwrap();
+        assert!(period.contains(dt));
+    }
+
+    #[test]
+    fn test_award_period_contains_start_boundary() {
+        let period = AwardPeriod::default();
+        // 開始日時ちょうど（含まれる）
+        assert!(period.contains(period.start));
+    }
+
+    #[test]
+    fn test_award_period_contains_end_boundary() {
+        let period = AwardPeriod::default();
+        // 終了日時ちょうど（含まれない）
+        assert!(!period.contains(period.end));
+    }
+
+    #[test]
+    fn test_award_period_contains_before() {
+        let period = AwardPeriod::default();
+        // 2025/1/1（期間前）
+        let dt = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        assert!(!period.contains(dt));
+    }
+
+    #[test]
+    fn test_award_period_contains_after() {
+        let period = AwardPeriod::default();
+        // 2026/1/1（期間後）
+        let dt = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
+        assert!(!period.contains(dt));
+    }
+
+    #[test]
+    fn test_sota_log_entry_parse_datetime() {
+        let entry = SotaLogEntry {
+            version: "V2".to_string(),
+            my_callsign: "JA1ABC".to_string(),
+            my_summit_code: Some("JA/TK-001".to_string()),
+            date: "01/07/2025".to_string(),
+            time: "12:34".to_string(),
+            frequency: "7.032".to_string(),
+            mode: "CW".to_string(),
+            his_callsign: "JA2XYZ".to_string(),
+            his_summit_code: None,
+            comment: None,
+        };
+        let dt = entry.parse_datetime().unwrap();
+        assert_eq!(dt.year(), 2025);
+        assert_eq!(dt.month(), 7);
+        assert_eq!(dt.day(), 1);
+        assert_eq!(dt.hour(), 12);
+        assert_eq!(dt.minute(), 34);
+    }
+
+    #[test]
+    fn test_sota_log_entry_is_activation() {
+        let entry = SotaLogEntry {
+            version: "V2".to_string(),
+            my_callsign: "JA1ABC".to_string(),
+            my_summit_code: Some("JA/TK-001".to_string()),
+            date: "01/07/2025".to_string(),
+            time: "12:34".to_string(),
+            frequency: "7.032".to_string(),
+            mode: "CW".to_string(),
+            his_callsign: "JA2XYZ".to_string(),
+            his_summit_code: None,
+            comment: None,
+        };
+        assert!(entry.is_activation());
+    }
+
+    #[test]
+    fn test_sota_log_entry_is_chase() {
+        let entry = SotaLogEntry {
+            version: "V2".to_string(),
+            my_callsign: "JA1ABC".to_string(),
+            my_summit_code: None,
+            date: "01/07/2025".to_string(),
+            time: "12:34".to_string(),
+            frequency: "7.032".to_string(),
+            mode: "CW".to_string(),
+            his_callsign: "JA2XYZ".to_string(),
+            his_summit_code: Some("JA/TK-002".to_string()),
+            comment: None,
+        };
+        assert!(entry.is_chase());
+        assert!(!entry.is_activation());
+    }
+
+    #[test]
+    fn test_sota_log_entry_empty_summit_code() {
+        let entry = SotaLogEntry {
+            version: "V2".to_string(),
+            my_callsign: "JA1ABC".to_string(),
+            my_summit_code: Some("".to_string()), // 空文字
+            date: "01/07/2025".to_string(),
+            time: "12:34".to_string(),
+            frequency: "7.032".to_string(),
+            mode: "CW".to_string(),
+            his_callsign: "JA2XYZ".to_string(),
+            his_summit_code: Some("".to_string()), // 空文字
+            comment: None,
+        };
+        assert!(!entry.is_activation());
+        assert!(!entry.is_chase());
     }
 }

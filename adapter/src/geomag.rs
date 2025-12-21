@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use chrono::NaiveDate;
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
+use common::http;
 use domain::{model::geomag::GeomagIndex, repository::geomag::GeoMagRepositry};
 use shaku::Component;
 use std::sync::Arc;
@@ -58,7 +59,10 @@ impl GeoMag {
     }
 
     async fn update(endpoint: &str, index: Arc<Mutex<Option<GeomagIndex>>>) -> AppResult<()> {
-        let response = reqwest::get(endpoint)
+        let client = http::client();
+        let response = client
+            .get(endpoint)
+            .send()
             .await
             .map_err(AppError::GetError)?
             .text()

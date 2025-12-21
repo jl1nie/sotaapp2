@@ -25,3 +25,35 @@ pub fn build_health_chek_routers() -> Router<AppState> {
 
     Router::new().nest("/health", routers)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use axum::Router;
+    use tower::ServiceExt;
+
+    /// 単純なhealthエンドポイントのテスト（DIを必要としない）
+    #[tokio::test]
+    async fn test_health_check_endpoint() {
+        // シンプルなルーターを構築（Stateなし）
+        let app = Router::new().route("/health", get(health_check));
+
+        let request = Request::builder()
+            .uri("/health")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    /// health_check関数の直接テスト
+    #[tokio::test]
+    async fn test_health_check_returns_ok() {
+        let status = health_check().await;
+        assert_eq!(status, StatusCode::OK);
+    }
+}

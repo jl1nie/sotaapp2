@@ -2,6 +2,7 @@ pub mod activation;
 pub mod auth;
 pub mod health;
 pub mod locator;
+pub mod multipart;
 pub mod pota;
 pub mod propagation;
 pub mod search;

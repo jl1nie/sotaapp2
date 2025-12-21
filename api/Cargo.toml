@@ -24,3 +24,8 @@ maidenhead.workspace = true
 fastrand.workspace = true
 aprs-message.workspace = true
 typeshare.workspace = true
+
+[dev-dependencies]
+axum-test.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
+tower.workspace = true

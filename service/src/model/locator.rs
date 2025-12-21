@@ -32,11 +32,11 @@ impl From<MuniCSVFile> for MunicipalityCenturyCode {
             Some(jcc_code) => CenturyCode::JCC {
                 jcc_code,
                 ward_code,
-                jcc_text: jcc_text.unwrap(),
+                jcc_text: jcc_text.unwrap_or_default(),
             },
             _ => CenturyCode::JCG {
-                jcg_code: jcg_code.unwrap_or("".to_string()),
-                jcg_text: jcg_text.unwrap(),
+                jcg_code: jcg_code.unwrap_or_default(),
+                jcg_text: jcg_text.unwrap_or_default(),
                 hamlog_code,
             },
         };
