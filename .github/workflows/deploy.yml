@@ -113,6 +113,10 @@ jobs:
     needs: [build-and-push, backup-database]
     if: always() && needs.build-and-push.result == 'success'
     environment: production
+    outputs:
+      previous_image: ${{ steps.get-current.outputs.previous_image }}
+      new_image: ${{ steps.get-current.outputs.new_image }}
+      deploy_success: ${{ steps.health-check.outputs.success }}
 
     steps:
       - name: Checkout repository
@@ -126,6 +130,26 @@ jobs:
           echo "Backup status: ${{ needs.backup-database.outputs.backup_success }}"
           echo "Backup file: ${{ needs.backup-database.outputs.backup_file }}"
 
+      - name: Get current deployed image
+        id: get-current
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          # Get the currently deployed image before deploying
+          CURRENT_IMAGE=$(flyctl status --json 2>/dev/null | jq -r '.Machines[0].config.image // "unknown"' || echo "unknown")
+          echo "Current image: ${CURRENT_IMAGE}"
+          echo "previous_image=${CURRENT_IMAGE}" >> $GITHUB_OUTPUT
+
+          # Calculate new image tag
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            NEW_TAG="${{ github.ref_name }}"
+          else
+            NEW_TAG="${{ github.sha }}"
+          fi
+          NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${NEW_TAG}"
+          echo "New image: ${NEW_IMAGE}"
+          echo "new_image=${NEW_IMAGE}" >> $GITHUB_OUTPUT
+
       - name: Deploy to Fly.io
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -134,6 +158,7 @@ jobs:
           flyctl deploy --remote-only
 
       - name: Verify deployment health
+        id: health-check
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
@@ -147,14 +172,15 @@ jobs:
           for i in 1 2 3 4 5; do
             if curl -sf "${HEALTH_URL}" > /dev/null; then
               echo "Health check passed!"
+              echo "success=true" >> $GITHUB_OUTPUT
               exit 0
             fi
             echo "Attempt $i failed, retrying in 10s..."
             sleep 10
           done
 
+          echo "success=false" >> $GITHUB_OUTPUT
           echo "::error::Health check failed after 5 attempts"
-          echo "Consider rolling back with: fly deploy --image <previous-image>"
           exit 1
 
       - name: Post-deploy notification
@@ -162,4 +188,17 @@ jobs:
         run: |
           echo "::notice::Deployment successful!"
           echo "Backup file: ${{ needs.backup-database.outputs.backup_file }}"
-          echo "To rollback: fly deploy --image jl1nie/sotaapp2:<previous-sha>"
+
+      - name: Rollback instructions on failure
+        if: failure()
+        run: |
+          echo "::error::============================================"
+          echo "::error::DEPLOYMENT FAILED - ROLLBACK INSTRUCTIONS"
+          echo "::error::============================================"
+          echo ""
+          echo "Previous image: ${{ steps.get-current.outputs.previous_image }}"
+          echo ""
+          echo "To rollback, run:"
+          echo "  flyctl deploy --image ${{ steps.get-current.outputs.previous_image }}"
+          echo ""
+          echo "Or use the manual rollback workflow in GitHub Actions."
