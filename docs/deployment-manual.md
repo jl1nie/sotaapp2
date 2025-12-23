@@ -115,6 +115,46 @@ makers deploy-no-backup
 makers fly-deploy
 ```
 
+### ロールバック
+
+デプロイ失敗時やサービス障害時に、前のバージョンに戻す手順です。
+
+#### 方法1: GitHub Actions ワークフロー（推奨）
+
+1. [GitHub Actions](https://github.com/jl1nie/sotaapp2/actions) を開く
+2. 左サイドバーから「Rollback」を選択
+3. 「Run workflow」をクリック
+4. 必要項目を入力:
+   - `image_tag`: 戻したいバージョン（例: `v0.1.2`）
+   - `confirm`: `rollback` と入力（誤操作防止）
+5. 「Run workflow」で実行
+
+#### 方法2: ローカルから手動実行
+
+```bash
+# 利用可能なイメージ確認
+docker images | grep sotaapp2
+
+# 特定バージョンにロールバック
+fly deploy --image jl1nie/sotaapp2:v0.1.2
+
+# ヘルスチェック確認
+curl https://sotaapp2.fly.dev/health
+```
+
+#### デプロイ失敗時の自動ガイド
+
+デプロイが失敗すると、GitHub Actionsのログに以下が表示されます:
+
+```
+DEPLOYMENT FAILED - ROLLBACK INSTRUCTIONS
+Previous image: docker.io/jl1nie/sotaapp2:v0.1.2
+To rollback, run:
+  flyctl deploy --image docker.io/jl1nie/sotaapp2:v0.1.2
+```
+
+表示されたコマンドをローカルで実行するか、GitHub ActionsのRollbackワークフローを使用してください。
+
 ### 緊急リカバリーデプロイ
 
 サービス障害時に過去のイメージでデプロイします。
@@ -284,4 +324,5 @@ makers e2e-test sotaapp2:test
 
 | 日付 | バージョン | 内容 |
 |------|-----------|------|
+| 2024-12-23 | 1.1 | ロールバック手順を追加 |
 | 2024-12-21 | 1.0 | 初版作成 |
