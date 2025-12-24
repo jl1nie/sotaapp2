@@ -141,3 +141,238 @@ impl From<Alert> for AlertView {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    fn create_test_alert(program: AwardProgram) -> Alert {
+        Alert {
+            program,
+            alert_id: 12345,
+            user_id: 100,
+            reference: "JA/TK-001".to_string(),
+            reference_detail: "Mt. Takao".to_string(),
+            location: "Tokyo".to_string(),
+            activator: "JA1ABC/P".to_string(),
+            operator: "JA1ABC".to_string(),
+            activator_name: Some("Taro Yamada".to_string()),
+            start_time: Utc.with_ymd_and_hms(2024, 6, 15, 9, 0, 0).unwrap(),
+            end_time: Some(Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap()),
+            frequencies: "14.285 SSB".to_string(),
+            comment: Some("Weather permitting".to_string()),
+            poster: Some("JA2XYZ".to_string()),
+        }
+    }
+
+    // =====================================================
+    // AlertView 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_alert_view_from_sota_alert() {
+        let alert = create_test_alert(AwardProgram::SOTA);
+        let view: AlertView = alert.into();
+
+        assert_eq!(view.program, "SOTA");
+        assert_eq!(view.alert_id, 12345);
+        assert_eq!(view.user_id, 100);
+        assert_eq!(view.reference, "JA/TK-001");
+        assert_eq!(view.reference_detail, "Mt. Takao");
+        assert_eq!(view.location, "Tokyo");
+        assert_eq!(view.activator, "JA1ABC/P");
+        assert_eq!(view.operator, "JA1ABC");
+        assert_eq!(view.activator_name, Some("Taro Yamada".to_string()));
+        assert_eq!(view.frequencies, "14.285 SSB");
+        assert_eq!(view.comment, Some("Weather permitting".to_string()));
+        assert_eq!(view.poster, Some("JA2XYZ".to_string()));
+    }
+
+    #[test]
+    fn test_alert_view_from_pota_alert() {
+        let alert = create_test_alert(AwardProgram::POTA);
+        let view: AlertView = alert.into();
+
+        assert_eq!(view.program, "POTA");
+    }
+
+    #[test]
+    fn test_alert_view_start_time_format() {
+        let alert = create_test_alert(AwardProgram::SOTA);
+        let view: AlertView = alert.into();
+
+        // RFC3339形式で出力される
+        assert!(view.start_time.contains("2024-06-15"));
+        assert!(view.start_time.contains("09:00:00"));
+    }
+
+    #[test]
+    fn test_alert_view_end_time_some() {
+        let alert = create_test_alert(AwardProgram::SOTA);
+        let view: AlertView = alert.into();
+
+        assert!(view.end_time.is_some());
+        assert!(view.end_time.as_ref().unwrap().contains("2024-06-15"));
+        assert!(view.end_time.as_ref().unwrap().contains("12:00:00"));
+    }
+
+    #[test]
+    fn test_alert_view_end_time_none() {
+        let mut alert = create_test_alert(AwardProgram::SOTA);
+        alert.end_time = None;
+        let view: AlertView = alert.into();
+
+        assert!(view.end_time.is_none());
+    }
+
+    #[test]
+    fn test_alert_view_optional_fields_none() {
+        let mut alert = create_test_alert(AwardProgram::SOTA);
+        alert.activator_name = None;
+        alert.comment = None;
+        alert.poster = None;
+
+        let view: AlertView = alert.into();
+
+        assert!(view.activator_name.is_none());
+        assert!(view.comment.is_none());
+        assert!(view.poster.is_none());
+    }
+
+    // =====================================================
+    // SotaAlert デシリアライズテスト
+    // =====================================================
+
+    #[test]
+    fn test_sota_alert_deserialize() {
+        let json = r#"{
+            "id": 1,
+            "userID": 100,
+            "timeStamp": "2024-06-15T00:00:00",
+            "dateActivated": "2024-06-15T09:00:00+00:00",
+            "associationCode": "JA",
+            "summitCode": "TK-001",
+            "summitDetails": "Mt. Takao",
+            "frequency": "14.285 SSB",
+            "comments": "QRV 9:00-12:00",
+            "activatingCallsign": "JA1ABC/P",
+            "activatorName": "Taro",
+            "posterCallsign": "JA2XYZ",
+            "epoch": "1718442000"
+        }"#;
+
+        let alert: SotaAlert = serde_json::from_str(json).unwrap();
+
+        assert_eq!(alert.id, 1);
+        assert_eq!(alert.user_id, 100);
+        assert_eq!(alert.association_code, "JA");
+        assert_eq!(alert.summit_code, "TK-001");
+        assert_eq!(alert.activating_callsign, "JA1ABC/P");
+    }
+
+    #[test]
+    fn test_sota_alert_to_domain_alert() {
+        let json = r#"{
+            "id": 1,
+            "userID": 100,
+            "timeStamp": "2024-06-15T00:00:00",
+            "dateActivated": "2024-06-15T09:00:00+00:00",
+            "associationCode": "JA",
+            "summitCode": "TK-001",
+            "summitDetails": "Mt. Takao",
+            "frequency": "14.285",
+            "comments": null,
+            "activatingCallsign": "JA1ABC",
+            "activatorName": "Taro",
+            "posterCallsign": "JA2XYZ",
+            "epoch": "1718442000"
+        }"#;
+
+        let sota_alert: SotaAlert = serde_json::from_str(json).unwrap();
+        let alert: AppResult<Alert> = sota_alert.into();
+        let alert = alert.unwrap();
+
+        assert!(matches!(alert.program, AwardProgram::SOTA));
+        assert_eq!(alert.reference, "JA/TK-001");
+        assert_eq!(alert.location, "JA");
+        assert!(alert.comment.is_none());
+    }
+
+    // =====================================================
+    // PotaAlert デシリアライズテスト
+    // =====================================================
+
+    #[test]
+    fn test_pota_alert_deserialize() {
+        let json = r#"{
+            "scheduledActivitiesId": 5000,
+            "schedulerUserId": 200,
+            "activator": "JA1XYZ/P",
+            "name": "Ueno Park",
+            "reference": "JA-0001",
+            "locationDesc": "Tokyo",
+            "activityStart": null,
+            "antivityEnd": null,
+            "startDate": "2024-06-15",
+            "endDate": "2024-06-15",
+            "startTime": "09:00",
+            "endTime": "12:00",
+            "frequencies": "7.144 SSB",
+            "comments": "Portable operation"
+        }"#;
+
+        let alert: PotaAlert = serde_json::from_str(json).unwrap();
+
+        assert_eq!(alert.scheduled_activities_id, 5000);
+        assert_eq!(alert.scheduler_user_id, 200);
+        assert_eq!(alert.reference, "JA-0001");
+        assert_eq!(alert.activator, "JA1XYZ/P");
+    }
+
+    #[test]
+    fn test_pota_alert_to_domain_alert() {
+        let json = r#"{
+            "scheduledActivitiesId": 5000,
+            "schedulerUserId": 200,
+            "activator": "JA1XYZ",
+            "name": "Ueno Park",
+            "reference": "JA-0001",
+            "locationDesc": "Tokyo",
+            "activityStart": null,
+            "antivityEnd": null,
+            "startDate": "2024-06-15",
+            "endDate": "2024-06-15",
+            "startTime": "09:00",
+            "endTime": "12:00",
+            "frequencies": "7.144 SSB",
+            "comments": "Portable operation"
+        }"#;
+
+        let pota_alert: PotaAlert = serde_json::from_str(json).unwrap();
+        let alert: AppResult<Alert> = pota_alert.into();
+        let alert = alert.unwrap();
+
+        assert!(matches!(alert.program, AwardProgram::POTA));
+        assert_eq!(alert.reference, "JA-0001");
+        assert!(alert.end_time.is_some());
+        assert!(alert.poster.is_none());
+    }
+
+    // =====================================================
+    // JSON シリアライズテスト
+    // =====================================================
+
+    #[test]
+    fn test_alert_view_json_serialization() {
+        let alert = create_test_alert(AwardProgram::SOTA);
+        let view: AlertView = alert.into();
+
+        let json = serde_json::to_string(&view).unwrap();
+
+        assert!(json.contains("\"program\":\"SOTA\""));
+        assert!(json.contains("\"alert_id\":12345"));
+        assert!(json.contains("\"reference\":\"JA/TK-001\""));
+        assert!(json.contains("\"activator\":\"JA1ABC/P\""));
+    }
+}
