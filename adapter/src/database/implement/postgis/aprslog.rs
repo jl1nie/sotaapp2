@@ -7,7 +7,7 @@ use sqlx::SqliteConnection;
 
 use crate::database::connect::ConnectionPool;
 use crate::database::model::aprslog::AprsLogRow;
-use common::error::{AppError, AppResult};
+use common::error::{db_error, tx_error, AppResult};
 use domain::model::aprslog::AprsLog;
 use domain::repository::aprs::AprsLogRepository;
 
@@ -37,7 +37,7 @@ impl AprsLogRepositoryImpl {
         )
         .fetch_all(self.pool.inner_ref())
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("aprslog operation postgis"))?;
 
         Ok(result)
     }
@@ -61,7 +61,7 @@ impl AprsLogRepositoryImpl {
         )
         .fetch_all(self.pool.inner_ref())
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("aprslog operation postgis"))?;
 
         Ok(result)
     }
@@ -91,7 +91,7 @@ impl AprsLogRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("aprslog operation postgis"))?;
 
         Ok(())
     }
@@ -105,7 +105,7 @@ impl AprsLogRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("aprslog operation postgis"))?;
         Ok(())
     }
 }
@@ -139,10 +139,12 @@ impl AprsLogRepository for AprsLogRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("aprslog transaction postgis"))?;
 
         self.insert(aprs_log.into(), &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("aprslog transaction postgis"))?;
 
         Ok(())
     }
@@ -153,10 +155,12 @@ impl AprsLogRepository for AprsLogRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("aprslog transaction postgis"))?;
 
         self.delete(before, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("aprslog transaction postgis"))?;
 
         Ok(())
     }

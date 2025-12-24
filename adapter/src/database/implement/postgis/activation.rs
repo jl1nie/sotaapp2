@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use shaku::Component;
 use sqlx::PgConnection;
 
-use common::error::{AppError, AppResult};
+use common::error::{db_error, row_not_found, tx_error, AppResult};
 
 use domain::model::activation::{Alert, Spot};
 use domain::model::event::{DeleteAct, FindAct};
@@ -58,7 +58,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("activation operation postgis"))?;
         Ok(())
     }
 
@@ -96,7 +96,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("activation operation postgis"))?;
         Ok(())
     }
 
@@ -111,7 +111,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("activation operation postgis"))?;
         Ok(())
     }
 
@@ -126,7 +126,7 @@ impl ActivationRepositryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("activation operation postgis"))?;
         Ok(())
     }
 
@@ -157,7 +157,7 @@ impl ActivationRepositryImpl {
         let rows: Vec<AlertRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(db_error("activation operation postgis"))?;
 
         Ok(rows.into_iter().map(Alert::from).collect())
     }
@@ -186,7 +186,7 @@ impl ActivationRepositryImpl {
         let rows: Vec<SpotRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(db_error("activation operation postgis"))?;
 
         Ok(rows.into_iter().map(Spot::from).collect())
     }
@@ -200,12 +200,14 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("activation transaction postgis"))?;
 
         for r in alerts.into_iter().enumerate() {
             self.update_alert_impl(AlertRow::from(r.1), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("activation transaction postgis"))?;
         Ok(())
     }
 
@@ -215,12 +217,14 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("activation transaction postgis"))?;
 
         for r in spots.into_iter().enumerate() {
             self.update_spot_impl(SpotRow::from(r.1), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("activation transaction postgis"))?;
         Ok(())
     }
     async fn delete_alerts(&self, query: DeleteAct) -> AppResult<()> {
@@ -229,10 +233,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("activation transaction postgis"))?;
 
         self.delete_alerts_impl(query, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("activation transaction postgis"))?;
         Ok(())
     }
 
@@ -242,10 +248,12 @@ impl ActivationRepositry for ActivationRepositryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("activation transaction postgis"))?;
 
         self.delete_spots_impl(query, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("activation transaction postgis"))?;
         Ok(())
     }
 

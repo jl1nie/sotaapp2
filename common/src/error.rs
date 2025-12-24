@@ -216,7 +216,7 @@ pub type AppResult<T> = Result<T, AppError>;
 /// ```
 pub fn db_error(context: &'static str) -> impl Fn(sqlx::Error) -> AppError {
     move |e| {
-        tracing::debug!("DB error in {}: {:?}", context, e);
+        tracing::error!("DB error in '{}': {:?}", context, e);
         AppError::SpecificOperationError(e)
     }
 }
@@ -231,7 +231,7 @@ pub fn db_error(context: &'static str) -> impl Fn(sqlx::Error) -> AppError {
 /// ```
 pub fn tx_error(context: &'static str) -> impl Fn(sqlx::Error) -> AppError {
     move |e| {
-        tracing::debug!("Transaction error in {}: {:?}", context, e);
+        tracing::error!("Transaction error in '{}': {:?}", context, e);
         AppError::TransactionError(e)
     }
 }

@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use shaku::Component;
 use sqlx::PgConnection;
 
-use common::error::{AppError, AppResult};
+use common::error::{db_error, row_not_found, tx_error, AppResult};
 use domain::model::event::{DeleteRef, FindRef, PagenatedResult};
 use domain::model::sota::{SotaReference, SummitCode};
 use domain::model::AwardProgram::SOTA;
@@ -70,7 +70,7 @@ impl SotaRepositoryImpl {
             r.activation_call)
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("insert sota_references postgis"))?;
         Ok(())
     }
 
@@ -123,7 +123,7 @@ impl SotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("update sota_references postgis"))?;
         Ok(())
     }
 
@@ -197,7 +197,7 @@ impl SotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("upsert sota_references postgis"))?;
         Ok(())
     }
 
@@ -211,7 +211,7 @@ impl SotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("delete sota_references postgis"))?;
         Ok(())
     }
 
@@ -223,7 +223,7 @@ impl SotaRepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("delete all sota_references postgis"))?;
         Ok(())
     }
 
@@ -260,7 +260,7 @@ impl SotaRepositoryImpl {
         let row: SotaReferenceRow = sql_query
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(row_not_found("select sota_references postgis"))?;
         Ok(row)
     }
 
@@ -268,7 +268,7 @@ impl SotaRepositoryImpl {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(row_not_found("count sota_references postgis"))?;
         let total: i64 = row.count.unwrap_or(0);
 
         let mut select = r#"
@@ -303,7 +303,7 @@ impl SotaRepositoryImpl {
         let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(row_not_found("select pagenated sota_references postgis"))?;
         Ok((total, rows))
     }
 
@@ -340,7 +340,7 @@ impl SotaRepositoryImpl {
         let rows: Vec<SotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(row_not_found("select by condition sota_references postgis"))?;
         Ok(rows)
     }
 }
@@ -353,7 +353,7 @@ impl SotaRepository for SotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin create_reference sota postgis"))?;
 
         for r in references.into_iter().enumerate() {
             self.create(SotaReferenceRow::from(r.1), &mut tx).await?;
@@ -361,7 +361,9 @@ impl SotaRepository for SotaRepositoryImpl {
                 tracing::info!("insert sota {} rescords", r.0);
             }
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit create_reference sota postgis"))?;
         Ok(())
     }
 
@@ -393,14 +395,16 @@ impl SotaRepository for SotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin update_reference sota postgis"))?;
 
         tracing::info!("update sota {} rescords", references.len());
 
         for r in references.into_iter() {
             self.update(SotaReferenceRow::from(r), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit update_reference sota postgis"))?;
         Ok(())
     }
 
@@ -410,7 +414,7 @@ impl SotaRepository for SotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin upsert_reference sota postgis"))?;
 
         for r in references.into_iter().enumerate() {
             self.upsert_partial(SotaReferenceRow::from(r.1), &mut tx)
@@ -419,7 +423,9 @@ impl SotaRepository for SotaRepositoryImpl {
                 tracing::info!("upsert partial sota {} rescords", r.0);
             }
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit upsert_reference sota postgis"))?;
         Ok(())
     }
 
@@ -429,12 +435,14 @@ impl SotaRepository for SotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("begin delete_reference sota postgis"))?;
         match query {
             DeleteRef::Delete(code) => self.delete(code, &mut tx).await?,
             DeleteRef::DeleteAll => self.delete_all(&mut tx).await?,
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("commit delete_reference sota postgis"))?;
         Ok(())
     }
 
