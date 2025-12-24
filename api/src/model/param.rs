@@ -85,7 +85,7 @@ where
 // バリデーション制約値は#[validate]属性内で直接指定
 // 定数として定義するとvalidatorマクロが対応しないため
 
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Validate)]
 pub struct GetParam {
     #[validate(range(min = -180.0, max = 180.0, message = "経度は-180〜180の範囲で指定してください"))]
     pub lon: Option<f64>,
@@ -248,4 +248,321 @@ pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppRes
     }
 
     Ok(query.build())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::model::event::FindRefBuilder;
+
+    // =====================================================
+    // GetParam バリデーションテスト
+    // =====================================================
+
+    /// 正常な座標値のバリデーション
+    #[test]
+    fn test_valid_coordinates() {
+        let param = GetParam {
+            lon: Some(139.7),
+            lat: Some(35.6),
+            dist: Some(10.0),
+            ..Default::default()
+        };
+        assert!(param.validated().is_ok());
+    }
+
+    /// 経度の範囲外値でエラー
+    #[test]
+    fn test_invalid_longitude_too_high() {
+        let param = GetParam {
+            lon: Some(181.0),
+            ..Default::default()
+        };
+        let result = param.validated();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("経度"));
+    }
+
+    #[test]
+    fn test_invalid_longitude_too_low() {
+        let param = GetParam {
+            lon: Some(-181.0),
+            ..Default::default()
+        };
+        assert!(param.validated().is_err());
+    }
+
+    /// 緯度の範囲外値でエラー
+    #[test]
+    fn test_invalid_latitude_too_high() {
+        let param = GetParam {
+            lat: Some(91.0),
+            ..Default::default()
+        };
+        let result = param.validated();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("緯度"));
+    }
+
+    #[test]
+    fn test_invalid_latitude_too_low() {
+        let param = GetParam {
+            lat: Some(-91.0),
+            ..Default::default()
+        };
+        assert!(param.validated().is_err());
+    }
+
+    /// 距離の範囲外値でエラー
+    #[test]
+    fn test_invalid_distance_too_high() {
+        let param = GetParam {
+            dist: Some(501.0),
+            ..Default::default()
+        };
+        let result = param.validated();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("距離"));
+    }
+
+    #[test]
+    fn test_invalid_distance_negative() {
+        let param = GetParam {
+            dist: Some(-1.0),
+            ..Default::default()
+        };
+        assert!(param.validated().is_err());
+    }
+
+    /// hours_agoの範囲テスト
+    #[test]
+    fn test_valid_hours_ago() {
+        let param = GetParam {
+            hours_ago: Some(24),
+            ..Default::default()
+        };
+        assert!(param.validated().is_ok());
+    }
+
+    #[test]
+    fn test_invalid_hours_ago_too_high() {
+        let param = GetParam {
+            hours_ago: Some(8761), // > 8760 (1年)
+            ..Default::default()
+        };
+        let result = param.validated();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("hours_ago"));
+    }
+
+    /// limitの範囲テスト
+    #[test]
+    fn test_valid_limit() {
+        let param = GetParam {
+            limit: Some(100),
+            ..Default::default()
+        };
+        assert!(param.validated().is_ok());
+    }
+
+    #[test]
+    fn test_invalid_limit_zero() {
+        let param = GetParam {
+            limit: Some(0),
+            ..Default::default()
+        };
+        assert!(param.validated().is_err());
+    }
+
+    #[test]
+    fn test_invalid_limit_too_high() {
+        let param = GetParam {
+            limit: Some(10001),
+            ..Default::default()
+        };
+        assert!(param.validated().is_err());
+    }
+
+    /// 文字列長のバリデーション
+    #[test]
+    fn test_valid_string_length() {
+        let param = GetParam {
+            pota_code: Some("JA-0001".to_string()),
+            sota_code: Some("JA/TK-001".to_string()),
+            ..Default::default()
+        };
+        assert!(param.validated().is_ok());
+    }
+
+    #[test]
+    fn test_invalid_string_too_long() {
+        let param = GetParam {
+            pota_code: Some("A".repeat(21)), // > 20文字
+            ..Default::default()
+        };
+        assert!(param.validated().is_err());
+    }
+
+    /// 空のパラメータは有効
+    #[test]
+    fn test_empty_params_valid() {
+        let param = GetParam::default();
+        assert!(param.validated().is_ok());
+    }
+
+    // =====================================================
+    // GetParam::to_key テスト
+    // =====================================================
+
+    #[test]
+    fn test_to_key_deterministic() {
+        let param = GetParam {
+            lon: Some(139.7),
+            lat: Some(35.6),
+            ..Default::default()
+        };
+        let key1 = param.to_key();
+        let key2 = param.to_key();
+        assert_eq!(key1, key2);
+    }
+
+    #[test]
+    fn test_to_key_different_params() {
+        let param1 = GetParam {
+            lon: Some(139.7),
+            ..Default::default()
+        };
+        let param2 = GetParam {
+            lon: Some(140.0),
+            ..Default::default()
+        };
+        assert_ne!(param1.to_key(), param2.to_key());
+    }
+
+    // =====================================================
+    // build_findref_query テスト
+    // =====================================================
+
+    #[test]
+    fn test_build_findref_query_with_limit_offset() {
+        let param = GetParam {
+            limit: Some(100),
+            offset: Some(50),
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().sota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        assert_eq!(query.limit, Some(100));
+        assert_eq!(query.offset, Some(50));
+    }
+
+    #[test]
+    fn test_build_findref_query_with_codes() {
+        let param = GetParam {
+            sota_code: Some("JA/TK-001".to_string()),
+            pota_code: Some("JA-0001".to_string()),
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().sota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        assert_eq!(query.sota_code, Some("JA/TK-001".to_string()));
+        assert_eq!(query.pota_code, Some("JA-0001".to_string()));
+    }
+
+    #[test]
+    fn test_build_findref_query_with_bbox() {
+        let param = GetParam {
+            min_lon: Some(139.0),
+            min_lat: Some(35.0),
+            max_lon: Some(140.0),
+            max_lat: Some(36.0),
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().sota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        assert!(query.bbox.is_some());
+    }
+
+    #[test]
+    fn test_build_findref_query_with_center() {
+        let param = GetParam {
+            lon: Some(139.7),
+            lat: Some(35.6),
+            dist: Some(10.0),
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().pota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        assert!(query.center.is_some());
+    }
+
+    #[test]
+    fn test_build_findref_query_bbox_takes_priority_over_center() {
+        // bbox と center の両方が指定された場合、bboxが優先される
+        let param = GetParam {
+            min_lon: Some(139.0),
+            min_lat: Some(35.0),
+            max_lon: Some(140.0),
+            max_lat: Some(36.0),
+            lon: Some(139.7),
+            lat: Some(35.6),
+            dist: Some(10.0),
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().sota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        // bboxが設定されていることを確認（bbox優先）
+        assert!(query.bbox.is_some());
+        // centerは設定されない
+        assert!(query.center.is_none());
+    }
+
+    #[test]
+    fn test_build_findref_query_partial_bbox_ignored() {
+        // bbox パラメータが部分的な場合は無視される
+        let param = GetParam {
+            min_lon: Some(139.0),
+            min_lat: Some(35.0),
+            // max_lon, max_lat がない
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().sota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        assert!(query.bbox.is_none());
+        assert!(query.center.is_none());
+    }
+
+    #[test]
+    fn test_build_findref_query_with_elevation() {
+        let param = GetParam {
+            min_elev: Some(1000),
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().sota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        assert_eq!(query.min_elev, Some(1000));
+    }
+
+    #[test]
+    fn test_build_findref_query_with_name() {
+        let param = GetParam {
+            name: Some("富士山".to_string()),
+            ..Default::default()
+        };
+        let builder = FindRefBuilder::default().sota();
+        let query = build_findref_query(param, builder).unwrap();
+
+        assert_eq!(query.name, Some("富士山".to_string()));
+    }
 }

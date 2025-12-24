@@ -413,21 +413,27 @@ Transaction error in 'commit create_reference sota postgis': ...
 
 ### 【テスト - 高優先】
 
-#### #39 APIハンドラテスト実装 🔴 HIGH
+#### #39 APIハンドラテスト実装 ✅ (部分完了)
 **問題**: API層のテストカバレッジがゼロ（14個のハンドラ）
-**未テスト機能**:
+**対策**: 純粋関数とビューモデル変換のユニットテストを追加
 
-| ハンドラ | ファイル | 優先度 |
-|---------|---------|--------|
-| SOTA ログアップロード | `api/src/handler/sota.rs` | 高 |
-| POTA ログアップロード | `api/src/handler/pota.rs` | 高 |
-| 認証フロー | `api/src/handler/auth.rs` | 高 |
-| 検索機能 | `api/src/handler/search.rs` | 中 |
-| アクティベーション | `api/src/handler/activation.rs` | 中 |
+**完了**:
+- `api/src/handler/auth.rs`: AuthRequestデシリアライズ、Bearerトークン抽出テスト (5テスト)
+- `api/src/handler/activation.rs`: apply_common_filters純粋関数テスト (14テスト)
+- `api/src/model/param.rs`: GetParamバリデーション、build_findref_queryテスト (27テスト)
+- `api/src/model/sota.rs`: SotaRefView/SotaSearchView変換、JSONシリアライズテスト (8テスト)
+- `api/src/model/pota.rs`: PotaRefView/PotaSearchView変換、JSONシリアライズテスト (12テスト)
 
-**対策**: `axum-test`クレートでハンドラテスト作成
-**複雑度**: 中
-**工数**: 16h
+**合計66テスト追加** (125→141)
+
+**未対応** (DIモック必要):
+| ハンドラ | ファイル | 理由 |
+|---------|---------|------|
+| SOTA ログアップロード | `api/src/handler/sota.rs` | Firebase + Shaku DI依存 |
+| POTA ログアップロード | `api/src/handler/pota.rs` | Shaku DI依存 |
+| 検索機能 | `api/src/handler/search.rs` | Shaku DI依存 |
+
+**残り工数**: 8h（モックレジストリ構築が必要）
 
 #### #40 APRSサービステスト 🟡 MEDIUM
 **ファイル**: `adapter/src/aprs.rs`, `service/src/implement/aprs_service.rs`
@@ -506,7 +512,8 @@ service/src/implement/
 | ✅ | #34 入力バリデーション | 完了 | |
 | ✅ | #36 unwrap()置き換え | 完了 | |
 | ✅ | #24 エラーコンテキスト統一 | 完了 | |
-| 🔴 高 | #39 APIハンドラテスト | 16h | ✓ |
+| ✅ | #39 APIハンドラテスト（Phase 1） | 完了 | 66テスト追加 |
+| 🔴 高 | #39 APIハンドラテスト（Phase 2） | 8h | DIモック構築 |
 | 🟡 中 | #40 APRSテスト | 8h | |
 | 🟡 中 | #41 ファイル分割 | 12h | |
 | 🟡 中 | #42 user_service責務分離 | 16h | |
@@ -524,10 +531,12 @@ service/src/implement/
 2. ~~**#36 unwrap()置き換え** (3h)~~ ✅ 完了
 3. ~~**#34 入力バリデーション** (4h)~~ ✅ 完了
 4. ~~**#24 エラーコンテキスト統一** (2h)~~ ✅ 完了
-5. **#35 PostGISレガシー削除** (1h) - セキュリティ
-6. **#39 APIハンドラテスト（部分）** (15h) - テスト
-   - auth.rs: 3h
-   - sota.rs: 6h
-   - pota.rs: 6h
+5. ~~**#39 APIハンドラテスト Phase 1** (~8h)~~ ✅ 完了
+   - auth.rs: デシリアライズ、トークン抽出テスト
+   - param.rs: バリデーション、クエリビルダーテスト (27テスト)
+   - activation.rs: 純粋関数テスト (14テスト)
+   - sota.rs/pota.rs: ビューモデル変換テスト (20テスト)
+6. **#35 PostGISレガシー削除** (1h) - セキュリティ
+7. **#39 APIハンドラテスト Phase 2** (8h) - モックDI
 
-合計: 10h完了済み
+合計: ~18h完了済み

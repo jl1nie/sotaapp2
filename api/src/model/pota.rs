@@ -360,3 +360,217 @@ impl From<PotaLogStat> for PotaLogStatView {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{NaiveDate, Utc};
+    use domain::model::pota::{PotaRefLog, PotaReference};
+
+    fn create_test_pota_reference() -> PotaReference {
+        PotaReference {
+            pota_code: "JA-0001".to_string(),
+            wwff_code: "JAFF-0001".to_string(),
+            park_name: "Fuji-Hakone-Izu National Park".to_string(),
+            park_name_j: "富士箱根伊豆国立公園".to_string(),
+            park_location: "Shizuoka, Japan".to_string(),
+            park_locid: "JP-22".to_string(),
+            park_type: "National Park".to_string(),
+            park_inactive: false,
+            park_area: 121695,
+            longitude: 138.7274,
+            latitude: 35.3606,
+            maidenhead: "PM95qi".to_string(),
+            update: Utc::now(),
+        }
+    }
+
+    fn create_test_pota_ref_log() -> PotaRefLog {
+        PotaRefLog {
+            pota_code: "JA-0001".to_string(),
+            wwff_code: "JAFF-0001".to_string(),
+            park_name: "Fuji-Hakone-Izu National Park".to_string(),
+            park_name_j: "富士箱根伊豆国立公園".to_string(),
+            park_location: "Shizuoka, Japan".to_string(),
+            park_locid: "JP-22, JP-14".to_string(),
+            park_type: "National Park".to_string(),
+            park_inactive: false,
+            park_area: 121695,
+            longitude: 138.7274,
+            latitude: 35.3606,
+            maidenhead: "PM95qi".to_string(),
+            attempts: Some(10),
+            activations: Some(5),
+            first_qso_date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
+            qsos: Some(100),
+        }
+    }
+
+    // =====================================================
+    // PotaRefView 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_pota_ref_view_from_reference() {
+        let reference = create_test_pota_reference();
+        let view: PotaRefView = reference.into();
+
+        assert_eq!(view.pota_code, "JA-0001");
+        assert_eq!(view.wwff_code, "JAFF-0001");
+        assert_eq!(view.park_name, "Fuji-Hakone-Izu National Park");
+        assert_eq!(view.park_name_j, "富士箱根伊豆国立公園");
+        assert_eq!(view.park_location, "Shizuoka, Japan");
+        assert_eq!(view.park_locid, "JP-22");
+        assert_eq!(view.park_type, "National Park");
+        assert!(!view.park_inactive);
+        assert_eq!(view.park_area, 121695);
+        assert!((view.longitude - 138.7274).abs() < 0.0001);
+        assert!((view.latitude - 35.3606).abs() < 0.0001);
+        assert_eq!(view.maidenhead, "PM95qi");
+    }
+
+    #[test]
+    fn test_pota_ref_view_inactive_park() {
+        let mut reference = create_test_pota_reference();
+        reference.park_inactive = true;
+
+        let view: PotaRefView = reference.into();
+
+        assert!(view.park_inactive);
+    }
+
+    // =====================================================
+    // PotaRefLogView 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_pota_ref_log_view_from_ref_log() {
+        let ref_log = create_test_pota_ref_log();
+        let view: PotaRefLogView = ref_log.into();
+
+        assert_eq!(view.pota_code, "JA-0001");
+        assert_eq!(view.wwff_code, "JAFF-0001");
+        assert_eq!(view.attempts, Some(10));
+        assert_eq!(view.activations, Some(5));
+        assert_eq!(view.first_qso_date, Some("2024-01-15".to_string()));
+        assert_eq!(view.qsos, Some(100));
+    }
+
+    #[test]
+    fn test_pota_ref_log_view_with_none_log_fields() {
+        let mut ref_log = create_test_pota_ref_log();
+        ref_log.attempts = None;
+        ref_log.activations = None;
+        ref_log.first_qso_date = None;
+        ref_log.qsos = None;
+
+        let view: PotaRefLogView = ref_log.into();
+
+        assert!(view.attempts.is_none());
+        assert!(view.activations.is_none());
+        assert!(view.first_qso_date.is_none());
+        assert!(view.qsos.is_none());
+    }
+
+    // =====================================================
+    // PotaSearchView 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_pota_search_view_from_ref_log() {
+        let ref_log = create_test_pota_ref_log();
+        let view: PotaSearchView = ref_log.into();
+
+        assert_eq!(view.pota, "JA-0001");
+        assert_eq!(view.wwff, "JAFF-0001");
+        assert_eq!(view.name, "Fuji-Hakone-Izu National Park");
+        assert_eq!(view.name_j, "富士箱根伊豆国立公園");
+        // locidがカンマ区切りで分割される
+        assert_eq!(view.locid, vec!["JP-22", "JP-14"]);
+        assert_eq!(view.area, 121695);
+        assert!((view.lon - 138.7274).abs() < 0.0001);
+        assert!((view.lat - 35.3606).abs() < 0.0001);
+        assert_eq!(view.atmpt, Some(10));
+        assert_eq!(view.act, Some(5));
+        assert_eq!(view.date, Some("2024-01-15".to_string()));
+        assert_eq!(view.qsos, Some(100));
+    }
+
+    #[test]
+    fn test_pota_search_view_single_locid() {
+        let mut ref_log = create_test_pota_ref_log();
+        ref_log.park_locid = "JP-22".to_string();
+
+        let view: PotaSearchView = ref_log.into();
+
+        assert_eq!(view.locid, vec!["JP-22"]);
+    }
+
+    // =====================================================
+    // PagenatedResponse 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_pota_pagenated_response_from_result() {
+        let reference = create_test_pota_reference();
+        let pagenated = PagenatedResult {
+            total: 50,
+            limit: 20,
+            offset: 10,
+            results: vec![reference],
+        };
+
+        let response: PagenatedResponse<PotaRefView> = pagenated.into();
+
+        assert_eq!(response.total, 50);
+        assert_eq!(response.limit, 20);
+        assert_eq!(response.offset, 10);
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].pota_code, "JA-0001");
+    }
+
+    // =====================================================
+    // JSON シリアライズテスト
+    // =====================================================
+
+    #[test]
+    fn test_pota_ref_view_json_serialization() {
+        let reference = create_test_pota_reference();
+        let view: PotaRefView = reference.into();
+
+        let json = serde_json::to_string(&view).unwrap();
+
+        // camelCase形式で出力されることを確認
+        assert!(json.contains("potaCode"));
+        assert!(json.contains("wwffCode"));
+        assert!(json.contains("parkName"));
+        assert!(json.contains("parkNameJ"));
+        assert!(json.contains("parkLocation"));
+        assert!(json.contains("parkLocid"));
+        assert!(json.contains("parkType"));
+        assert!(json.contains("parkInactive"));
+        assert!(json.contains("parkArea"));
+    }
+
+    #[test]
+    fn test_pota_search_view_json_serialization() {
+        let ref_log = create_test_pota_ref_log();
+        let view: PotaSearchView = ref_log.into();
+
+        let json = serde_json::to_string(&view).unwrap();
+
+        // 短縮フィールド名
+        assert!(json.contains("\"pota\""));
+        assert!(json.contains("\"wwff\""));
+        assert!(json.contains("\"name\""));
+        assert!(json.contains("\"nameJ\""));
+        assert!(json.contains("\"locid\""));
+        assert!(json.contains("\"area\""));
+        assert!(json.contains("\"lon\""));
+        assert!(json.contains("\"lat\""));
+        assert!(json.contains("\"atmpt\""));
+        assert!(json.contains("\"act\""));
+        assert!(json.contains("\"date\""));
+        assert!(json.contains("\"qsos\""));
+    }
+}
