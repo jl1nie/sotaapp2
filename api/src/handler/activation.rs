@@ -258,3 +258,243 @@ pub fn build_activation_routers() -> Router<AppState> {
         .route("/aprs/track", get(show_aprs_track));
     Router::new().nest("/activation", routers)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::param::GetParam;
+    use chrono::{Duration, Utc};
+    use domain::model::event::{FindActBuilder, GroupBy};
+
+    // =====================================================
+    // apply_common_filters テスト
+    // =====================================================
+
+    #[test]
+    fn test_apply_common_filters_default_grouping() {
+        let param = GetParam::default();
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // デフォルトはCallsign(None)でグルーピング
+        assert!(matches!(query.group_by, Some(GroupBy::Callsign(None))));
+    }
+
+    #[test]
+    fn test_apply_common_filters_group_by_callsign() {
+        let param = GetParam {
+            by_call: Some("JA1ABC".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        assert!(matches!(
+            query.group_by,
+            Some(GroupBy::Callsign(Some(ref s))) if s == "JA1ABC"
+        ));
+    }
+
+    #[test]
+    fn test_apply_common_filters_group_by_callsign_null() {
+        let param = GetParam {
+            by_call: Some("null".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // "null"で始まる場合はCallsign(None)
+        assert!(matches!(query.group_by, Some(GroupBy::Callsign(None))));
+    }
+
+    #[test]
+    fn test_apply_common_filters_group_by_reference() {
+        let param = GetParam {
+            by_ref: Some("JA/TK-001".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        assert!(matches!(
+            query.group_by,
+            Some(GroupBy::Reference(Some(ref s))) if s == "JA/TK-001"
+        ));
+    }
+
+    #[test]
+    fn test_apply_common_filters_group_by_reference_null() {
+        let param = GetParam {
+            by_ref: Some("null".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        assert!(matches!(query.group_by, Some(GroupBy::Reference(None))));
+    }
+
+    #[test]
+    fn test_apply_common_filters_by_call_takes_priority() {
+        // by_call と by_ref の両方が指定された場合、by_callが優先
+        let param = GetParam {
+            by_call: Some("JA1ABC".to_string()),
+            by_ref: Some("JA/TK-001".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // by_callが優先されるのでCallsign
+        assert!(matches!(query.group_by, Some(GroupBy::Callsign(_))));
+    }
+
+    #[test]
+    fn test_apply_common_filters_default_hours() {
+        let param = GetParam::default();
+        let builder = FindActBuilder::default();
+        let now = Utc::now();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // デフォルトの3時間が適用される
+        assert!(query.issued_after.is_some());
+        let after = query.issued_after.unwrap();
+        // 3時間前より少し前（テスト実行時間を考慮）
+        assert!(after > now - Duration::hours(4));
+        assert!(after < now - Duration::hours(2));
+    }
+
+    #[test]
+    fn test_apply_common_filters_custom_hours() {
+        let param = GetParam {
+            hours_ago: Some(24),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+        let now = Utc::now();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        assert!(query.issued_after.is_some());
+        let after = query.issued_after.unwrap();
+        // 24時間前
+        assert!(after > now - Duration::hours(25));
+        assert!(after < now - Duration::hours(23));
+    }
+
+    #[test]
+    fn test_apply_common_filters_pattern() {
+        let param = GetParam {
+            pat_ref: Some("JA/".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        assert_eq!(query.pattern, Some("JA/".to_string()));
+    }
+
+    #[test]
+    fn test_apply_common_filters_log_id_valid_uuid() {
+        // 有効なUUID形式のlog_id
+        let param = GetParam {
+            log_id: Some("550e8400-e29b-41d4-a716-446655440000".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // 有効なUUIDはLogId型に変換される
+        assert!(query.log_id.is_some());
+    }
+
+    #[test]
+    fn test_apply_common_filters_log_id_invalid() {
+        // 無効なlog_id形式
+        let param = GetParam {
+            log_id: Some("invalid-log-id".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // 無効なUUIDはlog_idに設定されない（エラーログは出力される）
+        assert!(query.log_id.is_none());
+    }
+
+    #[test]
+    fn test_apply_common_filters_preserves_sota() {
+        let param = GetParam::default();
+        let builder = FindActBuilder::default().sota();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // SOTA設定が維持される
+        assert!(matches!(
+            query.program,
+            Some(domain::model::AwardProgram::SOTA)
+        ));
+    }
+
+    #[test]
+    fn test_apply_common_filters_preserves_pota() {
+        let param = GetParam::default();
+        let builder = FindActBuilder::default().pota();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        // POTA設定が維持される
+        assert!(matches!(
+            query.program,
+            Some(domain::model::AwardProgram::POTA)
+        ));
+    }
+
+    #[test]
+    fn test_apply_common_filters_all_options() {
+        let param = GetParam {
+            by_call: Some("JA1ABC".to_string()),
+            hours_ago: Some(12),
+            pat_ref: Some("JA/TK".to_string()),
+            log_id: Some("550e8400-e29b-41d4-a716-446655440000".to_string()),
+            ..Default::default()
+        };
+        let builder = FindActBuilder::default().sota();
+
+        let result = apply_common_filters(&param, builder, 3);
+        let query = result.build();
+
+        assert!(query.group_by.is_some());
+        assert!(query.issued_after.is_some());
+        assert_eq!(query.pattern, Some("JA/TK".to_string()));
+        assert!(query.log_id.is_some());
+        assert!(matches!(
+            query.program,
+            Some(domain::model::AwardProgram::SOTA)
+        ));
+    }
+}

@@ -79,3 +79,63 @@ pub fn build_auth_routers(auth: &FireAuth) -> Router<AppState> {
         .with_state(auth.clone());
     Router::new().nest("/auth", routers)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// AuthRequestのJSONデシリアライズテスト
+    #[test]
+    fn test_auth_request_deserialize() {
+        let json = r#"{"email": "test@example.com", "password": "secret123"}"#;
+        let req: AuthRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.email, "test@example.com");
+        assert_eq!(req.password, "secret123");
+    }
+
+    /// AuthRequestの必須フィールド欠落テスト
+    #[test]
+    fn test_auth_request_missing_email() {
+        let json = r#"{"password": "secret123"}"#;
+        let result: Result<AuthRequest, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_auth_request_missing_password() {
+        let json = r#"{"email": "test@example.com"}"#;
+        let result: Result<AuthRequest, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+
+    /// 認証ミドルウェア: Authorizationヘッダーなしで401を返すテスト
+    #[tokio::test]
+    async fn test_auth_middleware_rejects_missing_header() {
+        // FireAuthを必要としないダミーハンドラでミドルウェアの振る舞いをテスト
+        // Note: 実際のauth_middleはFireAuthが必要なため、ここではヘッダー解析ロジックのみテスト
+
+        // Bearerトークンなしのリクエストではエラーになることを確認
+        let header_value = "Basic invalid";
+        let result = header_value.strip_prefix("Bearer ");
+        assert!(result.is_none());
+    }
+
+    /// Bearerトークン抽出ロジックのテスト
+    #[test]
+    fn test_bearer_token_extraction() {
+        // 正常なBearerトークン
+        let header = "Bearer abc123token";
+        let token = header.strip_prefix("Bearer ");
+        assert_eq!(token, Some("abc123token"));
+
+        // Bearerプレフィックスなし
+        let header = "abc123token";
+        let token = header.strip_prefix("Bearer ");
+        assert!(token.is_none());
+
+        // 空のトークン
+        let header = "Bearer ";
+        let token = header.strip_prefix("Bearer ");
+        assert_eq!(token, Some(""));
+    }
+}

@@ -341,3 +341,177 @@ impl From<SotaReference> for SotaSearchView {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use domain::model::sota::SotaReference;
+
+    fn create_test_sota_reference() -> SotaReference {
+        SotaReference {
+            summit_code: "JA/TK-001".to_string(),
+            association_name: "Japan".to_string(),
+            region_name: "Tokyo".to_string(),
+            summit_name: "Mt. Takao".to_string(),
+            summit_name_j: Some("高尾山".to_string()),
+            city: Some("Hachioji".to_string()),
+            city_j: Some("八王子市".to_string()),
+            alt_m: 599,
+            alt_ft: 1965,
+            grid_ref1: "".to_string(),
+            grid_ref2: "".to_string(),
+            longitude: 139.2438,
+            latitude: 35.6251,
+            maidenhead: "PM95po".to_string(),
+            points: 4,
+            bonus_points: 0,
+            valid_from: NaiveDate::from_ymd_opt(2010, 1, 1).unwrap(),
+            valid_to: NaiveDate::from_ymd_opt(2099, 12, 31).unwrap(),
+            activation_count: 500,
+            activation_date: Some("2024-01-01".to_string()),
+            activation_call: Some("JA1ABC".to_string()),
+        }
+    }
+
+    // =====================================================
+    // SotaRefView 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_sota_ref_view_from_reference() {
+        let reference = create_test_sota_reference();
+        let view: SotaRefView = reference.into();
+
+        assert_eq!(view.summit_code, "JA/TK-001");
+        assert_eq!(view.association_name, "Japan");
+        assert_eq!(view.region_name, "Tokyo");
+        assert_eq!(view.summit_name, "Mt. Takao");
+        assert_eq!(view.summit_name_j, Some("高尾山".to_string()));
+        assert_eq!(view.city, Some("Hachioji".to_string()));
+        assert_eq!(view.city_j, Some("八王子市".to_string()));
+        assert_eq!(view.alt_m, 599);
+        assert!((view.longitude - 139.2438).abs() < 0.0001);
+        assert!((view.latitude - 35.6251).abs() < 0.0001);
+        assert_eq!(view.maidenhead, "PM95po");
+        assert_eq!(view.points, 4);
+        assert_eq!(view.bonus_points, 0);
+        assert_eq!(view.activation_count, 500);
+        assert_eq!(view.activation_date, Some("2024-01-01".to_string()));
+        assert_eq!(view.activation_call, Some("JA1ABC".to_string()));
+    }
+
+    #[test]
+    fn test_sota_ref_view_with_none_optional_fields() {
+        let mut reference = create_test_sota_reference();
+        reference.summit_name_j = None;
+        reference.city = None;
+        reference.city_j = None;
+        reference.activation_date = None;
+        reference.activation_call = None;
+
+        let view: SotaRefView = reference.into();
+
+        assert!(view.summit_name_j.is_none());
+        assert!(view.city.is_none());
+        assert!(view.city_j.is_none());
+        assert!(view.activation_date.is_none());
+        assert!(view.activation_call.is_none());
+    }
+
+    // =====================================================
+    // SotaSearchView 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_sota_search_view_from_reference() {
+        let reference = create_test_sota_reference();
+        let view: SotaSearchView = reference.into();
+
+        assert_eq!(view.code, "JA/TK-001");
+        assert_eq!(view.name, "Mt. Takao");
+        assert_eq!(view.name_j, Some("高尾山".to_string()));
+        assert_eq!(view.alt, 599);
+        assert!((view.lon - 139.2438).abs() < 0.0001);
+        assert!((view.lat - 35.6251).abs() < 0.0001);
+        assert_eq!(view.pts, 4);
+        assert_eq!(view.count, 500);
+    }
+
+    // =====================================================
+    // PagenatedResponse 変換テスト
+    // =====================================================
+
+    #[test]
+    fn test_pagenated_response_from_result() {
+        let reference = create_test_sota_reference();
+        let pagenated = PagenatedResult {
+            total: 100,
+            limit: 10,
+            offset: 20,
+            results: vec![reference],
+        };
+
+        let response: PagenatedResponse<SotaRefView> = pagenated.into();
+
+        assert_eq!(response.total, 100);
+        assert_eq!(response.limit, 10);
+        assert_eq!(response.offset, 20);
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].summit_code, "JA/TK-001");
+    }
+
+    #[test]
+    fn test_pagenated_response_empty_results() {
+        let pagenated: PagenatedResult<SotaReference> = PagenatedResult {
+            total: 0,
+            limit: 10,
+            offset: 0,
+            results: vec![],
+        };
+
+        let response: PagenatedResponse<SotaRefView> = pagenated.into();
+
+        assert_eq!(response.total, 0);
+        assert!(response.results.is_empty());
+    }
+
+    // =====================================================
+    // JSON シリアライズテスト
+    // =====================================================
+
+    #[test]
+    fn test_sota_ref_view_json_serialization() {
+        let reference = create_test_sota_reference();
+        let view: SotaRefView = reference.into();
+
+        let json = serde_json::to_string(&view).unwrap();
+
+        // camelCase形式で出力されることを確認
+        assert!(json.contains("summitCode"));
+        assert!(json.contains("associationName"));
+        assert!(json.contains("regionName"));
+        assert!(json.contains("summitName"));
+        assert!(json.contains("summitNameJ"));
+        assert!(json.contains("altM"));
+        assert!(json.contains("activationCount"));
+    }
+
+    #[test]
+    fn test_sota_search_view_json_serialization() {
+        let reference = create_test_sota_reference();
+        let view: SotaSearchView = reference.into();
+
+        let json = serde_json::to_string(&view).unwrap();
+
+        // camelCase形式で短縮フィールド名
+        assert!(json.contains("\"code\""));
+        assert!(json.contains("\"name\""));
+        assert!(json.contains("\"nameJ\""));
+        assert!(json.contains("\"alt\""));
+        assert!(json.contains("\"lon\""));
+        assert!(json.contains("\"lat\""));
+        assert!(json.contains("\"pts\""));
+        assert!(json.contains("\"count\""));
+    }
+}
