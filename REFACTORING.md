@@ -138,33 +138,23 @@ service/src/implement/
 - user_service.rs: 日付のunwrap()を.single().unwrap_or_else()に変更
 - award.rs: is_activation()/is_chase()をis_some_and()で安全化
 
-#### #24 エラーコンテキストの統一 🟡 MEDIUM
+#### #24 エラーコンテキストの統一 ✅
 **問題**: エラー発生位置情報が不統一
-**現状分析**:
-- `TransactionError`: 78箇所（SQLite 44箇所、PostGIS 34箇所）
-- `SpecificOperationError`: 53箇所（SQLite 28箇所、PostGIS 25箇所）
-- `RowNotFound`: 既にlocation情報を持つ（10箇所）
-- 現在は `map_err(AppError::TransactionError)` 形式で呼び出し
+**対策完了**:
+- Phase 1: `db_error()`, `tx_error()`, `row_not_found()` ヘルパー関数をerrorレベルログ出力に更新
+- Phase 2: PostGIS全ファイル（5ファイル、59箇所）を新ヘルパー関数に移行
+  - activation.rs: 14箇所
+  - aprslog.rs: 8箇所
+  - locator.rs: 4箇所
+  - pota_reference.rs: 20箇所
+  - sota_reference.rs: 13箇所
+- SQLite版は既に移行済み（84箇所）
 
-**実装計画**:
-1. **Phase 1（互換性維持）**: ヘルパー関数追加
-   - `db_error(context: &str)` クロージャ生成関数
-   - `tx_error(context: &str)` クロージャ生成関数
-   - 既存コードは変更なしで動作継続
-
-2. **Phase 2（段階的移行）**: 新規コード・修正時に適用
-   - `.map_err(db_error("users query"))` 形式で使用
-   - 既存コードは必要に応じて順次移行
-
-3. **Phase 3（型変更）**: 十分な移行後
-   - `TransactionError(sqlx::Error)` → `TransactionError { source, context }`
-   - `SpecificOperationError(sqlx::Error)` → `SpecificOperationError { source, context }`
-   - 残りの箇所を一括変換
-
-**理由**: 133箇所の変更は影響範囲が大きく、段階的移行が安全
-
-**優先度**: 中
-**複雑度**: 中（Phase 1は低、Phase 3は高）
+**エラー発生時のログ出力例**:
+```
+DB error in 'insert sota_references postgis': RowNotFound
+Transaction error in 'commit create_reference sota postgis': ...
+```
 
 ---
 
@@ -334,7 +324,7 @@ service/src/implement/
 
 | 項目 | 優先度 | 複雑度 | 備考 |
 |------|--------|--------|------|
-| #24 エラーコンテキストの統一 | 中 | 中 | 133箇所、段階的移行推奨 |
+| ~~#24 エラーコンテキストの統一~~ | ~~中~~ | ~~中~~ | ✅ 完了 |
 | #28 クエリビルダー抽象化 | 低 | 高 | PostGIS使用しないためスキップ |
 | #30 Groupingストラテジー抽象化 | 低 | 低 | 効果小、スキップ |
 | #32 モジュールドキュメント追加 | 低 | 低 | 必要に応じて |
@@ -513,9 +503,10 @@ service/src/implement/
 | 優先度 | 項目 | 工数 | 次期スプリント候補 |
 |--------|------|------|------------------|
 | ✅ | #33 エラー情報漏洩防止 | 完了 | |
-| 🔴 高 | #39 APIハンドラテスト | 16h | ✓ |
 | ✅ | #34 入力バリデーション | 完了 | |
 | ✅ | #36 unwrap()置き換え | 完了 | |
+| ✅ | #24 エラーコンテキスト統一 | 完了 | |
+| 🔴 高 | #39 APIハンドラテスト | 16h | ✓ |
 | 🟡 中 | #40 APRSテスト | 8h | |
 | 🟡 中 | #41 ファイル分割 | 12h | |
 | 🟡 中 | #42 user_service責務分離 | 16h | |
@@ -527,15 +518,16 @@ service/src/implement/
 
 ---
 
-## 次期スプリント推奨（16h）
+## 次期スプリント推奨
 
 1. ~~**#33 エラー情報漏洩防止** (1h)~~ ✅ 完了
-2. **#35 PostGISレガシー削除** (1h) - セキュリティ
-3. ~~**#36 unwrap()置き換え** (3h)~~ ✅ 完了
-4. ~~**#34 入力バリデーション** (4h)~~ ✅ 完了
-5. **#39 APIハンドラテスト（部分）** (15h) - テスト
+2. ~~**#36 unwrap()置き換え** (3h)~~ ✅ 完了
+3. ~~**#34 入力バリデーション** (4h)~~ ✅ 完了
+4. ~~**#24 エラーコンテキスト統一** (2h)~~ ✅ 完了
+5. **#35 PostGISレガシー削除** (1h) - セキュリティ
+6. **#39 APIハンドラテスト（部分）** (15h) - テスト
    - auth.rs: 3h
    - sota.rs: 6h
    - pota.rs: 6h
 
-合計: 16h（8h完了済み）
+合計: 10h完了済み
