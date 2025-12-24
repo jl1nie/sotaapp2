@@ -413,27 +413,36 @@ Transaction error in 'commit create_reference sota postgis': ...
 
 ### 【テスト - 高優先】
 
-#### #39 APIハンドラテスト実装 ✅ (部分完了)
+#### #39 APIハンドラテスト実装 ✅ 完了
 **問題**: API層のテストカバレッジがゼロ（14個のハンドラ）
 **対策**: 純粋関数とビューモデル変換のユニットテストを追加
 
-**完了**:
+**Phase 1 完了** (純粋関数・ビューモデル):
 - `api/src/handler/auth.rs`: AuthRequestデシリアライズ、Bearerトークン抽出テスト (5テスト)
 - `api/src/handler/activation.rs`: apply_common_filters純粋関数テスト (14テスト)
 - `api/src/model/param.rs`: GetParamバリデーション、build_findref_queryテスト (27テスト)
 - `api/src/model/sota.rs`: SotaRefView/SotaSearchView変換、JSONシリアライズテスト (8テスト)
 - `api/src/model/pota.rs`: PotaRefView/PotaSearchView変換、JSONシリアライズテスト (12テスト)
 
-**合計66テスト追加** (125→141)
+**Phase 2 完了** (追加ビューモデル):
+- `api/src/model/activation.rs`: ActivationView変換テスト (6テスト)
+- `api/src/model/alerts.rs`: AlertView変換、SotaAlert/PotaAlertデシリアライズテスト (13テスト)
+- `api/src/model/spots.rs`: SpotView変換、SotaSpot/PotaSpotデシリアライズテスト (14テスト)
+- `api/src/model/search.rs`: SearchResponse/SearchFullResponse/SearchBriefResponse変換テスト (14テスト)
+- `api/src/model/aprslog.rs`: AprsLogView/Track変換テスト (14テスト)
+- `api/src/model/geomag.rs`: GeomagView変換テスト (7テスト)
 
-**未対応** (DIモック必要):
+**合計124テスト** (API層のみ)
+**ワークスペース合計203テスト**
+
+**未対応** (DIモック必要・優先度低):
 | ハンドラ | ファイル | 理由 |
 |---------|---------|------|
 | SOTA ログアップロード | `api/src/handler/sota.rs` | Firebase + Shaku DI依存 |
 | POTA ログアップロード | `api/src/handler/pota.rs` | Shaku DI依存 |
 | 検索機能 | `api/src/handler/search.rs` | Shaku DI依存 |
 
-**残り工数**: 8h（モックレジストリ構築が必要）
+**備考**: DIモック構築はShaku統合が複雑なため、E2Eテストでカバーする方針
 
 #### #40 APRSサービステスト 🟡 MEDIUM
 **ファイル**: `adapter/src/aprs.rs`, `service/src/implement/aprs_service.rs`
