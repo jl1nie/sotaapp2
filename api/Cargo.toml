@@ -25,6 +25,7 @@ fastrand.workspace = true
 aprs-message.workspace = true
 typeshare.workspace = true
 validator.workspace = true
+futures-util.workspace = true
 
 [dev-dependencies]
 axum-test.workspace = true

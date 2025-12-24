@@ -19,6 +19,7 @@ use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{ParkCode, PotaLogHist, PotaReference};
 use domain::model::sota::{SotaReference, SummitCode};
+use std::path::Path;
 
 #[async_trait]
 pub trait UserService: Send + Sync + Interface {
@@ -55,8 +56,12 @@ pub trait UserService: Send + Sync + Interface {
 pub trait AdminService: Send + Sync + Interface {
     async fn import_summit_list(&self, event: UploadSOTASummit) -> AppResult<usize>;
     async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<usize>;
+    /// メモリ効率の良いサミットリスト更新（ファイルから2回読み込み）
+    async fn update_summit_list_from_file(&self, path: &Path) -> AppResult<usize>;
     async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<usize>;
     async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<usize>;
+    /// メモリ効率の良いパークリスト更新（ファイルから2回読み込み）
+    async fn update_pota_park_list_from_file(&self, path: &Path) -> AppResult<usize>;
     async fn import_pota_park_list_ja(&self, event: UploadPOTAReference) -> AppResult<usize>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<usize>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
