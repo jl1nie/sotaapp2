@@ -56,6 +56,8 @@ pub enum AppError {
     ForbiddenOperation,
     #[error("{0}")]
     ConversionEntityError(String),
+    #[error("ファイルIO処理に失敗しました: {0}")]
+    IoError(String),
 }
 
 impl IntoResponse for AppError {
@@ -188,6 +190,14 @@ impl IntoResponse for AppError {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     msg.clone(),
                     Some("CONVERSION_ERROR"),
+                )
+            }
+            AppError::IoError(msg) => {
+                tracing::error!("IO error: {}", msg);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("ファイル処理エラー: {}", msg),
+                    Some("IO_ERROR"),
                 )
             }
         };
