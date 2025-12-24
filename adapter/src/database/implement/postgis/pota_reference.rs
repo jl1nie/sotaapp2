@@ -3,7 +3,7 @@ use domain::model::id::LogId;
 use shaku::Component;
 use sqlx::PgConnection;
 
-use common::error::{AppError, AppResult};
+use common::error::{db_error, row_not_found, tx_error, AppResult};
 
 use domain::model::event::{DeleteLog, DeleteRef, FindRef, PagenatedResult};
 use domain::model::pota::{ParkCode, PotaActLog, PotaHuntLog, PotaRefLog, PotaReference};
@@ -57,7 +57,7 @@ impl POTARepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("pota operation postgis"))?;
         Ok(())
     }
 
@@ -94,7 +94,7 @@ impl POTARepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("pota operation postgis"))?;
         Ok(())
     }
 
@@ -108,7 +108,7 @@ impl POTARepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("pota operation postgis"))?;
         Ok(())
     }
 
@@ -120,7 +120,7 @@ impl POTARepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("pota operation postgis"))?;
         Ok(())
     }
 
@@ -156,7 +156,7 @@ impl POTARepositoryImpl {
         )
         .execute(db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("pota operation postgis"))?;
         Ok(())
     }
 
@@ -172,7 +172,7 @@ impl POTARepositoryImpl {
         )
         .execute(&mut *db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("pota operation postgis"))?;
 
         sqlx::query!(
             r#"
@@ -183,7 +183,7 @@ impl POTARepositoryImpl {
         )
         .execute(&mut *db)
         .await
-        .map_err(AppError::SpecificOperationError)?;
+        .map_err(db_error("pota operation postgis"))?;
 
         Ok(())
     }
@@ -213,7 +213,7 @@ impl POTARepositoryImpl {
         let row: PotaReferenceRow = sql_query
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(row_not_found("pota query postgis"))?;
         Ok(row)
     }
 
@@ -221,7 +221,7 @@ impl POTARepositoryImpl {
         let row = sqlx::query!("SELECT COUNT(*) as count FROM pota_references")
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(AppError::SpecificOperationError)?;
+            .map_err(db_error("pota operation postgis"))?;
         let total: i64 = row.count.unwrap_or(0);
 
         let mut select = r#"
@@ -248,7 +248,7 @@ impl POTARepositoryImpl {
         let rows: Vec<PotaReferenceRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(row_not_found("pota query postgis"))?;
         Ok((total, rows))
     }
 
@@ -314,7 +314,7 @@ impl POTARepositoryImpl {
         let rows: Vec<PotaRefLogRow> = sql_query
             .fetch_all(self.pool.inner_ref())
             .await
-            .map_err(AppError::RowNotFound)?;
+            .map_err(row_not_found("pota query postgis"))?;
         Ok(rows)
     }
 }
@@ -335,7 +335,7 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("pota transaction postgis"))?;
 
         for r in references.into_iter().enumerate() {
             self.create(PotaReferenceRow::from(r.1), &mut tx).await?;
@@ -343,7 +343,9 @@ impl PotaRepository for PotaRepositoryImpl {
                 tracing::info!("insert pota {} rescords", r.0);
             }
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("pota transaction postgis"))?;
         Ok(())
     }
 
@@ -375,11 +377,13 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("pota transaction postgis"))?;
         for r in references.into_iter() {
             self.update(PotaReferenceRow::from(r), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("pota transaction postgis"))?;
         Ok(())
     }
 
@@ -389,12 +393,14 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("pota transaction postgis"))?;
         match query {
             DeleteRef::Delete(code) => self.delete(code, &mut tx).await?,
             DeleteRef::DeleteAll => self.delete_all(&mut tx).await?,
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("pota transaction postgis"))?;
         Ok(())
     }
 
@@ -404,14 +410,16 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("pota transaction postgis"))?;
 
         tracing::info!("upload activator log {} rescords", logs.len());
 
         for r in logs.into_iter() {
             self.update_log(PotaLogRow::from(r), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("pota transaction postgis"))?;
         Ok(())
     }
 
@@ -421,14 +429,16 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("pota transaction postgis"))?;
 
         tracing::info!("upload hunter log {} rescords", logs.len());
 
         for r in logs.into_iter() {
             self.update_log(PotaLogRow::from(r), &mut tx).await?;
         }
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("pota transaction postgis"))?;
         Ok(())
     }
 
@@ -438,9 +448,11 @@ impl PotaRepository for PotaRepositoryImpl {
             .inner_ref()
             .begin()
             .await
-            .map_err(AppError::TransactionError)?;
+            .map_err(tx_error("pota transaction postgis"))?;
         self.delete_log(query, &mut tx).await?;
-        tx.commit().await.map_err(AppError::TransactionError)?;
+        tx.commit()
+            .await
+            .map_err(tx_error("pota transaction postgis"))?;
         Ok(())
     }
 }
