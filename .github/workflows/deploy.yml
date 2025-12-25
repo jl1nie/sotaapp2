@@ -165,8 +165,8 @@ jobs:
           echo "Waiting for deployment to stabilize..."
           sleep 30
 
-          # Health check
-          HEALTH_URL="https://sotaapp2.fly.dev/health"
+          # Health check - 正しいAPIパス
+          HEALTH_URL="https://sotaapp2.fly.dev/api/v2/health"
           echo "Checking health endpoint: ${HEALTH_URL}"
 
           for i in 1 2 3 4 5; do

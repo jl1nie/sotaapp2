@@ -50,7 +50,7 @@ docker run -d \
 
 # SERVER-001: Wait for server to start
 log_info "Waiting for server to start..."
-if wait_for_http "http://localhost:${HOST_PORT}/health" 90; then
+if wait_for_http "http://localhost:${HOST_PORT}/api/v2/health" 90; then
   log_info "[SERVER-001] Server started successfully"
   ((TESTS_PASSED++)) || true
 else
@@ -64,7 +64,7 @@ fi
 
 # SERVER-002: Health endpoint returns 200
 run_test "SERVER-002" "Health endpoint returns 200" \
-  curl -sf "http://localhost:${HOST_PORT}/health"
+  curl -sf "http://localhost:${HOST_PORT}/api/v2/health"
 
 # API-001: Geomag endpoint
 run_test_grep "API-001" "Geomag API returns valid JSON with date field" '"date"' \
@@ -72,11 +72,11 @@ run_test_grep "API-001" "Geomag API returns valid JSON with date field" '"date"'
 
 # API-002: Spots endpoint (may be empty but should return 200)
 run_test "API-002" "Spots API returns 200" \
-  curl -sf "http://localhost:${HOST_PORT}/api/v2/spots"
+  curl -sf "http://localhost:${HOST_PORT}/api/v2/activation/spots?pat_ref=JA&hours_ago=1"
 
 # API-003: Alerts endpoint
 run_test "API-003" "Alerts API returns 200" \
-  curl -sf "http://localhost:${HOST_PORT}/api/v2/alerts"
+  curl -sf "http://localhost:${HOST_PORT}/api/v2/activation/alerts?pat_ref=JA"
 
 # API-004: APRS track endpoint
 run_test "API-004" "APRS track API returns 200" \
