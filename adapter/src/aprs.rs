@@ -1,17 +1,35 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, Result};
 use aprs_message::{AprsCallsign, AprsData, AprsIS};
 use async_trait::async_trait;
 use shaku::Component;
 
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
+use common::http::{with_retry, RetryConfig};
 use domain::repository::aprs::AprsRepositry;
 
 pub async fn connect_aprsis_with(cfg: &AppConfig) -> Result<AprsIS> {
-    if let Ok(aprs) = AprsIS::connect(&cfg.aprs_host, &cfg.aprs_user, &cfg.aprs_password).await {
-        return Ok(aprs);
-    };
-    bail!("Failed to connect to APRS-IS {}", cfg.aprs_host)
+    let host = cfg.aprs_host.clone();
+    let user = cfg.aprs_user.clone();
+    let password = cfg.aprs_password.clone();
+
+    with_retry("APRS-IS connect", &RetryConfig::default(), || {
+        let h = host.clone();
+        let u = user.clone();
+        let p = password.clone();
+        async move {
+            AprsIS::connect(&h, &u, &p)
+                .await
+                .map_err(|e| anyhow!("{}", e))
+        }
+    })
+    .await
+    .ok_or_else(|| {
+        anyhow!(
+            "Failed to connect to APRS-IS {} after retries",
+            cfg.aprs_host
+        )
+    })
 }
 
 #[derive(Component)]

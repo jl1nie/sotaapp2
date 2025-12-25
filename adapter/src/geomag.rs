@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use chrono::NaiveDate;
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
-use common::http;
+use common::http::{self, with_retry, RetryConfig};
 use domain::{model::geomag::GeomagIndex, repository::geomag::GeoMagRepositry};
 use shaku::Component;
 use std::sync::Arc;
@@ -28,9 +28,15 @@ impl GeoMag {
         let geomag = Arc::new(Mutex::new(Some(GeomagIndex::default())));
         let geomag_clone = geomag.clone();
 
-        if let Err(e) = Self::update(endpoint.as_str(), geomag.clone()).await {
-            tracing::error!("Geomag update error: {}", e);
-        }
+        // 起動時はリトライ付きで取得（ネットワーク準備待ち）
+        let endpoint_for_retry = endpoint.clone();
+        let geomag_for_retry = geomag.clone();
+        with_retry("Geomag update", &RetryConfig::default(), || {
+            let ep = endpoint_for_retry.clone();
+            let idx = geomag_for_retry.clone();
+            async move { Self::update(&ep, idx).await }
+        })
+        .await;
 
         let sched = JobScheduler::new().await?;
         sched
