@@ -68,16 +68,22 @@ pub mod connect {
             tracing::info!("done.");
         }
 
-        // 毎晩リブートするので起動時にデータベースを最適化
-        tracing::info!("Optimizing database...");
+        // 最適化はサーバー起動後に非同期で実行（起動時間短縮のため）
+        // optimize_database() を別途呼び出す
         sqlx::query("PRAGMA optimize")
             .execute(pool.inner_ref())
             .await?;
+
+        Ok(pool)
+    }
+
+    /// サーバー起動後に非同期でデータベースを最適化
+    pub async fn optimize_database(pool: &ConnectionPool) -> Result<()> {
+        tracing::info!("Starting background database optimization...");
         sqlx::query("VACUUM").execute(pool.inner_ref()).await?;
         sqlx::query("ANALYZE").execute(pool.inner_ref()).await?;
         tracing::info!("Database optimization completed.");
-
-        Ok(pool)
+        Ok(())
     }
 
     /// データベースのバックアップを作成

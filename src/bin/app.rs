@@ -17,7 +17,9 @@ use tracing_subscriber::EnvFilter;
 
 use adapter::{
     aprs::connect_aprsis_with,
-    database::connect::{backup_database, connect_database_with, reset_database, restore_database},
+    database::connect::{
+        backup_database, connect_database_with, optimize_database, reset_database, restore_database,
+    },
     geomag::connect_geomag_with,
     minikvs::MiniKvs,
 };
@@ -156,6 +158,15 @@ async fn bootstrap() -> Result<()> {
         .init();
 
     let pool = connect_database_with(&config).await?;
+
+    // サーバー起動後に非同期でDB最適化（起動時間短縮のため）
+    let pool_for_optimize = pool.clone();
+    tokio::spawn(async move {
+        if let Err(e) = optimize_database(&pool_for_optimize).await {
+            tracing::error!("Database optimization failed: {:?}", e);
+        }
+    });
+
     let aprs = connect_aprsis_with(&config).await?;
     let geomag = connect_geomag_with(&config).await?;
     let minikvs = Arc::new(MiniKvs::new(config.auth_token_ttl));
