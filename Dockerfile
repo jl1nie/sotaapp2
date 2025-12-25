@@ -12,5 +12,5 @@ RUN apt update && apt install -y libssl-dev pkg-config ca-certificates && rm -rf
 WORKDIR /app
 COPY --from=builder ./app/target/release/app ./target/release/app
 COPY static/ static/
-COPY migrations/ migrations/
+COPY adapter/migrations/sqlite/ migrations/
 ENTRYPOINT ["./target/release/app"]
