@@ -154,71 +154,67 @@ impl SummitCode {
 // Service層からAdapter実装に直接依存
 ```
 
-## 🚀 クイックスタート
+## 🚀 開発環境セットアップ
 
-### 前提条件
-- Rust 1.83+
-- Docker & Docker Compose
-- SQLite または PostgreSQL
-- cargo-make (`cargo install cargo-make`)
+詳細な開発環境構築手順は [docs/development-setup.md](docs/development-setup.md) を参照してください。
 
-### ローカル開発
+### クイックスタート
 
 ```bash
-# プロジェクトクローン
 git clone https://github.com/jl1nie/sotaapp2.git
 cd sotaapp2
-
-# 設定ファイル準備
-cp .env.example .env
-# .envファイルを編集
-
-# ビルド
-makers build
-
-# データベースマイグレーション
-makers migrate run
-
-# 開発サーバー起動
-makers run
-```
-
-### Docker使用
-
-```bash
-# Dockerイメージビルド
-makers compose-build-app
-
-# コンテナ起動
-makers run-in-docker
-
-# コンテナ停止
-makers compose-down
+cp .env.example .env  # 編集してAPIキー等を設定
+makers build && makers migrate run && makers run
 ```
 
 ## 📊 API エンドポイント
 
+本番環境: `https://sotaapp2.fly.dev`
+
 ### ヘルスチェック
-```
-GET    /api/v2/health              # ヘルスチェック
-GET    /api/v2/health/db           # DBヘルスチェック
-```
+
+| エンドポイント | 説明 |
+|---------------|------|
+| `GET /api/v2/health` | サーバーヘルスチェック |
+| `GET /api/v2/health/db` | データベース接続確認 |
 
 ### アクティベーション API
-```
-GET    /api/v2/activation/alerts   # アラート一覧
-GET    /api/v2/activation/spots    # スポット一覧
-GET    /api/v2/activation/aprs/track  # APRSトラック
-```
+
+| エンドポイント | パラメータ | 説明 |
+|---------------|-----------|------|
+| `GET /api/v2/activation/alerts` | `pat_ref` (必須) | アラート一覧取得 |
+| `GET /api/v2/activation/spots` | `pat_ref` (必須), `hours_ago` | スポット一覧取得 |
+| `GET /api/v2/activation/aprs/track` | `pat_ref` (必須), `hours_ago` | APRSトラック取得 |
+
+**パラメータ例:**
+- `pat_ref=JA` - 日本のアクティベーション
+- `pat_ref=JA,HL` - 日本と韓国
+- `hours_ago=24` - 過去24時間
 
 ### 地磁気データ API
-```
-GET    /api/v2/propagation/geomag  # 地磁気データ
+
+| エンドポイント | 説明 |
+|---------------|------|
+| `GET /api/v2/propagation/geomag` | 最新の地磁気指数（A/K指数） |
+
+**レスポンス例:**
+```json
+{
+  "date": "2025-12-26",
+  "a_index": 12,
+  "k_index": [3.0, 3.33, 2.67]
+}
 ```
 
 ### 検索 API
+
+| エンドポイント | パラメータ | 説明 |
+|---------------|-----------|------|
+| `GET /api/v2/search` | `min_lat`, `max_lat`, `min_lon`, `max_lon` | 範囲内の山岳・公園検索 |
+
+**パラメータ例:**
 ```
-GET    /api/v2/search              # 山岳・公園検索
+/api/v2/search?min_lat=35&max_lat=36&min_lon=139&max_lon=140
 ```
 
 ## 🔧 設定項目
