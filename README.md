@@ -157,62 +157,68 @@ impl SummitCode {
 ## 🚀 クイックスタート
 
 ### 前提条件
-- Rust 1.70+
+- Rust 1.83+
 - Docker & Docker Compose
 - SQLite または PostgreSQL
+- cargo-make (`cargo install cargo-make`)
 
 ### ローカル開発
 
 ```bash
 # プロジェクトクローン
-git clone https://github.com/your-org/sotaapp2.git
+git clone https://github.com/jl1nie/sotaapp2.git
 cd sotaapp2
-
-# 依存関係インストール
-cargo build
 
 # 設定ファイル準備
 cp .env.example .env
 # .envファイルを編集
 
-# データベース準備（SQLite）
-cargo run --bin migration
+# ビルド
+makers build
+
+# データベースマイグレーション
+makers migrate run
 
 # 開発サーバー起動
-cargo run --bin app
+makers run
 ```
 
 ### Docker使用
 
 ```bash
-# SQLite使用
-DOCKER_FILE=Dockerfile.sqlite docker-compose up
+# Dockerイメージビルド
+makers compose-build-app
 
-# PostgreSQL使用  
-DOCKER_FILE=Dockerfile docker-compose up
+# コンテナ起動
+makers run-in-docker
+
+# コンテナ停止
+makers compose-down
 ```
 
 ## 📊 API エンドポイント
 
-### SOTA API
+### ヘルスチェック
 ```
-GET    /api/v2/sota/spots          # スポット一覧
-GET    /api/v2/sota/alerts         # アラート一覧
-GET    /api/v2/sota/summits        # 山岳一覧
-POST   /api/v2/sota/log           # ログアップロード（要認証）
+GET    /api/v2/health              # ヘルスチェック
+GET    /api/v2/health/db           # DBヘルスチェック
 ```
 
-### POTA API
+### アクティベーション API
 ```
-GET    /api/v2/pota/spots          # スポット一覧
-GET    /api/v2/pota/alerts         # アラート一覧
-GET    /api/v2/pota/parks          # 公園一覧
+GET    /api/v2/activation/alerts   # アラート一覧
+GET    /api/v2/activation/spots    # スポット一覧
+GET    /api/v2/activation/aprs/track  # APRSトラック
 ```
 
-### 管理API
+### 地磁気データ API
 ```
-POST   /api/v2/sota/import         # CSVインポート（要管理者権限）
-PUT    /api/v2/sota/summits/{code} # 山岳データ更新（要管理者権限）
+GET    /api/v2/propagation/geomag  # 地磁気データ
+```
+
+### 検索 API
+```
+GET    /api/v2/search              # 山岳・公園検索
 ```
 
 ## 🔧 設定項目
