@@ -139,7 +139,7 @@ docker images | grep sotaapp2
 fly deploy --image jl1nie/sotaapp2:v0.1.2
 
 # ヘルスチェック確認
-curl https://sotaapp2.fly.dev/health
+curl https://sotaapp2.fly.dev/api/v2/health
 ```
 
 #### デプロイ失敗時の自動ガイド
@@ -224,7 +224,7 @@ makers fly-status
 fly machine list
 
 # ヘルスチェック
-curl https://sotaapp2.fly.dev/health
+curl https://sotaapp2.fly.dev/api/v2/health
 ```
 
 ### SSH接続
@@ -296,7 +296,7 @@ makers e2e-test sotaapp2:test
 
 ### リリース後
 
-- [ ] `curl https://sotaapp2.fly.dev/health` で200応答確認
+- [ ] `curl https://sotaapp2.fly.dev/api/v2/health` で200応答確認
 - [ ] 主要機能の動作確認
 - [ ] ログにエラーがないことを確認
 
