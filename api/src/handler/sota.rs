@@ -17,7 +17,7 @@ use domain::model::{
 use registry::{AppRegistry, AppState};
 use service::model::award::AwardPeriod;
 use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
-use service::services::{AdminService, UserService};
+use service::services::{AdminService, SotaLogService, UserService};
 
 use crate::model::award::{
     ActivatorAwardResult, AwardJudgmentResult, ChaserAwardResult, JudgmentMode, LogType,
@@ -76,30 +76,30 @@ async fn import_sota_opt_reference(
 }
 
 async fn upload_log(
-    user_service: Inject<AppRegistry, dyn UserService>,
+    sota_log_service: Inject<AppRegistry, dyn SotaLogService>,
     Extension(user_id): Extension<UserId>,
     mut multipart: Multipart,
 ) -> AppResult<StatusCode> {
     let data = extract_text_file(&mut multipart).await?;
     let reqs = UploadSOTALog { data };
-    user_service
+    sota_log_service
         .upload_sota_log(user_id, reqs)
         .await
         .map(|_| StatusCode::CREATED)
 }
 
 async fn delete_log(
-    user_service: Inject<AppRegistry, dyn UserService>,
+    sota_log_service: Inject<AppRegistry, dyn SotaLogService>,
     Extension(user_id): Extension<UserId>,
 ) -> AppResult<StatusCode> {
-    user_service
+    sota_log_service
         .delete_sota_log(user_id)
         .await
         .map(|_| StatusCode::OK)
 }
 
 async fn show_progress(
-    user_service: Inject<AppRegistry, dyn UserService>,
+    sota_log_service: Inject<AppRegistry, dyn SotaLogService>,
     Extension(user_id): Extension<UserId>,
 ) -> AppResult<Json<String>> {
     let period = AwardPeriod::default();
@@ -108,7 +108,7 @@ async fn show_progress(
         .before(period.end)
         .build();
 
-    let result = user_service.award_progress(user_id, query).await?;
+    let result = sota_log_service.award_progress(user_id, query).await?;
     Ok(Json(result))
 }
 
@@ -221,7 +221,7 @@ pub struct AwardJudgeQuery {
 /// SOTA日本支部設立10周年記念アワード判定エンドポイント
 /// CSVをアップロードしてin-memoryで判定、結果を返す（DBに保存しない）
 async fn judge_10th_anniversary_award(
-    user_service: Inject<AppRegistry, dyn UserService>,
+    sota_log_service: Inject<AppRegistry, dyn SotaLogService>,
     Query(query): Query<AwardJudgeQuery>,
     mut multipart: Multipart,
 ) -> AppResult<Json<AwardJudgmentResult>> {
@@ -240,7 +240,7 @@ async fn judge_10th_anniversary_award(
     let data = extract_text_file(&mut multipart).await?;
 
     // in-memoryで判定（モード指定）
-    let result = user_service.judge_10th_anniversary_award(&data, service_mode)?;
+    let result = sota_log_service.judge_10th_anniversary_award(&data, service_mode)?;
 
     // サービス層のログタイプをAPI層の型に変換
     let log_type = match result.log_type {

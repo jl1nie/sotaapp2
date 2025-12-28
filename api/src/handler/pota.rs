@@ -33,7 +33,7 @@ use domain::{
 };
 use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadPOTALog, UploadPOTAReference};
-use service::services::{AdminService, UserService};
+use service::services::{AdminService, PotaLogService, UserService};
 
 use super::auth::with_auth;
 use super::multipart::extract_text_file;
@@ -59,7 +59,7 @@ async fn import_pota_reference_ja(
 }
 
 async fn upload_pota_log(
-    user_service: Inject<AppRegistry, dyn UserService>,
+    pota_log_service: Inject<AppRegistry, dyn PotaLogService>,
     Path((activator_logid, hunter_logid)): Path<(String, String)>,
     mut multipart: Multipart,
 ) -> AppResult<Json<PotaLogHistView>> {
@@ -69,26 +69,26 @@ async fn upload_pota_log(
         hunter_logid,
         data,
     };
-    let loguser = user_service.upload_pota_log(reqs).await?;
+    let loguser = pota_log_service.upload_pota_log(reqs).await?;
     Ok(Json(loguser.into()))
 }
 
 async fn get_pota_logid(
-    user_service: Inject<AppRegistry, dyn UserService>,
+    pota_log_service: Inject<AppRegistry, dyn PotaLogService>,
     Path(log_id): Path<String>,
 ) -> AppResult<Json<PotaLogHistView>> {
     let log_id = LogId::from_str(&log_id)?;
-    let loguser = user_service.find_logid(log_id).await?;
+    let loguser = pota_log_service.find_logid(log_id).await?;
     Ok(Json(loguser.into()))
 }
 
 async fn delete_pota_log(
-    user_service: Inject<AppRegistry, dyn UserService>,
+    pota_log_service: Inject<AppRegistry, dyn PotaLogService>,
     Path(log_id): Path<String>,
 ) -> AppResult<StatusCode> {
     let log_id = LogId::from_str(&log_id)?;
 
-    user_service
+    pota_log_service
         .delete_pota_log(log_id)
         .await
         .map(|_| StatusCode::OK)

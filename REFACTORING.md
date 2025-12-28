@@ -476,7 +476,7 @@ adapter/src/database/implement/sqlite/
 **複雑度**: 中
 **工数**: 12h
 
-#### #42 user_serviceの責務分離 🟡 MEDIUM
+#### #42 user_serviceの責務分離 ✅
 **問題**: 1ファイルに5つの責務
 1. SOTA ログ管理
 2. POTA ログ管理
@@ -484,16 +484,16 @@ adapter/src/database/implement/sqlite/
 4. ロケータ検索
 5. 地磁気データ取得
 
-**対策**:
+**対策完了**:
 ```
 service/src/implement/
-  ├── user_service.rs (汎用, 300行)
-  ├── sota_log_service.rs (新規, 150行)
-  ├── pota_log_service.rs (新規, 150行)
-  └── reference_search_service.rs (新規, 100行)
+  ├── user_service.rs (327行) - リファレンス検索、アラート/スポット、ロケータ、地磁気、APRS
+  ├── sota_log_service.rs (211行) - SOTAログ管理 + 10周年アワード判定
+  └── pota_log_service.rs (123行) - POTAログ管理
 ```
-**複雑度**: 高
-**工数**: 16h
+**結果**: 674行 → 661行（3サービスに分離、単一責任原則に準拠）
+- 新規トレイト: `SotaLogService`, `PotaLogService`
+- Shaku DIで適切に注入
 
 ---
 
@@ -525,7 +525,7 @@ service/src/implement/
 | 🔴 高 | #39 APIハンドラテスト（Phase 2） | 8h | DIモック構築 |
 | 🟡 中 | #40 APRSテスト | 8h | |
 | 🟡 中 | #41 ファイル分割 | 12h | |
-| 🟡 中 | #42 user_service責務分離 | 16h | |
+| ✅ | #42 user_service責務分離 | 完了 | SotaLogService, PotaLogService分離 |
 | 🟢 低 | #35 PostGISレガシー削除 | 1h | ✓ |
 | 🟢 低 | #37 clone()最適化 | 2h | |
 | 🟢 低 | #38 Regexキャッシング | 1h | |
