@@ -105,12 +105,14 @@ impl AppRegistry {
 #[derive(Clone)]
 pub struct AppState {
     module: Arc<AppRegistry>,
+    pub config: AppConfig,
 }
 
 impl AppState {
-    pub fn new(module: AppRegistry) -> Self {
+    pub fn new(module: AppRegistry, config: AppConfig) -> Self {
         Self {
             module: Arc::new(module),
+            config,
         }
     }
 }

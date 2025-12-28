@@ -23,7 +23,7 @@ use adapter::{
     geomag::connect_geomag_with,
     minikvs::MiniKvs,
 };
-use api::handler::v2;
+use api::handler::{admin, v2};
 use registry::{AppRegistry, AppState};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -149,6 +149,9 @@ async fn handle_db_command(action: DbCommands) -> Result<()> {
 }
 
 async fn bootstrap() -> Result<()> {
+    // 起動時刻を記録（admin metricsで使用）
+    admin::init_start_time();
+
     let config = AppConfig::new()?;
 
     let filter = EnvFilter::new(&config.log_level);
@@ -172,7 +175,7 @@ async fn bootstrap() -> Result<()> {
     let geomag = connect_geomag_with(&config).await?;
     let minikvs = Arc::new(MiniKvs::new(config.auth_token_ttl));
     let module = AppRegistry::new(&config, pool, aprs, geomag, minikvs);
-    let app_state = AppState::new(module);
+    let app_state = AppState::new(module, config.clone());
     let job_state = app_state.clone();
 
     let firebase = FireAuth::new(config.firebase_api_key.clone());

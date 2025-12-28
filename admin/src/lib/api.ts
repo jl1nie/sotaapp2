@@ -125,6 +125,80 @@ export interface AwardJudgmentResponse {
 	message?: string;
 }
 
+// System metrics types
+export interface SystemMetrics {
+	uptime_secs: number;
+	memory_used_bytes: number | null;
+	memory_used_mb: number | null;
+	db_status: string;
+}
+
+export interface MetricsResponse {
+	success: boolean;
+	data?: SystemMetrics;
+	message?: string;
+}
+
+export interface RestartResponse {
+	success: boolean;
+	message: string;
+}
+
+export async function getSystemMetrics(): Promise<MetricsResponse> {
+	const token = auth.getToken();
+	if (!token) {
+		return { success: false, message: '認証されていません' };
+	}
+
+	try {
+		const response = await fetch('/api/v2/admin/metrics', {
+			method: 'GET',
+			headers: { 'Authorization': `Bearer ${token}` }
+		});
+
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです。再度ログインしてください。' };
+		}
+
+		if (!response.ok) {
+			return { success: false, message: `メトリクス取得に失敗しました: ${response.status}` };
+		}
+
+		const data: SystemMetrics = await response.json();
+		return { success: true, data };
+	} catch (e) {
+		return { success: false, message: 'ネットワークエラー。再試行してください。' };
+	}
+}
+
+export async function restartServer(): Promise<RestartResponse> {
+	const token = auth.getToken();
+	if (!token) {
+		return { success: false, message: '認証されていません' };
+	}
+
+	try {
+		const response = await fetch('/api/v2/admin/restart', {
+			method: 'POST',
+			headers: { 'Authorization': `Bearer ${token}` }
+		});
+
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです。再度ログインしてください。' };
+		}
+
+		if (!response.ok) {
+			return { success: false, message: `リスタートに失敗しました: ${response.status}` };
+		}
+
+		return { success: true, message: 'サーバーをリスタートしています...' };
+	} catch (e) {
+		return { success: false, message: 'ネットワークエラー。再試行してください。' };
+	}
+}
+
 export async function judgeAward(file: File, mode: JudgmentMode = 'strict'): Promise<AwardJudgmentResponse> {
 	const formData = new FormData();
 	formData.append('file', file);
