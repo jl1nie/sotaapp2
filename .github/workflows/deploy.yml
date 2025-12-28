@@ -1,15 +1,13 @@
 name: Deploy
 
 on:
-  push:
-    tags:
-      - 'v*'
+  # 手動実行のみ（CIがmainで成功した後に実行）
   workflow_dispatch:
     inputs:
       skip_backup:
         description: 'Skip database backup before deploy'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       environment:
         description: 'Deployment environment'
