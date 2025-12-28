@@ -63,9 +63,18 @@ jobs:
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
       image_full: ${{ steps.meta.outputs.tags }}
+      sha_tag: ${{ steps.vars.outputs.sha_tag }}
+      deploy_image: ${{ steps.vars.outputs.deploy_image }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set variables
+        id: vars
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "sha_tag=${SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "deploy_image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHA_SHORT}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -82,7 +91,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,prefix=
+            type=sha,prefix=,format=short
             type=raw,value=latest
 
       - name: Build and push
@@ -128,7 +137,10 @@ jobs:
       - name: Deploy to Fly.io
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl deploy --remote-only
+        run: |
+          # SHAタグを明示的に指定してデプロイ（キャッシュ問題を回避）
+          echo "Deploying image: ${{ needs.build-and-push.outputs.deploy_image }}"
+          flyctl deploy --image "${{ needs.build-and-push.outputs.deploy_image }}"
 
       - name: Health check
         id: health-check
