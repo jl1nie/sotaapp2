@@ -3,7 +3,7 @@ WORKDIR /app
 
 ENV SQLX_OFFLINE=true
 
-RUN apt update && apt install -y libssl-dev &&  apt install -y pkg-config
+RUN apt update && apt install -y libssl-dev pkg-config curl
 COPY . .
 RUN cargo build --release
 
