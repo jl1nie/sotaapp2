@@ -60,16 +60,13 @@ pub trait UserService: Send + Sync + Interface {
     async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>>;
 }
 
+/// 管理者向けAPIサービス（外部公開用）
 #[async_trait]
 pub trait AdminService: Send + Sync + Interface {
     async fn import_summit_list(&self, event: UploadSOTASummit) -> AppResult<usize>;
     async fn update_summit_list(&self, event: UploadSOTASummit) -> AppResult<usize>;
-    /// メモリ効率の良いサミットリスト更新（ファイルから2回読み込み）
-    async fn update_summit_list_from_file(&self, path: &Path) -> AppResult<usize>;
     async fn import_summit_opt_list(&self, event: UploadSOTASummitOpt) -> AppResult<usize>;
     async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<usize>;
-    /// メモリ効率の良いパークリスト更新（ファイルから2回読み込み）
-    async fn update_pota_park_list_from_file(&self, path: &Path) -> AppResult<usize>;
     async fn import_pota_park_list_ja(&self, event: UploadPOTAReference) -> AppResult<usize>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<usize>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
@@ -90,9 +87,15 @@ pub trait AdminService: Send + Sync + Interface {
     async fn health_check(&self) -> AppResult<bool>;
 }
 
+/// 定期バッチ処理サービス（内部用）
 #[async_trait]
 pub trait AdminPeriodicService: Send + Sync + Interface {
     async fn update_alerts(&self, alerts: Vec<Alert>) -> AppResult<()>;
     async fn update_spots(&self, spots: Vec<Spot>) -> AppResult<()>;
     async fn aprs_packet_received(&self, packet: AprsData) -> AppResult<()>;
+
+    /// メモリ効率の良いサミットリスト更新（ファイルから2回読み込み）
+    async fn update_summit_list_from_file(&self, path: &Path) -> AppResult<usize>;
+    /// メモリ効率の良いパークリスト更新（ファイルから2回読み込み）
+    async fn update_pota_park_list_from_file(&self, path: &Path) -> AppResult<usize>;
 }
