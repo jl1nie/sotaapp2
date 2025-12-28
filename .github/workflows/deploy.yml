@@ -8,14 +8,56 @@ on:
         required: false
         default: false
         type: boolean
+      image_tag:
+        description: 'Image tag to deploy (SHA short hash). Leave empty to use latest from main.'
+        required: false
+        type: string
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: jl1nie/sotaapp2
-  SQLX_OFFLINE: true
   FLY_APP: sotaapp2
 
 jobs:
+  # デプロイするイメージを決定
+  resolve-image:
+    name: Resolve Image
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_image: ${{ steps.resolve.outputs.deploy_image }}
+      sha_tag: ${{ steps.resolve.outputs.sha_tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve image tag
+        id: resolve
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            # 手動で指定されたタグを使用
+            SHA_TAG="${{ github.event.inputs.image_tag }}"
+            echo "Using manually specified tag: ${SHA_TAG}"
+          else
+            # mainブランチの最新コミットのSHAを使用
+            SHA_TAG=$(git rev-parse --short=7 origin/main)
+            echo "Using latest main commit: ${SHA_TAG}"
+          fi
+          echo "sha_tag=${SHA_TAG}" >> $GITHUB_OUTPUT
+          echo "deploy_image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHA_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Verify image exists
+        run: |
+          echo "Verifying image: ${{ steps.resolve.outputs.deploy_image }}"
+          # Docker Hubからイメージの存在を確認（認証不要でタグ確認可能）
+          if ! docker manifest inspect "${{ steps.resolve.outputs.deploy_image }}" > /dev/null 2>&1; then
+            echo "::error::Image not found: ${{ steps.resolve.outputs.deploy_image }}"
+            echo "Please run CI first to build and push the image."
+            exit 1
+          fi
+          echo "Image verified!"
+
   # DBバックアップをローカルにダウンロード
   backup-database:
     name: Backup Database
@@ -56,60 +98,12 @@ jobs:
           path: ${{ steps.backup.outputs.backup_file }}
           retention-days: 30
 
-  # Docker イメージのビルドとプッシュ
-  build-and-push:
-    name: Build & Push Docker Image
-    runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.meta.outputs.version }}
-      image_full: ${{ steps.meta.outputs.tags }}
-      sha_tag: ${{ steps.vars.outputs.sha_tag }}
-      deploy_image: ${{ steps.vars.outputs.deploy_image }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set variables
-        id: vars
-        run: |
-          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "sha_tag=${SHA_SHORT}" >> $GITHUB_OUTPUT
-          echo "deploy_image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHA_SHORT}" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # Fly.io へデプロイ
+  # Fly.io へデプロイ（CIでビルド済みのイメージを使用）
   deploy:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    needs: [backup-database, build-and-push]
-    if: always() && needs.build-and-push.result == 'success'
+    needs: [resolve-image, backup-database]
+    if: always() && needs.resolve-image.result == 'success'
     environment: production
     outputs:
       deploy_success: ${{ steps.health-check.outputs.success }}
@@ -120,10 +114,10 @@ jobs:
       - name: Setup Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Show backup status
+      - name: Show deploy info
         run: |
-          echo "Backup file: ${{ needs.backup-database.outputs.backup_file }}"
-          echo "Image: ${{ needs.build-and-push.outputs.image_full }}"
+          echo "Backup file: ${{ needs.backup-database.outputs.backup_file || 'skipped' }}"
+          echo "Deploy image: ${{ needs.resolve-image.outputs.deploy_image }}"
 
       - name: Get current image (for rollback)
         id: current
@@ -138,9 +132,9 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          # SHAタグを明示的に指定してデプロイ（キャッシュ問題を回避）
-          echo "Deploying image: ${{ needs.build-and-push.outputs.deploy_image }}"
-          flyctl deploy --image "${{ needs.build-and-push.outputs.deploy_image }}"
+          # CIでビルド済みのイメージを直接デプロイ（再ビルドなし）
+          echo "Deploying image: ${{ needs.resolve-image.outputs.deploy_image }}"
+          flyctl deploy --image "${{ needs.resolve-image.outputs.deploy_image }}"
 
       - name: Health check
         id: health-check
@@ -176,7 +170,7 @@ jobs:
   summary:
     name: Summary
     runs-on: ubuntu-latest
-    needs: [backup-database, build-and-push, deploy]
+    needs: [resolve-image, backup-database, deploy]
     if: always()
 
     steps:
@@ -186,6 +180,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Image | \`${{ needs.build-and-push.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ needs.resolve-image.outputs.sha_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Full Image | \`${{ needs.resolve-image.outputs.deploy_image }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Backup | ${{ needs.backup-database.outputs.backup_file || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
