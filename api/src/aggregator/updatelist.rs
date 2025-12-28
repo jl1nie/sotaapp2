@@ -2,7 +2,6 @@ use futures_util::StreamExt;
 use shaku::HasComponent;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
@@ -65,11 +64,6 @@ pub async fn update_summit_list(config: AppConfig, registry: Arc<AppRegistry>) -
     // 一時ファイル削除
     let _ = tokio::fs::remove_file(SOTA_CSV_PATH).await;
 
-    if config.reboot_after_update {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        tracing::info!("Sending graceful shutdown signal.");
-        let _ = config.shutdown_tx.send(true);
-    }
     tracing::info!(
         "Summit list updated successfully. {} summits updated.",
         count

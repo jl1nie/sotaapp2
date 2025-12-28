@@ -35,7 +35,6 @@ pub struct AppConfig {
     pub aprs_password: String,
     pub aprs_exclude_user: Option<String>,
     pub aprs_arrival_mesg_regex: Option<String>,
-    pub reboot_after_update: bool,
     pub openapi_level: OpenApiLevel,
     pub shutdown_tx: watch::Sender<bool>,
     pub shutdown_rx: watch::Receiver<bool>,
@@ -202,7 +201,6 @@ impl AppConfig {
             aprs_arrival_mesg_regex: std::env::var("APRS_ARRIVAL_MESG_REGEX").ok(),
 
             // その他
-            reboot_after_update: env_parse_or("REBOOT_AFTER_UPDATE", false),
             openapi_level: env_parse_or("OPENAPI_LEVEL", OpenApiLevel::None),
 
             shutdown_rx,

@@ -1,4 +1,5 @@
 pub mod activation;
+pub mod admin;
 pub mod auth;
 pub mod fle;
 pub mod health;
