@@ -75,6 +75,7 @@ tempfile = "3"
 validator = { version = "0.19", features = ["derive"] }
 utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
+plotters = { version = "0.3", default-features = false, features = ["svg_backend", "line_series", "point_series"] }
 
 [dependencies]
 api.workspace = true

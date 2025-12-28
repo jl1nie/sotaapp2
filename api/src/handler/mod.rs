@@ -8,3 +8,4 @@ pub mod propagation;
 pub mod search;
 pub mod sota;
 pub mod v2;
+pub mod wspr;
