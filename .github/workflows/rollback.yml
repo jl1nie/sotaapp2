@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Image tag to rollback to (e.g., v0.1.2 or commit SHA)'
+        description: 'Image tag to rollback to (SHA or version tag)'
         required: true
         type: string
       confirm:
@@ -15,10 +15,11 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: jl1nie/sotaapp2
+  FLY_APP: sotaapp2
 
 jobs:
   rollback:
-    name: Rollback to Previous Version
+    name: Rollback
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.confirm == 'rollback' }}
     environment: production
@@ -27,11 +28,10 @@ jobs:
       - name: Validate confirmation
         if: ${{ github.event.inputs.confirm != 'rollback' }}
         run: |
-          echo "::error::Confirmation failed. Please type 'rollback' to confirm."
+          echo "::error::Type 'rollback' to confirm"
           exit 1
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -40,33 +40,30 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          echo "Current deployment status:"
-          flyctl status || true
-          echo ""
-          CURRENT_IMAGE=$(flyctl status --json 2>/dev/null | jq -r '.Machines[0].config.image // "unknown"' || echo "unknown")
-          echo "Current image: ${CURRENT_IMAGE}"
+          echo "## Current Status" >> $GITHUB_STEP_SUMMARY
+          CURRENT=$(flyctl status --json 2>/dev/null | jq -r '.Machines[0].config.image // "unknown"')
+          echo "Current image: ${CURRENT}"
+          echo "| Current | \`${CURRENT}\` |" >> $GITHUB_STEP_SUMMARY
 
-      - name: Perform rollback
+      - name: Rollback
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
-          echo "Rolling back to: ${TARGET_IMAGE}"
-          flyctl deploy --image "${TARGET_IMAGE}"
+          TARGET="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+          echo "Rolling back to: ${TARGET}"
+          echo "| Target | \`${TARGET}\` |" >> $GITHUB_STEP_SUMMARY
+          flyctl deploy --image "${TARGET}"
 
-      - name: Verify rollback health
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Health check
         run: |
-          echo "Waiting for rollback to stabilize..."
+          echo "Waiting for rollback..."
           sleep 30
 
-          HEALTH_URL="https://sotaapp2.fly.dev/health"
-          echo "Checking health endpoint: ${HEALTH_URL}"
-
+          HEALTH_URL="https://${FLY_APP}.fly.dev/api/v2/health"
           for i in 1 2 3 4 5; do
             if curl -sf "${HEALTH_URL}" > /dev/null; then
-              echo "::notice::Rollback successful! Health check passed."
+              echo "::notice::Rollback successful!"
+              echo "| Result | Success |" >> $GITHUB_STEP_SUMMARY
               exit 0
             fi
             echo "Attempt $i failed, retrying in 10s..."
@@ -74,12 +71,11 @@ jobs:
           done
 
           echo "::error::Health check failed after rollback"
+          echo "| Result | Failed |" >> $GITHUB_STEP_SUMMARY
           exit 1
 
-      - name: Post-rollback status
+      - name: Final status
         if: always()
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          echo "Final deployment status:"
-          flyctl status || true
+        run: flyctl status

@@ -1,39 +1,71 @@
 name: Deploy
 
 on:
-  # 手動実行のみ（CIがmainで成功した後に実行）
   workflow_dispatch:
     inputs:
       skip_backup:
-        description: 'Skip database backup before deploy'
+        description: 'Skip database backup'
         required: false
         default: false
         type: boolean
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: jl1nie/sotaapp2
   SQLX_OFFLINE: true
+  FLY_APP: sotaapp2
 
 jobs:
-  build-and-push:
-    name: Build and Push Docker Image
+  # DBバックアップをローカルにダウンロード
+  backup-database:
+    name: Backup Database
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    if: ${{ github.event.inputs.skip_backup != 'true' }}
+    outputs:
+      backup_file: ${{ steps.backup.outputs.backup_file }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Download database backup
+        id: backup
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="sotaapp2_${TIMESTAMP}.db"
+
+          echo "Downloading database from Fly.io..."
+          flyctl ssh sftp get /data/sotaapp2.db "./${BACKUP_FILE}" || {
+            echo "::warning::Database download failed, continuing..."
+            exit 0
+          }
+
+          if [ -f "${BACKUP_FILE}" ]; then
+            SIZE=$(ls -lh "${BACKUP_FILE}" | awk '{print $5}')
+            echo "Downloaded: ${BACKUP_FILE} (${SIZE})"
+            echo "backup_file=${BACKUP_FILE}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload backup as artifact
+        if: steps.backup.outputs.backup_file != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: ${{ steps.backup.outputs.backup_file }}
+          retention-days: 30
+
+  # Docker イメージのビルドとプッシュ
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      image_full: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -44,17 +76,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata for Docker
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=tag
             type=sha,prefix=
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest
 
-      - name: Build and push Docker image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -64,109 +95,48 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  backup-database:
-    name: Backup Production Database
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    if: ${{ github.event.inputs.skip_backup != 'true' }}
-    outputs:
-      backup_file: ${{ steps.backup.outputs.backup_file }}
-      backup_success: ${{ steps.backup.outputs.success }}
-
-    steps:
-      - name: Setup Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Check VM status and create backup
-        id: backup
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          # Check if VM is running
-          VM_STATE=$(flyctl status --json 2>/dev/null | jq -r '.Machines[0].state // "unknown"' || echo "unknown")
-          echo "VM state: $VM_STATE"
-
-          if [ "$VM_STATE" != "started" ]; then
-            echo "VM is not running (state: ${VM_STATE}). Skipping backup."
-            echo "success=skipped" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          BACKUP_FILE="/data/backup_predeploy_${TIMESTAMP}.db"
-          echo "Creating backup: ${BACKUP_FILE}"
-
-          if flyctl ssh console -C "./target/release/app db backup -o ${BACKUP_FILE}"; then
-            echo "Backup completed: ${BACKUP_FILE}"
-            echo "backup_file=${BACKUP_FILE}" >> $GITHUB_OUTPUT
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "::warning::Backup failed, but continuing with deploy"
-            echo "success=false" >> $GITHUB_OUTPUT
-          fi
-
-  deploy-fly:
+  # Fly.io へデプロイ
+  deploy:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    needs: [build-and-push, backup-database]
+    needs: [backup-database, build-and-push]
     if: always() && needs.build-and-push.result == 'success'
     environment: production
     outputs:
-      previous_image: ${{ steps.get-current.outputs.previous_image }}
-      new_image: ${{ steps.get-current.outputs.new_image }}
       deploy_success: ${{ steps.health-check.outputs.success }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Display backup status
+      - name: Show backup status
         run: |
-          echo "Backup status: ${{ needs.backup-database.outputs.backup_success }}"
           echo "Backup file: ${{ needs.backup-database.outputs.backup_file }}"
+          echo "Image: ${{ needs.build-and-push.outputs.image_full }}"
 
-      - name: Get current deployed image
-        id: get-current
+      - name: Get current image (for rollback)
+        id: current
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          # Get the currently deployed image before deploying
-          CURRENT_IMAGE=$(flyctl status --json 2>/dev/null | jq -r '.Machines[0].config.image // "unknown"' || echo "unknown")
-          echo "Current image: ${CURRENT_IMAGE}"
-          echo "previous_image=${CURRENT_IMAGE}" >> $GITHUB_OUTPUT
-
-          # Calculate new image tag
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            NEW_TAG="${{ github.ref_name }}"
-          else
-            NEW_TAG="${{ github.sha }}"
-          fi
-          NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${NEW_TAG}"
-          echo "New image: ${NEW_IMAGE}"
-          echo "new_image=${NEW_IMAGE}" >> $GITHUB_OUTPUT
+          CURRENT=$(flyctl status --json 2>/dev/null | jq -r '.Machines[0].config.image // "unknown"')
+          echo "current_image=${CURRENT}" >> $GITHUB_OUTPUT
+          echo "Current image: ${CURRENT}"
 
       - name: Deploy to Fly.io
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          echo "Deploying to Fly.io..."
-          flyctl deploy --remote-only
+        run: flyctl deploy --remote-only
 
-      - name: Verify deployment health
+      - name: Health check
         id: health-check
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          echo "Waiting for deployment to stabilize..."
+          echo "Waiting for deployment..."
           sleep 30
 
-          # Health check - 正しいAPIパス
-          HEALTH_URL="https://sotaapp2.fly.dev/api/v2/health"
-          echo "Checking health endpoint: ${HEALTH_URL}"
-
+          HEALTH_URL="https://${FLY_APP}.fly.dev/api/v2/health"
           for i in 1 2 3 4 5; do
             if curl -sf "${HEALTH_URL}" > /dev/null; then
               echo "Health check passed!"
@@ -178,25 +148,32 @@ jobs:
           done
 
           echo "success=false" >> $GITHUB_OUTPUT
-          echo "::error::Health check failed after 5 attempts"
+          echo "::error::Health check failed"
           exit 1
 
-      - name: Post-deploy notification
-        if: success()
+      - name: Rollback on failure
+        if: failure() && steps.current.outputs.current_image != 'unknown'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          echo "::notice::Deployment successful!"
-          echo "Backup file: ${{ needs.backup-database.outputs.backup_file }}"
+          echo "::error::Deployment failed, rolling back..."
+          echo "Rolling back to: ${{ steps.current.outputs.current_image }}"
+          flyctl deploy --image "${{ steps.current.outputs.current_image }}"
 
-      - name: Rollback instructions on failure
-        if: failure()
+  # デプロイ結果のサマリ
+  summary:
+    name: Summary
+    runs-on: ubuntu-latest
+    needs: [backup-database, build-and-push, deploy]
+    if: always()
+
+    steps:
+      - name: Create summary
         run: |
-          echo "::error::============================================"
-          echo "::error::DEPLOYMENT FAILED - ROLLBACK INSTRUCTIONS"
-          echo "::error::============================================"
-          echo ""
-          echo "Previous image: ${{ steps.get-current.outputs.previous_image }}"
-          echo ""
-          echo "To rollback, run:"
-          echo "  flyctl deploy --image ${{ steps.get-current.outputs.previous_image }}"
-          echo ""
-          echo "Or use the manual rollback workflow in GitHub Actions."
+          echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ needs.build-and-push.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backup | ${{ needs.backup-database.outputs.backup_file || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
