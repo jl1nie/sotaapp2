@@ -10,7 +10,7 @@ use common::error::AppResult;
 use common::http;
 use common::{config::AppConfig, error::AppError};
 use registry::AppRegistry;
-use service::services::AdminService;
+use service::services::AdminPeriodicService;
 
 const SOTA_CSV_PATH: &str = "/tmp/summits.csv";
 const POTA_CSV_PATH: &str = "/tmp/parks.csv";
@@ -51,7 +51,7 @@ async fn download_to_file(url: &str, path: &str, user_agent: Option<&str>) -> Ap
 }
 
 pub async fn update_summit_list(config: AppConfig, registry: Arc<AppRegistry>) -> AppResult<()> {
-    let service: &dyn AdminService = registry.resolve_ref();
+    let service: &dyn AdminPeriodicService = registry.resolve_ref();
     let endpoint = config.sota_summitlist_endpoint.clone();
 
     tracing::info!("Downloading summit list from {}", endpoint);
@@ -78,7 +78,7 @@ pub async fn update_summit_list(config: AppConfig, registry: Arc<AppRegistry>) -
 }
 
 pub async fn update_park_list(config: AppConfig, registry: Arc<AppRegistry>) -> AppResult<()> {
-    let service: &dyn AdminService = registry.resolve_ref();
+    let service: &dyn AdminPeriodicService = registry.resolve_ref();
     let endpoint = config.pota_parklist_endpoint.clone();
 
     let user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36";
