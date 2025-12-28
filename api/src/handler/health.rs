@@ -1,13 +1,42 @@
 use axum::{http::StatusCode, routing::get, Router};
 use common::error::AppResult;
 use shaku_axum::Inject;
+use utoipa::OpenApi;
 
 use registry::{AppRegistry, AppState};
 use service::services::AdminService;
+
+/// Health Check API
+#[derive(OpenApi)]
+#[openapi(
+    paths(health_check, health_check_db),
+    tags((name = "health", description = "ヘルスチェックAPI"))
+)]
+pub struct HealthApi;
+
+/// ヘルスチェック
+#[utoipa::path(
+    get,
+    path = "/api/v2/health",
+    responses(
+        (status = 200, description = "サーバー正常"),
+    ),
+    tag = "health"
+)]
 pub async fn health_check() -> StatusCode {
     StatusCode::OK
 }
 
+/// データベースヘルスチェック
+#[utoipa::path(
+    get,
+    path = "/api/v2/health/db",
+    responses(
+        (status = 200, description = "データベース正常"),
+        (status = 500, description = "データベース異常"),
+    ),
+    tag = "health"
+)]
 async fn health_check_db(admin_service: Inject<AppRegistry, dyn AdminService>) -> AppResult<()> {
     if admin_service.health_check().await? {
         Ok(())

@@ -1,11 +1,13 @@
 use serde::Serialize;
 use typeshare::typeshare;
+use utoipa::ToSchema;
 
 use super::pota::{PotaRefLogView, PotaSearchView};
 use super::sota::{SotaRefView, SotaSearchView};
 use domain::model::event::FindResult;
 
-#[derive(Debug, Serialize)]
+/// 検索結果レスポンス
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
@@ -31,7 +33,8 @@ impl From<FindResult> for SearchResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// 検索結果フルレスポンス
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchFullResponse {
@@ -57,7 +60,8 @@ impl From<FindResult> for SearchFullResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// 検索結果簡易レスポンス
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchBriefResponse {
@@ -65,7 +69,8 @@ pub struct SearchBriefResponse {
     pub candidates: Vec<SearchBriefData>,
 }
 
-#[derive(Debug, Serialize)]
+/// 検索結果簡易データ
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SearchBriefData {

@@ -5,6 +5,7 @@ use axum::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::str::FromStr;
+use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
 use common::error::{AppError, AppResult};
@@ -85,7 +86,8 @@ where
 // バリデーション制約値は#[validate]属性内で直接指定
 // 定数として定義するとvalidatorマクロが対応しないため
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize, Validate)]
+/// APIクエリパラメータ
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Validate, ToSchema, IntoParams)]
 pub struct GetParam {
     #[validate(range(min = -180.0, max = 180.0, message = "経度は-180〜180の範囲で指定してください"))]
     pub lon: Option<f64>,

@@ -36,8 +36,49 @@ pub struct AppConfig {
     pub aprs_exclude_user: Option<String>,
     pub aprs_arrival_mesg_regex: Option<String>,
     pub reboot_after_update: bool,
+    pub openapi_level: OpenApiLevel,
     pub shutdown_tx: watch::Sender<bool>,
     pub shutdown_rx: watch::Receiver<bool>,
+}
+
+/// OpenAPI公開レベル
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OpenApiLevel {
+    /// 非公開（Swagger UI無効）
+    #[default]
+    None,
+    /// 公開API（admin系を除く）
+    Public,
+    /// すべてのAPI（admin含む）
+    All,
+}
+
+/// OpenApiLevelのパースエラー
+#[derive(Debug, Clone)]
+pub struct OpenApiLevelParseError(String);
+
+impl std::fmt::Display for OpenApiLevelParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for OpenApiLevelParseError {}
+
+impl std::str::FromStr for OpenApiLevel {
+    type Err = OpenApiLevelParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "none" | "off" | "false" | "0" => Ok(OpenApiLevel::None),
+            "public" | "user" => Ok(OpenApiLevel::Public),
+            "all" | "full" | "admin" => Ok(OpenApiLevel::All),
+            _ => Err(OpenApiLevelParseError(format!(
+                "無効なOPENAPI_LEVEL: {} (none/public/all)",
+                s
+            ))),
+        }
+    }
 }
 
 /// 環境変数を取得（必須）
@@ -162,9 +203,64 @@ impl AppConfig {
 
             // その他
             reboot_after_update: env_parse_or("REBOOT_AFTER_UPDATE", false),
+            openapi_level: env_parse_or("OPENAPI_LEVEL", OpenApiLevel::None),
 
             shutdown_rx,
             shutdown_tx,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_openapi_level_from_str_none() {
+        assert_eq!(OpenApiLevel::from_str("none").unwrap(), OpenApiLevel::None);
+        assert_eq!(OpenApiLevel::from_str("off").unwrap(), OpenApiLevel::None);
+        assert_eq!(OpenApiLevel::from_str("false").unwrap(), OpenApiLevel::None);
+        assert_eq!(OpenApiLevel::from_str("0").unwrap(), OpenApiLevel::None);
+        assert_eq!(OpenApiLevel::from_str("NONE").unwrap(), OpenApiLevel::None);
+    }
+
+    #[test]
+    fn test_openapi_level_from_str_public() {
+        assert_eq!(
+            OpenApiLevel::from_str("public").unwrap(),
+            OpenApiLevel::Public
+        );
+        assert_eq!(
+            OpenApiLevel::from_str("user").unwrap(),
+            OpenApiLevel::Public
+        );
+        assert_eq!(
+            OpenApiLevel::from_str("PUBLIC").unwrap(),
+            OpenApiLevel::Public
+        );
+    }
+
+    #[test]
+    fn test_openapi_level_from_str_all() {
+        assert_eq!(OpenApiLevel::from_str("all").unwrap(), OpenApiLevel::All);
+        assert_eq!(OpenApiLevel::from_str("full").unwrap(), OpenApiLevel::All);
+        assert_eq!(OpenApiLevel::from_str("admin").unwrap(), OpenApiLevel::All);
+        assert_eq!(OpenApiLevel::from_str("ALL").unwrap(), OpenApiLevel::All);
+    }
+
+    #[test]
+    fn test_openapi_level_from_str_invalid() {
+        let result = OpenApiLevel::from_str("invalid");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("無効なOPENAPI_LEVEL"));
+    }
+
+    #[test]
+    fn test_openapi_level_default() {
+        assert_eq!(OpenApiLevel::default(), OpenApiLevel::None);
     }
 }

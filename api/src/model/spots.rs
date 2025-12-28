@@ -2,6 +2,7 @@ use chrono::{NaiveDateTime, TimeZone, Utc};
 use common::utils::call_to_operator;
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
+use utoipa::ToSchema;
 
 use common::error::{AppError, AppResult};
 use domain::model::activation::{Spot, SpotLog};
@@ -94,7 +95,8 @@ impl From<PotaSpot> for AppResult<Spot> {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// スポットビュー
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SpotView {

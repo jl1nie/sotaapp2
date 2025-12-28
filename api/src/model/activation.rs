@@ -1,9 +1,11 @@
 use serde::Serialize;
 use typeshare::typeshare;
+use utoipa::ToSchema;
 
 use domain::model::event::GroupBy;
 
-#[derive(Debug, Serialize)]
+/// アクティベーションビュー
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct ActivationView<T> {
