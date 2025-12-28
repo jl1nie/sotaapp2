@@ -21,21 +21,11 @@ use domain::model::pota::{ParkCode, PotaLogHist, PotaReference};
 use domain::model::sota::{SotaReference, SummitCode};
 use std::path::Path;
 
+/// SOTAログ管理サービス
 #[async_trait]
-pub trait UserService: Send + Sync + Interface {
-    async fn count_references(&self, event: &FindRef) -> AppResult<i64>;
-    async fn find_references(&self, event: FindRef) -> AppResult<FindResult>;
-
-    async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
-    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<SpotLog>>>;
-
-    async fn upload_pota_log(&self, event: UploadPOTALog) -> AppResult<PotaLogHist>;
-    async fn delete_pota_log(&self, log_id: LogId) -> AppResult<()>;
-    async fn find_logid(&self, log_id: LogId) -> AppResult<PotaLogHist>;
-
+pub trait SotaLogService: Send + Sync + Interface {
     async fn upload_sota_log(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
     async fn delete_sota_log(&self, user_id: UserId) -> AppResult<()>;
-
     async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;
 
     /// SOTA日本支部設立10周年記念アワード判定（in-memory、DBに保存しない）
@@ -44,6 +34,24 @@ pub trait UserService: Send + Sync + Interface {
         csv_data: &str,
         mode: JudgmentMode,
     ) -> AppResult<AwardResult>;
+}
+
+/// POTAログ管理サービス
+#[async_trait]
+pub trait PotaLogService: Send + Sync + Interface {
+    async fn upload_pota_log(&self, event: UploadPOTALog) -> AppResult<PotaLogHist>;
+    async fn delete_pota_log(&self, log_id: LogId) -> AppResult<()>;
+    async fn find_logid(&self, log_id: LogId) -> AppResult<PotaLogHist>;
+}
+
+/// ユーザー向け検索・参照サービス
+#[async_trait]
+pub trait UserService: Send + Sync + Interface {
+    async fn count_references(&self, event: &FindRef) -> AppResult<i64>;
+    async fn find_references(&self, event: FindRef) -> AppResult<FindResult>;
+
+    async fn find_alerts(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<Alert>>>;
+    async fn find_spots(&self, event: FindAct) -> AppResult<HashMap<GroupBy, Vec<SpotLog>>>;
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode>;
     async fn find_mapcode(&self, lon: f64, lat: f64) -> AppResult<String>;

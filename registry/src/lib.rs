@@ -15,7 +15,9 @@ use adapter::{
 use service::implement::{
     admin_periodic::{AdminPeriodicServiceImpl, AdminPeriodicServiceImplParameters},
     admin_service::{AdminServiceImpl, AdminServiceImplParameters},
-    user_service::{UserServiceImpl, UserServiceImplParameters},
+    pota_log_service::{PotaLogServiceImpl, PotaLogServiceImplParameters},
+    sota_log_service::SotaLogServiceImpl,
+    user_service::UserServiceImpl,
 };
 
 #[cfg(not(feature = "sqlite"))]
@@ -40,7 +42,7 @@ use adapter::database::implement::sqlite::{
 
 module! {
     pub AppRegistry {
-        components = [UserServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
+        components = [UserServiceImpl, SotaLogServiceImpl, PotaLogServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
         SotaRepositoryImpl,PotaRepositoryImpl,
         LocatorRepositryImpl,GeoMagRepositryImpl,AprsRepositryImpl,AprsLogRepositoryImpl,
         MiniKvsRepositryImpl,
@@ -75,7 +77,7 @@ impl AppRegistry {
                 config: config.clone(),
                 pool: pool.clone(),
             })
-            .with_component_parameters::<UserServiceImpl>(UserServiceImplParameters {
+            .with_component_parameters::<PotaLogServiceImpl>(PotaLogServiceImplParameters {
                 config: config.clone(),
             })
             .with_component_parameters::<AdminServiceImpl>(AdminServiceImplParameters {})
