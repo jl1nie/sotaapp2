@@ -73,6 +73,8 @@ mockall = "0.13"
 axum-test = "16"
 tempfile = "3"
 validator = { version = "0.19", features = ["derive"] }
+utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 [dependencies]
 api.workspace = true
@@ -93,3 +95,5 @@ aprs-message.workspace = true
 firebase-auth-sdk.workspace = true
 clap = { version = "4", features = ["derive"] }
 sqlx.workspace = true
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true

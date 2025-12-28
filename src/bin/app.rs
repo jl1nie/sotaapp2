@@ -25,6 +25,7 @@ use adapter::{
 };
 use api::handler::v2;
 use registry::{AppRegistry, AppState};
+use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Parser)]
 #[command(name = "sotaapp2")]
@@ -192,8 +193,24 @@ async fn bootstrap() -> Result<()> {
             .allow_methods(Any),
     };
 
-    let app = Router::new()
-        .merge(v2::routes(firebase))
+    // OpenAPIレベルに応じてSwagger UIを設定
+    let openapi_level = config.openapi_level;
+    let mut app = Router::new().merge(v2::routes(firebase));
+
+    if let Some(openapi_doc) = api::create_api_doc(openapi_level) {
+        let swagger_path = "/api/v2/docs";
+        let openapi_json_path = "/api/v2/docs/openapi.json";
+        tracing::info!(
+            "OpenAPI enabled (level={:?}): {}",
+            openapi_level,
+            swagger_path
+        );
+        app = app.merge(SwaggerUi::new(swagger_path).url(openapi_json_path, openapi_doc));
+    } else {
+        tracing::info!("OpenAPI disabled");
+    }
+
+    let app = app
         .with_state(app_state)
         .layer(cors)
         .fallback_service(ServeDir::new("static").fallback(ServeFile::new("static/index.html")));

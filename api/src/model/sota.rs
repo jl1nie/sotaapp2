@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
+use utoipa::ToSchema;
 
 use common::utils::maidenhead;
 use domain::model::event::PagenatedResult;
@@ -158,7 +159,8 @@ impl From<UpdateRefRequest> for Vec<SotaReference> {
     }
 }
 
-#[derive(Debug, Serialize, Default)]
+/// SOTAリファレンス詳細ビュー
+#[derive(Debug, Serialize, Default, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SotaRefView {
@@ -301,7 +303,8 @@ impl From<PagenatedResult<SotaReference>> for PagenatedResponse<SotaRefView> {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// SOTA検索結果ビュー
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct SotaSearchView {

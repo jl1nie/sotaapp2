@@ -3,6 +3,7 @@ use domain::model::id::UserId;
 use domain::model::Maidenhead;
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
+use utoipa::ToSchema;
 
 use common::utils::maidenhead;
 use domain::model::event::PagenatedResult;
@@ -160,7 +161,8 @@ pub struct PotaHunterLog {
     pub upload: NaiveDate,
 }
 
-#[derive(Debug, Serialize)]
+/// POTAリファレンスビュー
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PotaRefView {
@@ -197,7 +199,8 @@ impl From<PotaReference> for PotaRefView {
     }
 }
 
-#[derive(Debug, Serialize, Default)]
+/// POTAリファレンスログビュー
+#[derive(Debug, Serialize, Default, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PotaRefLogView {
@@ -242,7 +245,8 @@ impl From<PotaRefLog> for PotaRefLogView {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// POTA検索結果ビュー
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 #[serde(rename_all = "camelCase")]
 pub struct PotaSearchView {

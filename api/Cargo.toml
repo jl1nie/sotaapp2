@@ -26,6 +26,7 @@ aprs-message.workspace = true
 typeshare.workspace = true
 validator.workspace = true
 futures-util.workspace = true
+utoipa.workspace = true
 
 [dev-dependencies]
 axum-test.workspace = true

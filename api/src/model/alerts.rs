@@ -1,6 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
+use utoipa::ToSchema;
 
 use common::error::{AppError, AppResult};
 use common::utils::call_to_operator;
@@ -102,7 +103,8 @@ impl From<PotaAlert> for AppResult<Alert> {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// アラートビュー
+#[derive(Debug, Serialize, ToSchema)]
 #[typeshare]
 pub struct AlertView {
     pub program: String,
