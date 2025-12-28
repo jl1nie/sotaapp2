@@ -122,8 +122,9 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} sotaapp2:test
+          # latest タグを使用（確実に存在する）
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest sotaapp2:test
           ./scripts/docker-e2e-test.sh sotaapp2:test
 
   # Fly.io デプロイ
