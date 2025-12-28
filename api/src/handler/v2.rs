@@ -7,6 +7,7 @@ use super::{
     activation::build_activation_routers, auth::build_auth_routers,
     health::build_health_chek_routers, locator::build_locator_routers, pota::build_pota_routers,
     propagation::build_propagation_routers, search::build_search_routers, sota::build_sota_routers,
+    wspr::wspr_router,
 };
 
 pub fn routes(auth: FireAuth) -> Router<AppState> {
@@ -19,6 +20,7 @@ pub fn routes(auth: FireAuth) -> Router<AppState> {
         .merge(build_search_routers())
         .merge(build_activation_routers())
         .merge(build_auth_routers(&auth))
+        .nest("/wspr", wspr_router())
         .layer(DefaultBodyLimit::max(1024 * 1024 * 64));
 
     Router::new().nest("/api/v2", router)
