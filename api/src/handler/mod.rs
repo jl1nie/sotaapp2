@@ -1,7 +1,9 @@
 pub mod activation;
 pub mod auth;
+pub mod fle;
 pub mod health;
 pub mod locator;
+pub mod logconv;
 pub mod multipart;
 pub mod pota;
 pub mod propagation;

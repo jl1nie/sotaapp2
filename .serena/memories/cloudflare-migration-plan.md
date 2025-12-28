@@ -155,8 +155,56 @@ Turborepoでsotaapp2 + sotalive + adminを統合するか検討。
 
 ## 工数見積（Full Rust移行）
 
-| Phase | 期間 | 主要タスク |
-|-------|------|-----------|
+| Phase | 期間 | 主要タスク | ステータス |
+|-------|------|-----------|-----------|
+| Phase 1 | 1-2週間 | Pages移行、プロキシ | **完了** ✅ |
+| Phase 2 | 1週間 | wspr.py Rust移行 (plotters) | **完了** ✅ |
+| Phase 3a | 2-3週間 | convutil Rust移行 (ADIF/CSV) | **完了** ✅ |
+| Phase 3b | 2-3週間 | FLEパーサー Rust移行 | **完了** ✅ |
+| Phase 3c | 1週間 | ハンドラー統合・テスト | **完了** ✅ |
+| Phase 4 | 1週間 | Vercel停止・最適化 | 未着手 |
+| Phase 5 | 後日 | モノレポ検討（オプション） | 未着手 |
+| **合計** | **8-11週間** | | |
+
+### 完了した作業（2024-12-28）
+
+#### Phase 3b: FLEパーサー Rust移行
+- `service/src/implement/fle/mod.rs` - FLEモジュール定義、FSM設計ドキュメント
+- `service/src/implement/fle/types.rs` - 共通型（FleEnvironment, RstValue, FleQsoRecord等）
+- `service/src/implement/fle/tokenizer.rs` - トークナイザー（Token enum, tokenize関数）
+- `service/src/implement/fle/compiler.rs` - FSMベースコンパイラ（State: Norm/Freq/RstSent/RstRcvd）
+- `service/src/implement/fle/output.rs` - 出力フォーマッタ（SOTA CSV/POTA ADIF/HAMLOG CSV/AirHam/ZLOG）
+- `api/src/handler/fle.rs` - APIエンドポイント (`/api/v2/fle/compile`, `/api/v2/fle/generate`)
+- 19個のユニットテスト追加
+- Clippy警告最小化
+
+#### Phase 3a: convutil.py Rust移行
+- `service/src/implement/logconv/mod.rs` - モジュール定義
+- `service/src/implement/logconv/types.rs` - 共通型、周波数/バンド変換テーブル、モード変換
+- `service/src/implement/logconv/adif.rs` - ADIFパーサー
+- `service/src/implement/logconv/hamlog.rs` - HAMLOG CSV / HamLog iOSパーサー
+- `service/src/implement/logconv/converter.rs` - SOTA/POTA/WWFF出力変換、ZIP生成
+- `api/src/handler/logconv.rs` - APIエンドポイント (`/api/v2/logconv/*`)
+- 23個のユニットテスト追加
+- Clippy警告0件
+
+#### Phase 1: Cloudflare Pages移行
+- `/home/minoru/src/sotalive-cloudflare/` プロジェクト作成
+- `wrangler.toml` - Cloudflare Pages設定
+- `functions/api/[[path]].ts` - Fly.ioへのAPIプロキシWorker
+- `functions/_middleware.ts` - サブドメインルーティング（myact/logconv/myqth）
+- 静的アセットをsotalive-vercelからコピー
+- TypeScript/package.json設定
+- コミット: `efe7e8e`
+
+#### Phase 2: wspr.py Rust移行
+- `service/src/implement/wspr_service.rs` - WSPRスポットデータからSVG生成
+- `api/src/handler/wspr.rs` - `POST /api/v2/wspr/svg` エンドポイント
+- `plotters`クレートを使用してmatplotlib相当のグラフ描画
+- 複数プロット、散布図+平均線、カラー対応
+- コミット: `b5fb8f6`
+
+-------|------|-----------|
 | Phase 1 | 1-2週間 | Pages移行、プロキシ |
 | Phase 2 | 1週間 | wspr.py Rust移行 (plotters) |
 | Phase 3a | 2-3週間 | convutil Rust移行 (ADIF/CSV) |
@@ -210,5 +258,64 @@ Turborepoでsotaapp2 + sotalive + adminを統合するか検討。
 4. **既存インフラ活用** - Fly.io既存環境を活用
 5. **型安全** - コンパイル時エラー検出
 
+## Phase 5: モノレポ＋新サブドメイン戦略（評価済み）
+
+### 提案構成
+
+```
+現行（3ヶ月間維持）
+sotalive.net (Vercel)
+├── myact.sotalive.net
+├── logconv.sotalive.net
+└── wspr.sotalive.net
+
+新規（Cloudflare Pages）
+├── myact2.sotalive.net
+├── logconv2.sotalive.net
+└── wspr2.sotalive.net
+
+バックエンド（共通）
+└── api.sotalive.net または sotaapp2.fly.dev
+```
+
+### モノレポ構成案
+
+```
+sotalive-monorepo/
+├── apps/
+│   ├── myact/        # MyActivation (SvelteKit)
+│   ├── logconv/      # LogConverter (SvelteKit)
+│   └── wspr/         # WSPR (SvelteKit)
+├── packages/
+│   └── shared/       # 共通コンポーネント・ユーティリティ
+├── wrangler.toml     # Cloudflare Pages設定
+└── turbo.json        # Turborepo設定
+```
+
+### メリット
+
+1. **ゼロダウンタイム移行**: 既存サービス維持しながら新サービス並行運用
+2. **段階的ユーザー移行**: 新URLを案内し自主的に移行
+3. **ロールバック容易**: 問題時は旧サービス稼働中
+4. **バックエンド共通化**: sotaapp2で実装済みAPI共通利用
+5. **管理簡素化**: 全フロントエンドを一元管理
+
+### 移行手順
+
+1. **モノレポ作成**: Turborepo + SvelteKit構成
+2. **共通パッケージ整備**: UI/ユーティリティ共通化
+3. **Cloudflare Pages設定**: 新サブドメイン（*2.sotalive.net）
+4. **DNS設定**: Cloudflareで新サブドメイン追加
+5. **並行運用開始**: ユーザーに新URL案内
+6. **旧サービス停止**: SSL証明書期限（約3ヶ月後）に合わせて停止
+
+### 評価結果
+
+**この戦略は妥当**。理由：
+- バックエンドAPI（sotaapp2）は既に3機能すべてRust実装済み
+- フロントエンドモノレポ化で共通コンポーネント再利用可能
+- Cloudflare Pagesは複数サブドメインを1プロジェクトで対応可能
+- 既存ユーザーへの影響最小限で移行可能
+
 ## 作成日
-2024-12-28
+2024-12-28（最終更新: 2024-12-28 Phase 5戦略追記）
