@@ -116,19 +116,23 @@ pub fn tokenize(line: &str) -> Vec<TokenInfo> {
                 CommentKind::Curly => '}',
             };
             let start = pos;
+            let mut raw = String::new();
+            raw.push(chars[pos]);
             pos += 1;
             let mut content = String::new();
             while pos < chars.len() && chars[pos] != close {
                 content.push(chars[pos]);
+                raw.push(chars[pos]);
                 pos += 1;
             }
             if pos < chars.len() {
+                raw.push(chars[pos]);
                 pos += 1; // close bracket
             }
             tokens.push(TokenInfo {
                 token: Token::Comment { kind, content },
                 position: start,
-                raw: line[start..pos].to_string(),
+                raw,
             });
             continue;
         }
@@ -481,5 +485,24 @@ mod tests {
         assert!(is_callsign("VK2ABC"));
         assert!(!is_callsign("40M"));
         assert!(!is_callsign("CW"));
+    }
+
+    #[test]
+    fn test_tokenize_japanese_comments() {
+        // マルチバイト文字を含むコメントでパニックしないことを確認
+        let tokens = tokenize("4 ja4qru 6 7 <曽田さん>{島根市}");
+        assert_eq!(tokens.len(), 6);
+        assert!(matches!(&tokens[0].token, Token::Decimal { value, .. } if value == "4"));
+        assert!(matches!(&tokens[1].token, Token::Call(c) if c == "JA4QRU"));
+        assert!(matches!(&tokens[2].token, Token::Decimal { value, .. } if value == "6"));
+        assert!(matches!(&tokens[3].token, Token::Decimal { value, .. } if value == "7"));
+        assert!(
+            matches!(&tokens[4].token, Token::Comment { kind: CommentKind::Angle, content } if content == "曽田さん")
+        );
+        assert_eq!(tokens[4].raw, "<曽田さん>");
+        assert!(
+            matches!(&tokens[5].token, Token::Comment { kind: CommentKind::Curly, content } if content == "島根市")
+        );
+        assert_eq!(tokens[5].raw, "{島根市}");
     }
 }
