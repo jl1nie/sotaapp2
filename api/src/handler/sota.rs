@@ -1,6 +1,8 @@
 use axum::{
-    extract::{Multipart, Path, Query},
-    http::StatusCode,
+    body::Body,
+    extract::{Multipart, Path, Query, State},
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
     routing::{delete, get, post, put},
     Extension, Json, Router,
 };
@@ -8,8 +10,11 @@ use chrono::{Duration, Utc};
 use firebase_auth_sdk::FireAuth;
 use shaku_axum::Inject;
 
+use common::award_config::AwardTemplateConfig;
 use common::error::AppResult;
 use domain::model::sota::SummitCode;
+use service::implement::award_pdf::{AwardPdfGenerator, AwardType, CertificateInfo};
+use std::path::PathBuf;
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindLogBuilder, FindRefBuilder},
     id::UserId,
@@ -221,6 +226,7 @@ pub struct AwardJudgeQuery {
 /// SOTA日本支部設立10周年記念アワード判定エンドポイント
 /// CSVをアップロードしてin-memoryで判定、結果を返す（DBに保存しない）
 async fn judge_10th_anniversary_award(
+    State(state): State<AppState>,
     sota_log_service: Inject<AppRegistry, dyn SotaLogService>,
     Query(query): Query<AwardJudgeQuery>,
     mut multipart: Multipart,
@@ -247,6 +253,22 @@ async fn judge_10th_anniversary_award(
         service::model::award::LogType::Activator => LogType::Activator,
         service::model::award::LogType::Chaser => LogType::Chaser,
         service::model::award::LogType::Unknown => LogType::Unknown,
+    };
+
+    // PDF証明書が利用可能かチェック
+    let template_dir = PathBuf::from(&state.config.award_template_dir);
+    let pdf_available = match log_type {
+        LogType::Activator => {
+            let achieved = result.activator.as_ref().is_some_and(|a| a.achieved);
+            let template_exists = template_dir.join("activator_template.pdf").exists();
+            achieved && template_exists
+        }
+        LogType::Chaser => {
+            let achieved = result.chaser.as_ref().is_some_and(|c| c.achieved);
+            let template_exists = template_dir.join("chaser_template.pdf").exists();
+            achieved && template_exists
+        }
+        LogType::Unknown => false,
     };
 
     // サービス層の結果をAPI層の型に変換
@@ -281,9 +303,108 @@ async fn judge_10th_anniversary_award(
                 .collect(),
         }),
         mode: api_mode,
+        pdf_available: Some(pdf_available),
     };
 
     Ok(Json(response))
+}
+
+/// PDF証明書生成リクエスト
+#[derive(Debug, serde::Deserialize)]
+pub struct GeneratePdfQuery {
+    /// アワード種別: activator または chaser
+    pub award_type: String,
+    /// コールサイン
+    pub callsign: String,
+    /// 達成サミット数
+    pub summits: u32,
+}
+
+/// PDF証明書生成エンドポイント
+async fn generate_award_pdf(
+    State(state): State<AppState>,
+    Query(query): Query<GeneratePdfQuery>,
+) -> impl IntoResponse {
+    let award_type = match query.award_type.as_str() {
+        "activator" => AwardType::Activator,
+        "chaser" => AwardType::Chaser,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "無効なアワード種別です（activator または chaser）"
+                })),
+            )
+                .into_response()
+        }
+    };
+
+    // 設定読み込み
+    let config_path = PathBuf::from(&state.config.award_config_path);
+    let config = match AwardTemplateConfig::load_from_file(&config_path) {
+        Ok(c) => c,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("設定の読み込みに失敗: {}", e)
+                })),
+            )
+                .into_response()
+        }
+    };
+
+    let generator = AwardPdfGenerator::new(state.config.award_template_dir.clone(), config);
+
+    // テンプレート存在チェック
+    if !generator.template_exists(award_type) {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "テンプレートが設定されていません"
+            })),
+        )
+            .into_response();
+    }
+
+    // 達成内容のテキスト生成
+    let achievement_text = match award_type {
+        AwardType::Activator => format!("{} summits activated with 10+ QSOs each", query.summits),
+        AwardType::Chaser => format!("{} unique activators contacted", query.summits),
+    };
+
+    let info = CertificateInfo {
+        callsign: query.callsign.clone(),
+        achievement_text,
+    };
+
+    // PDF生成
+    match generator.generate(award_type, &info) {
+        Ok(pdf_bytes) => {
+            let filename = format!(
+                "sota_10th_anniversary_{}_{}.pdf",
+                query.award_type, query.callsign
+            );
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "application/pdf")
+                .header(
+                    header::CONTENT_DISPOSITION,
+                    format!("attachment; filename=\"{}\"", filename),
+                )
+                .body(Body::from(pdf_bytes))
+                .unwrap()
+                .into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": format!("PDF生成に失敗: {}", e)
+            })),
+        )
+            .into_response(),
+    }
 }
 
 pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
@@ -309,6 +430,10 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         .route(
             "/award/10th-anniversary/judge",
             post(judge_10th_anniversary_award),
+        )
+        .route(
+            "/award/10th-anniversary/certificate",
+            get(generate_award_pdf),
         );
 
     let routers = Router::new().merge(protected).merge(public);

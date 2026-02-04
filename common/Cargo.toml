@@ -21,3 +21,6 @@ reqwest.workspace = true
 maidenhead.workspace = true
 geographiclib-rs.workspace = true
 tokio-cron-scheduler.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

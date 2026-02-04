@@ -36,6 +36,9 @@ pub struct AppConfig {
     pub aprs_exclude_user: Option<String>,
     pub aprs_arrival_mesg_regex: Option<String>,
     pub openapi_level: OpenApiLevel,
+    // アワード設定
+    pub award_template_dir: String,
+    pub award_config_path: String,
     pub shutdown_tx: watch::Sender<bool>,
     pub shutdown_rx: watch::Receiver<bool>,
 }
@@ -202,6 +205,10 @@ impl AppConfig {
 
             // その他
             openapi_level: env_parse_or("OPENAPI_LEVEL", OpenApiLevel::None),
+
+            // アワード設定
+            award_template_dir: env_or("AWARD_TEMPLATE_DIR", "./data/award_templates"),
+            award_config_path: env_or("AWARD_CONFIG_PATH", "./data/award_config.json"),
 
             shutdown_rx,
             shutdown_tx,

@@ -41,6 +41,9 @@ pub struct AwardJudgmentResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chaser: Option<ChaserAwardResult>,
     pub mode: JudgmentMode,
+    /// PDF証明書のダウンロードが可能か
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pdf_available: Option<bool>,
 }
 
 /// アクティベータ賞判定結果
