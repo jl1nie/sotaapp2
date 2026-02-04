@@ -20,7 +20,7 @@ pub struct TextOverlayConfig {
 impl Default for TextOverlayConfig {
     fn default() -> Self {
         Self {
-            x: 297.0,  // A4中央付近
+            x: 297.0, // A4中央付近
             y: 400.0,
             font_size: 24.0,
             color: [0, 0, 0], // 黒
@@ -90,8 +90,7 @@ impl AwardTemplateConfig {
                 .with_context(|| format!("ディレクトリの作成に失敗: {:?}", parent))?;
         }
 
-        let content = serde_json::to_string_pretty(self)
-            .context("設定のシリアライズに失敗")?;
+        let content = serde_json::to_string_pretty(self).context("設定のシリアライズに失敗")?;
 
         std::fs::write(path, content)
             .with_context(|| format!("設定ファイルの書き込みに失敗: {:?}", path))
@@ -119,7 +118,10 @@ mod tests {
         config.save_to_file(&path).unwrap();
 
         let loaded = AwardTemplateConfig::load_from_file(&path).unwrap();
-        assert_eq!(loaded.activator.callsign.font_size, config.activator.callsign.font_size);
+        assert_eq!(
+            loaded.activator.callsign.font_size,
+            config.activator.callsign.font_size
+        );
     }
 
     #[test]

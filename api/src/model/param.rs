@@ -196,57 +196,50 @@ impl GetParam {
 }
 
 pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppResult<FindRef> {
-    if param.limit.is_some() {
-        query = query.limit(param.limit.unwrap());
+    if let Some(limit) = param.limit {
+        query = query.limit(limit);
     }
 
-    if param.offset.is_some() {
-        query = query.offset(param.offset.unwrap());
+    if let Some(offset) = param.offset {
+        query = query.offset(offset);
     }
 
-    if param.name.is_some() {
-        query = query.name(param.name.unwrap());
+    if let Some(name) = param.name {
+        query = query.name(name);
     }
 
-    if param.sota_code.is_some() {
-        query = query.sota_code(param.sota_code.unwrap());
+    if let Some(sota_code) = param.sota_code {
+        query = query.sota_code(sota_code);
     }
 
-    if param.pota_code.is_some() {
-        query = query.pota_code(param.pota_code.unwrap());
+    if let Some(pota_code) = param.pota_code {
+        query = query.pota_code(pota_code);
     }
 
-    if param.wwff_code.is_some() {
-        query = query.wwff_code(param.wwff_code.unwrap());
+    if let Some(wwff_code) = param.wwff_code {
+        query = query.wwff_code(wwff_code);
     }
 
-    if param.log_id.is_some() {
-        if let Ok(log_id) = LogId::from_str(&param.log_id.unwrap()) {
+    if let Some(log_id_str) = param.log_id {
+        if let Ok(log_id) = LogId::from_str(&log_id_str) {
             query = query.log_id(log_id);
         }
     }
 
-    if param.min_area.is_some() {
-        query = query.min_area(param.min_area.unwrap());
+    if let Some(min_area) = param.min_area {
+        query = query.min_area(min_area);
     }
 
-    if param.min_elev.is_some() {
-        query = query.min_elev(param.min_elev.unwrap());
+    if let Some(min_elev) = param.min_elev {
+        query = query.min_elev(min_elev);
     }
 
-    if param.max_lat.is_some()
-        && param.min_lat.is_some()
-        && param.max_lon.is_some()
-        && param.min_lon.is_some()
+    if let (Some(min_lon), Some(min_lat), Some(max_lon), Some(max_lat)) =
+        (param.min_lon, param.min_lat, param.max_lon, param.max_lat)
     {
-        query = query.bbox(
-            param.min_lon.unwrap(),
-            param.min_lat.unwrap(),
-            param.max_lon.unwrap(),
-            param.max_lat.unwrap(),
-        );
-    } else if param.dist.is_some() && param.lon.is_some() && param.lat.is_some() {
-        query = query.center(param.lon.unwrap(), param.lat.unwrap(), param.dist.unwrap());
+        query = query.bbox(min_lon, min_lat, max_lon, max_lat);
+    } else if let (Some(lon), Some(lat), Some(dist)) = (param.lon, param.lat, param.dist) {
+        query = query.center(lon, lat, dist);
     }
 
     Ok(query.build())

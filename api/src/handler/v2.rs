@@ -4,11 +4,11 @@ use firebase_auth_sdk::FireAuth;
 use registry::AppState;
 
 use super::{
-    activation::build_activation_routers, admin::build_admin_routers,
-    award_admin::build_award_admin_routers, auth::build_auth_routers, fle::fle_router,
-    health::build_health_chek_routers, locator::build_locator_routers, logconv::logconv_router,
-    pota::build_pota_routers, propagation::build_propagation_routers,
-    search::build_search_routers, sota::build_sota_routers, wspr::wspr_router,
+    activation::build_activation_routers, admin::build_admin_routers, auth::build_auth_routers,
+    award_admin::build_award_admin_routers, fle::fle_router, health::build_health_chek_routers,
+    locator::build_locator_routers, logconv::logconv_router, pota::build_pota_routers,
+    propagation::build_propagation_routers, search::build_search_routers, sota::build_sota_routers,
+    wspr::wspr_router,
 };
 
 pub fn routes(auth: FireAuth) -> Router<AppState> {

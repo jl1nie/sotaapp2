@@ -36,7 +36,10 @@ pub struct AwardPdfGenerator {
 
 impl AwardPdfGenerator {
     pub fn new(template_dir: String, config: AwardTemplateConfig) -> Self {
-        Self { template_dir, config }
+        Self {
+            template_dir,
+            config,
+        }
     }
 
     /// テンプレートが存在するかチェック
@@ -66,8 +69,7 @@ impl AwardPdfGenerator {
 
         // PDFをバイト列として出力
         let mut buffer = Vec::new();
-        doc.save_to(&mut buffer)
-            .context("PDFの保存に失敗")?;
+        doc.save_to(&mut buffer).context("PDFの保存に失敗")?;
 
         Ok(buffer)
     }
@@ -80,10 +82,7 @@ impl AwardPdfGenerator {
     ) -> Result<()> {
         // ページを取得（page_number -> ObjectId のマップ）
         let pages = doc.get_pages();
-        let first_page_id: ObjectId = *pages
-            .values()
-            .next()
-            .context("PDFにページがありません")?;
+        let first_page_id: ObjectId = *pages.values().next().context("PDFにページがありません")?;
 
         // コンテンツストリームを作成
         let content = self.create_text_content_stream(info, config);
@@ -93,7 +92,8 @@ impl AwardPdfGenerator {
         let stream_id = doc.add_object(Object::Stream(stream));
 
         // ページのContentsに追加
-        let page = doc.get_object_mut(first_page_id)
+        let page = doc
+            .get_object_mut(first_page_id)
             .context("ページオブジェクトの取得に失敗")?;
 
         if let Object::Dictionary(ref mut dict) = page {
@@ -106,9 +106,10 @@ impl AwardPdfGenerator {
                     arr.push(Object::Reference(stream_id));
                     Object::Array(arr)
                 }
-                Some(Object::Reference(ref_id)) => {
-                    Object::Array(vec![Object::Reference(ref_id), Object::Reference(stream_id)])
-                }
+                Some(Object::Reference(ref_id)) => Object::Array(vec![
+                    Object::Reference(ref_id),
+                    Object::Reference(stream_id),
+                ]),
                 _ => Object::Reference(stream_id),
             };
 
@@ -118,7 +119,11 @@ impl AwardPdfGenerator {
         Ok(())
     }
 
-    fn create_text_content_stream(&self, info: &CertificateInfo, config: &TemplateConfig) -> String {
+    fn create_text_content_stream(
+        &self,
+        info: &CertificateInfo,
+        config: &TemplateConfig,
+    ) -> String {
         let mut content = String::new();
 
         // グラフィックス状態を保存
@@ -168,18 +173,23 @@ impl AwardPdfGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::award_config::TextOverlayConfig;
 
     #[test]
     fn test_award_type_template_filename() {
-        assert_eq!(AwardType::Activator.template_filename(), "activator_template.pdf");
+        assert_eq!(
+            AwardType::Activator.template_filename(),
+            "activator_template.pdf"
+        );
         assert_eq!(AwardType::Chaser.template_filename(), "chaser_template.pdf");
     }
 
     #[test]
     fn test_escape_pdf_string() {
         assert_eq!(AwardPdfGenerator::escape_pdf_string("JA1XXX"), "JA1XXX");
-        assert_eq!(AwardPdfGenerator::escape_pdf_string("test(1)"), "test\\(1\\)");
+        assert_eq!(
+            AwardPdfGenerator::escape_pdf_string("test(1)"),
+            "test\\(1\\)"
+        );
         assert_eq!(AwardPdfGenerator::escape_pdf_string("a\\b"), "a\\\\b");
     }
 

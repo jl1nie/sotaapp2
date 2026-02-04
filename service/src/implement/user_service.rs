@@ -138,23 +138,25 @@ impl UserService for UserServiceImpl {
                             .push(spotlog);
                     }
                     GroupBy::Reference(code) => {
-                        if spot.program == AwardProgram::POTA && event.log_id.is_some() {
-                            let code = code.unwrap_or_default();
-                            if let Some(v) = pota_hash.get(&code) {
-                                spotlog.qsos = v.qsos;
-                            } else {
-                                let builder = FindRefBuilder::default();
-                                let query = builder
-                                    .pota()
-                                    .pota_code(code.clone())
-                                    .log_id(event.log_id.unwrap())
-                                    .build();
+                        if let Some(log_id) = &event.log_id {
+                            if spot.program == AwardProgram::POTA {
+                                let code = code.unwrap_or_default();
+                                if let Some(v) = pota_hash.get(&code) {
+                                    spotlog.qsos = v.qsos;
+                                } else {
+                                    let builder = FindRefBuilder::default();
+                                    let query = builder
+                                        .pota()
+                                        .pota_code(code.clone())
+                                        .log_id(*log_id)
+                                        .build();
 
-                                let parks = self.find_references(query).await?;
-                                if let FindResult { pota: Some(p), .. } = parks {
-                                    if let Some(pota) = p.first() {
-                                        spotlog.qsos = pota.qsos;
-                                        pota_hash.insert(code, spotlog.clone());
+                                    let parks = self.find_references(query).await?;
+                                    if let FindResult { pota: Some(p), .. } = parks {
+                                        if let Some(pota) = p.first() {
+                                            spotlog.qsos = pota.qsos;
+                                            pota_hash.insert(code, spotlog.clone());
+                                        }
                                     }
                                 }
                             }
