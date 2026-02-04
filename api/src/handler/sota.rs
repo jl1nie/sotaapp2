@@ -13,16 +13,16 @@ use shaku_axum::Inject;
 use common::award_config::AwardTemplateConfig;
 use common::error::AppResult;
 use domain::model::sota::SummitCode;
-use service::implement::award_pdf::{AwardPdfGenerator, AwardType, CertificateInfo};
-use std::path::PathBuf;
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindLogBuilder, FindRefBuilder},
     id::UserId,
 };
 use registry::{AppRegistry, AppState};
+use service::implement::award_pdf::{AwardPdfGenerator, AwardType, CertificateInfo};
 use service::model::award::AwardPeriod;
 use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use service::services::{AdminService, SotaLogService, UserService};
+use std::path::PathBuf;
 
 use crate::model::award::{
     ActivatorAwardResult, AwardJudgmentResult, ChaserAwardResult, JudgmentMode, LogType,
