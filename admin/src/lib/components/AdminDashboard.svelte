@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { auth } from '$lib/auth';
-	import { uploadPotaParks, uploadSotaJaSummits, uploadJccJcg, getSystemMetrics, restartServer, type SystemMetrics } from '$lib/api';
+	import {
+		uploadPotaParks, uploadSotaJaSummits, uploadJccJcg,
+		getSystemMetrics, restartServer, type SystemMetrics,
+		getTemplateStatus, uploadTemplate, getAwardConfig, updateAwardConfig,
+		type TemplateStatus, type AwardTemplateConfig
+	} from '$lib/api';
 	import UploadCard from './UploadCard.svelte';
 	import { onMount } from 'svelte';
 
@@ -10,6 +15,28 @@
 	let metricsLoading = false;
 	let restartConfirm = false;
 	let restartMessage = '';
+
+	// Award Template State
+	let templateStatus: TemplateStatus | null = null;
+	let awardConfig: AwardTemplateConfig | null = null;
+	let templateLoading = false;
+	let templateError = '';
+	let templateSuccess = '';
+	let configSaving = false;
+
+	// Form state for config
+	let activatorCallsignX = 297;
+	let activatorCallsignY = 450;
+	let activatorCallsignFontSize = 36;
+	let activatorAchievementX = 297;
+	let activatorAchievementY = 380;
+	let activatorAchievementFontSize = 18;
+	let chaserCallsignX = 297;
+	let chaserCallsignY = 450;
+	let chaserCallsignFontSize = 36;
+	let chaserAchievementX = 297;
+	let chaserAchievementY = 380;
+	let chaserAchievementFontSize = 18;
 
 	auth.subscribe((state) => {
 		email = state.email || '';
@@ -52,8 +79,103 @@
 		return `${mins}m`;
 	}
 
+	// Award Template Functions
+	async function loadTemplateData() {
+		templateLoading = true;
+		templateError = '';
+
+		const [statusResult, configResult] = await Promise.all([
+			getTemplateStatus(),
+			getAwardConfig()
+		]);
+
+		if (statusResult.success && statusResult.data) {
+			templateStatus = statusResult.data;
+		} else {
+			templateError = statusResult.message || 'テンプレート状態の取得に失敗';
+		}
+
+		if (configResult.success && configResult.data) {
+			awardConfig = configResult.data;
+			// Populate form fields
+			activatorCallsignX = configResult.data.activator.callsign.x;
+			activatorCallsignY = configResult.data.activator.callsign.y;
+			activatorCallsignFontSize = configResult.data.activator.callsign.font_size;
+			activatorAchievementX = configResult.data.activator.achievement.x;
+			activatorAchievementY = configResult.data.activator.achievement.y;
+			activatorAchievementFontSize = configResult.data.activator.achievement.font_size;
+			chaserCallsignX = configResult.data.chaser.callsign.x;
+			chaserCallsignY = configResult.data.chaser.callsign.y;
+			chaserCallsignFontSize = configResult.data.chaser.callsign.font_size;
+			chaserAchievementX = configResult.data.chaser.achievement.x;
+			chaserAchievementY = configResult.data.chaser.achievement.y;
+			chaserAchievementFontSize = configResult.data.chaser.achievement.font_size;
+		}
+
+		templateLoading = false;
+	}
+
+	async function handleTemplateUpload(type: 'activator' | 'chaser', event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (!input.files || !input.files[0]) return;
+
+		const file = input.files[0];
+		templateError = '';
+		templateSuccess = '';
+		templateLoading = true;
+
+		const result = await uploadTemplate(type, file);
+
+		if (result.success) {
+			templateSuccess = result.message;
+			await loadTemplateData();
+		} else {
+			templateError = result.message;
+		}
+
+		templateLoading = false;
+		input.value = '';
+	}
+
+	async function saveConfig() {
+		configSaving = true;
+		templateError = '';
+		templateSuccess = '';
+
+		const result = await updateAwardConfig({
+			activator: {
+				callsignX: activatorCallsignX,
+				callsignY: activatorCallsignY,
+				callsignFontSize: activatorCallsignFontSize,
+				achievementX: activatorAchievementX,
+				achievementY: activatorAchievementY,
+				achievementFontSize: activatorAchievementFontSize
+			},
+			chaser: {
+				callsignX: chaserCallsignX,
+				callsignY: chaserCallsignY,
+				callsignFontSize: chaserCallsignFontSize,
+				achievementX: chaserAchievementX,
+				achievementY: chaserAchievementY,
+				achievementFontSize: chaserAchievementFontSize
+			}
+		});
+
+		if (result.success) {
+			templateSuccess = '設定を保存しました';
+			if (result.data) {
+				awardConfig = result.data;
+			}
+		} else {
+			templateError = result.message || '設定の保存に失敗しました';
+		}
+
+		configSaving = false;
+	}
+
 	onMount(() => {
 		loadMetrics();
+		loadTemplateData();
 		// 30秒ごとに自動更新
 		const interval = setInterval(loadMetrics, 30000);
 		return () => clearInterval(interval);
@@ -262,6 +384,234 @@
 					Loading metrics...
 				</div>
 			{/if}
+		</div>
+
+		<!-- Award Template Management Section -->
+		<div class="mt-12">
+			<div class="flex items-center justify-between mb-6">
+				<div>
+					<h2 class="text-2xl font-bold text-white">Award Certificate Templates</h2>
+					<p class="text-slate-400 mt-1">10周年記念アワード証明書の設定</p>
+				</div>
+				<button
+					on:click={loadTemplateData}
+					disabled={templateLoading}
+					class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-all duration-200 disabled:opacity-50"
+				>
+					<svg class="w-4 h-4 {templateLoading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+					</svg>
+					Refresh
+				</button>
+			</div>
+
+			{#if templateError}
+				<div class="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
+					{templateError}
+				</div>
+			{/if}
+
+			{#if templateSuccess}
+				<div class="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+					{templateSuccess}
+				</div>
+			{/if}
+
+			<!-- Template Upload Section -->
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+				<!-- Activator Template -->
+				<div class="p-6 bg-slate-800/50 rounded-xl border border-slate-700/50">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+							<span class="text-xl">🏔️</span>
+						</div>
+						<div>
+							<h3 class="text-lg font-semibold text-white">アクティベータ賞</h3>
+							<p class="text-sm text-slate-400">activator_template.pdf</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 mb-4">
+						<span class="px-3 py-1 rounded-full text-sm font-medium {templateStatus?.activatorAvailable ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-600/50 text-slate-400'}">
+							{templateStatus?.activatorAvailable ? '設定済み' : '未設定'}
+						</span>
+					</div>
+					<label class="block">
+						<span class="sr-only">アクティベータテンプレートを選択</span>
+						<input
+							type="file"
+							accept=".pdf"
+							on:change={(e) => handleTemplateUpload('activator', e)}
+							disabled={templateLoading}
+							class="block w-full text-sm text-slate-400
+								file:mr-4 file:py-2 file:px-4
+								file:rounded-lg file:border-0
+								file:text-sm file:font-semibold
+								file:bg-amber-500/20 file:text-amber-400
+								hover:file:bg-amber-500/30
+								file:cursor-pointer file:transition-colors
+								disabled:opacity-50"
+						/>
+					</label>
+				</div>
+
+				<!-- Chaser Template -->
+				<div class="p-6 bg-slate-800/50 rounded-xl border border-slate-700/50">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+							<span class="text-xl">📡</span>
+						</div>
+						<div>
+							<h3 class="text-lg font-semibold text-white">チェイサー賞</h3>
+							<p class="text-sm text-slate-400">chaser_template.pdf</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 mb-4">
+						<span class="px-3 py-1 rounded-full text-sm font-medium {templateStatus?.chaserAvailable ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-600/50 text-slate-400'}">
+							{templateStatus?.chaserAvailable ? '設定済み' : '未設定'}
+						</span>
+					</div>
+					<label class="block">
+						<span class="sr-only">チェイサーテンプレートを選択</span>
+						<input
+							type="file"
+							accept=".pdf"
+							on:change={(e) => handleTemplateUpload('chaser', e)}
+							disabled={templateLoading}
+							class="block w-full text-sm text-slate-400
+								file:mr-4 file:py-2 file:px-4
+								file:rounded-lg file:border-0
+								file:text-sm file:font-semibold
+								file:bg-cyan-500/20 file:text-cyan-400
+								hover:file:bg-cyan-500/30
+								file:cursor-pointer file:transition-colors
+								disabled:opacity-50"
+						/>
+					</label>
+				</div>
+			</div>
+
+			<!-- Config Section -->
+			<div class="p-6 bg-slate-800/30 rounded-xl border border-slate-700/50">
+				<h3 class="text-lg font-semibold text-white mb-6">印字設定</h3>
+
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+					<!-- Activator Config -->
+					<div class="space-y-4">
+						<h4 class="text-md font-medium text-amber-400 border-b border-slate-700 pb-2">アクティベータ賞</h4>
+
+						<div class="space-y-3">
+							<p class="text-sm text-slate-400 font-medium">コールサイン</p>
+							<div class="grid grid-cols-3 gap-3">
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">X座標</label>
+									<input type="number" bind:value={activatorCallsignX} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
+									<input type="number" bind:value={activatorCallsignY} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">サイズ</label>
+									<input type="number" bind:value={activatorCallsignFontSize} step="0.5"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+							</div>
+						</div>
+
+						<div class="space-y-3">
+							<p class="text-sm text-slate-400 font-medium">達成内容</p>
+							<div class="grid grid-cols-3 gap-3">
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">X座標</label>
+									<input type="number" bind:value={activatorAchievementX} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
+									<input type="number" bind:value={activatorAchievementY} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">サイズ</label>
+									<input type="number" bind:value={activatorAchievementFontSize} step="0.5"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Chaser Config -->
+					<div class="space-y-4">
+						<h4 class="text-md font-medium text-cyan-400 border-b border-slate-700 pb-2">チェイサー賞</h4>
+
+						<div class="space-y-3">
+							<p class="text-sm text-slate-400 font-medium">コールサイン</p>
+							<div class="grid grid-cols-3 gap-3">
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">X座標</label>
+									<input type="number" bind:value={chaserCallsignX} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
+									<input type="number" bind:value={chaserCallsignY} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">サイズ</label>
+									<input type="number" bind:value={chaserCallsignFontSize} step="0.5"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+							</div>
+						</div>
+
+						<div class="space-y-3">
+							<p class="text-sm text-slate-400 font-medium">達成内容</p>
+							<div class="grid grid-cols-3 gap-3">
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">X座標</label>
+									<input type="number" bind:value={chaserAchievementX} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
+									<input type="number" bind:value={chaserAchievementY} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">サイズ</label>
+									<input type="number" bind:value={chaserAchievementFontSize} step="0.5"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="mt-6 pt-4 border-t border-slate-700 flex justify-end">
+					<button
+						on:click={saveConfig}
+						disabled={configSaving}
+						class="inline-flex items-center gap-2 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+					>
+						{#if configSaving}
+							<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+							保存中...
+						{:else}
+							設定を保存
+						{/if}
+					</button>
+				</div>
+
+				<p class="mt-4 text-xs text-slate-500">
+					※ 座標はPDFの左下を原点とするポイント単位です（A4: 595×842pt）
+				</p>
+			</div>
 		</div>
 	</main>
 

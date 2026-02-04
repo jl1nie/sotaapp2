@@ -230,3 +230,179 @@ export async function judgeAward(file: File, mode: JudgmentMode = 'strict'): Pro
 	}
 }
 
+// Award Template Management Types
+export interface TemplateStatus {
+	activatorAvailable: boolean;
+	chaserAvailable: boolean;
+}
+
+export interface TextOverlayConfig {
+	x: number;
+	y: number;
+	font_size: number;
+	color: [number, number, number];
+}
+
+export interface TemplateConfig {
+	callsign: TextOverlayConfig;
+	achievement: TextOverlayConfig;
+}
+
+export interface AwardTemplateConfig {
+	activator: TemplateConfig;
+	chaser: TemplateConfig;
+}
+
+export interface TemplateStatusResponse {
+	success: boolean;
+	data?: TemplateStatus;
+	message?: string;
+}
+
+export interface AwardConfigResponse {
+	success: boolean;
+	data?: AwardTemplateConfig;
+	message?: string;
+}
+
+export async function getTemplateStatus(): Promise<TemplateStatusResponse> {
+	const token = auth.getToken();
+	if (!token) {
+		return { success: false, message: '認証されていません' };
+	}
+
+	try {
+		const response = await fetch('/api/v2/admin/award/templates/status', {
+			method: 'GET',
+			headers: { 'Authorization': `Bearer ${token}` }
+		});
+
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです。再度ログインしてください。' };
+		}
+
+		if (!response.ok) {
+			return { success: false, message: `テンプレート状態の取得に失敗しました: ${response.status}` };
+		}
+
+		const data: TemplateStatus = await response.json();
+		return { success: true, data };
+	} catch (e) {
+		return { success: false, message: 'ネットワークエラー。再試行してください。' };
+	}
+}
+
+export async function uploadTemplate(templateType: 'activator' | 'chaser', file: File): Promise<UploadResult> {
+	const token = auth.getToken();
+	if (!token) {
+		return { success: false, message: '認証されていません' };
+	}
+
+	const formData = new FormData();
+	formData.append('file', file);
+
+	try {
+		const response = await fetch(`/api/v2/admin/award/templates/${templateType}`, {
+			method: 'POST',
+			headers: { 'Authorization': `Bearer ${token}` },
+			body: formData
+		});
+
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです。再度ログインしてください。' };
+		}
+
+		const data = await response.json();
+		if (!response.ok) {
+			return { success: false, message: data.error || 'アップロードに失敗しました' };
+		}
+
+		return { success: true, message: data.message || 'テンプレートをアップロードしました' };
+	} catch (e) {
+		return { success: false, message: 'ネットワークエラー。再試行してください。' };
+	}
+}
+
+export async function getAwardConfig(): Promise<AwardConfigResponse> {
+	const token = auth.getToken();
+	if (!token) {
+		return { success: false, message: '認証されていません' };
+	}
+
+	try {
+		const response = await fetch('/api/v2/admin/award/config', {
+			method: 'GET',
+			headers: { 'Authorization': `Bearer ${token}` }
+		});
+
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです。再度ログインしてください。' };
+		}
+
+		if (!response.ok) {
+			return { success: false, message: `設定の取得に失敗しました: ${response.status}` };
+		}
+
+		const data: AwardTemplateConfig = await response.json();
+		return { success: true, data };
+	} catch (e) {
+		return { success: false, message: 'ネットワークエラー。再試行してください。' };
+	}
+}
+
+export async function updateAwardConfig(config: Partial<{
+	activator: Partial<{
+		callsignX: number;
+		callsignY: number;
+		callsignFontSize: number;
+		callsignColor: [number, number, number];
+		achievementX: number;
+		achievementY: number;
+		achievementFontSize: number;
+		achievementColor: [number, number, number];
+	}>;
+	chaser: Partial<{
+		callsignX: number;
+		callsignY: number;
+		callsignFontSize: number;
+		callsignColor: [number, number, number];
+		achievementX: number;
+		achievementY: number;
+		achievementFontSize: number;
+		achievementColor: [number, number, number];
+	}>;
+}>): Promise<AwardConfigResponse> {
+	const token = auth.getToken();
+	if (!token) {
+		return { success: false, message: '認証されていません' };
+	}
+
+	try {
+		const response = await fetch('/api/v2/admin/award/config', {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${token}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(config)
+		});
+
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです。再度ログインしてください。' };
+		}
+
+		const data = await response.json();
+		if (!response.ok) {
+			return { success: false, message: data.error || '設定の更新に失敗しました' };
+		}
+
+		return { success: true, data };
+	} catch (e) {
+		return { success: false, message: 'ネットワークエラー。再試行してください。' };
+	}
+}
+

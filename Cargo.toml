@@ -78,6 +78,7 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 plotters = { version = "0.3", default-features = false, features = ["svg_backend", "line_series", "point_series"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 once_cell = "1.20"
+lopdf = "0.34"
 
 [dependencies]
 api.workspace = true

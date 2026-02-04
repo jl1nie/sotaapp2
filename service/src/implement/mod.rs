@@ -2,6 +2,7 @@ pub mod admin_periodic;
 pub mod admin_service;
 pub mod aprs_service;
 pub mod award_calculator;
+pub mod award_pdf;
 pub mod fle;
 pub mod logconv;
 pub mod pota_log_service;
