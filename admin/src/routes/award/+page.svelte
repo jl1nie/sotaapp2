@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { judgeAward, type AwardJudgmentResult } from '$lib/api';
+	import { judgeAward, getCertificateUrl, type AwardJudgmentResult } from '$lib/api';
 
 	let file: File | null = $state(null);
 	let uploading = $state(false);
@@ -251,6 +251,19 @@
 									<div class="text-slate-500 text-sm">（あと {10 - result.activator.qualifiedSummits} 座）</div>
 								{/if}
 							</div>
+
+							{#if result.activator.achieved}
+								<a
+									href={getCertificateUrl(result.callsign, 'activator', result.activator.qualifiedSummits)}
+									download
+									class="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-lg shadow-lg shadow-amber-500/25 transition-all duration-200"
+								>
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+									</svg>
+									証明書をダウンロード (PDF)
+								</a>
+							{/if}
 						</div>
 
 						<!-- Activator Summit Details -->
@@ -312,6 +325,19 @@
 								</div>
 								<div class="text-slate-400">座で達成</div>
 							</div>
+
+							{#if result.chaser.achieved}
+								<a
+									href={getCertificateUrl(result.callsign, 'chaser', result.chaser.qualifiedSummits[0]?.uniqueActivators || 10)}
+									download
+									class="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg shadow-cyan-500/25 transition-all duration-200"
+								>
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+									</svg>
+									証明書をダウンロード (PDF)
+								</a>
+							{/if}
 						</div>
 
 						<!-- Chaser Summit Details -->
