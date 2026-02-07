@@ -1,6 +1,6 @@
 //! アワード証明書管理ハンドラー
 //!
-//! PDFテンプレートのアップロードと設定管理
+//! 画像テンプレート（JPG/PNG）のアップロードと設定管理
 
 use axum::{
     extract::{Multipart, Path, State},
@@ -26,10 +26,10 @@ pub enum TemplateType {
 }
 
 impl TemplateType {
-    fn filename(&self) -> &'static str {
+    fn base_filename(&self) -> &'static str {
         match self {
-            TemplateType::Activator => "activator_template.pdf",
-            TemplateType::Chaser => "chaser_template.pdf",
+            TemplateType::Activator => "activator_template",
+            TemplateType::Chaser => "chaser_template",
         }
     }
 }
@@ -64,13 +64,23 @@ pub struct TemplateConfigUpdate {
     pub achievement_color: Option<[u8; 3]>,
 }
 
+/// テンプレート画像が存在するかチェック（JPG/PNG対応）
+fn template_exists(template_dir: &std::path::Path, base_name: &str) -> bool {
+    for ext in &["png", "jpg", "jpeg"] {
+        if template_dir.join(format!("{}.{}", base_name, ext)).exists() {
+            return true;
+        }
+    }
+    false
+}
+
 /// テンプレートのステータス取得
 async fn get_template_status(State(state): State<AppState>) -> Json<TemplateStatus> {
     let template_dir = PathBuf::from(&state.config.award_template_dir);
 
     Json(TemplateStatus {
-        activator_available: template_dir.join("activator_template.pdf").exists(),
-        chaser_available: template_dir.join("chaser_template.pdf").exists(),
+        activator_available: template_exists(&template_dir, "activator_template"),
+        chaser_available: template_exists(&template_dir, "chaser_template"),
     })
 }
 
@@ -164,7 +174,26 @@ fn apply_config_update(
     }
 }
 
-/// テンプレートアップロード
+/// 画像形式を判定
+fn detect_image_format(data: &[u8]) -> Option<&'static str> {
+    if data.len() < 8 {
+        return None;
+    }
+
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if data.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
+        return Some("png");
+    }
+
+    // JPEG: FF D8 FF
+    if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        return Some("jpg");
+    }
+
+    None
+}
+
+/// テンプレートアップロード（JPG/PNG画像）
 async fn upload_template(
     State(state): State<AppState>,
     Path(template_type): Path<TemplateType>,
@@ -219,19 +248,29 @@ async fn upload_template(
         }
     };
 
-    // PDFかどうかを簡易チェック（マジックナンバー）
-    if data.len() < 4 || &data[0..4] != b"%PDF" {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({
-                "error": "有効なPDFファイルではありません"
-            })),
-        )
-            .into_response();
+    // 画像形式をチェック（マジックナンバー）
+    let ext = match detect_image_format(&data) {
+        Some(ext) => ext,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "有効な画像ファイル（JPG/PNG）ではありません"
+                })),
+            )
+                .into_response()
+        }
+    };
+
+    // 古いテンプレートファイルを削除（拡張子違いのものも含め）
+    let base_name = template_type.base_filename();
+    for old_ext in &["png", "jpg", "jpeg"] {
+        let old_path = template_dir.join(format!("{}.{}", base_name, old_ext));
+        let _ = std::fs::remove_file(old_path);
     }
 
     // ファイル保存
-    let file_path = template_dir.join(template_type.filename());
+    let file_path = template_dir.join(format!("{}.{}", base_name, ext));
     if let Err(e) = std::fs::write(&file_path, &data) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -247,6 +286,7 @@ async fn upload_template(
         Json(serde_json::json!({
             "message": "テンプレートをアップロードしました",
             "type": format!("{:?}", template_type),
+            "format": ext,
             "size": data.len()
         })),
     )

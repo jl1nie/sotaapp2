@@ -22,6 +22,8 @@ serde_json.workspace = true
 zip.workspace = true
 once_cell.workspace = true
 lopdf.workspace = true
+printpdf.workspace = true
+image.workspace = true
 
 [dev-dependencies]
 mockall.workspace = true

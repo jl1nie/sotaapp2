@@ -20,8 +20,8 @@ pub struct TextOverlayConfig {
 impl Default for TextOverlayConfig {
     fn default() -> Self {
         Self {
-            x: 297.0, // A4中央付近
-            y: 400.0,
+            x: 420.0, // A4横向き中央付近（841.89pt / 2）
+            y: 300.0,
             font_size: 24.0,
             color: [0, 0, 0], // 黒
         }
@@ -39,17 +39,18 @@ pub struct TemplateConfig {
 
 impl Default for TemplateConfig {
     fn default() -> Self {
+        // A4横向き: 841.89pt x 595.28pt
         Self {
             callsign: TextOverlayConfig {
-                x: 297.0,
-                y: 450.0,
-                font_size: 36.0,
+                x: 420.0, // 中央
+                y: 320.0, // やや上
+                font_size: 48.0,
                 color: [0, 0, 128], // ネイビー
             },
             achievement: TextOverlayConfig {
-                x: 297.0,
-                y: 380.0,
-                font_size: 18.0,
+                x: 420.0, // 中央
+                y: 250.0, // コールサインの下
+                font_size: 24.0,
                 color: [0, 0, 0],
             },
         }
@@ -105,7 +106,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = AwardTemplateConfig::default();
-        assert_eq!(config.activator.callsign.font_size, 36.0);
+        assert_eq!(config.activator.callsign.font_size, 48.0);
         assert_eq!(config.chaser.callsign.color, [0, 0, 128]);
     }
 
@@ -132,6 +133,6 @@ mod tests {
         assert!(!path.exists());
         let config = AwardTemplateConfig::load_from_file(&path).unwrap();
         assert!(path.exists());
-        assert_eq!(config.activator.callsign.font_size, 36.0);
+        assert_eq!(config.activator.callsign.font_size, 48.0);
     }
 }
