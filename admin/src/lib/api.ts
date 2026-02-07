@@ -230,6 +230,17 @@ export async function judgeAward(file: File, mode: JudgmentMode = 'strict'): Pro
 	}
 }
 
+export type AwardType = 'activator' | 'chaser';
+
+export function getCertificateUrl(callsign: string, awardType: AwardType, summits: number): string {
+	const params = new URLSearchParams({
+		callsign,
+		award_type: awardType,
+		summits: summits.toString()
+	});
+	return `/api/v2/sota/award/10th-anniversary/certificate?${params.toString()}`;
+}
+
 // Award Template Management Types
 export interface TemplateStatus {
 	activatorAvailable: boolean;
