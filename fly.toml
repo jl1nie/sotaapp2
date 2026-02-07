@@ -28,8 +28,8 @@ swap_size_mb = 256
     port = 8080
     type = 'http'
     interval = '30s'
-    timeout = '10s'
-    grace_period = '30s'
+    timeout = '20s'
+    grace_period = '60s'
     method = 'GET'
     path = '/api/v2/health'
 
@@ -40,4 +40,4 @@ swap_size_mb = 256
 
 [[vm]]
   size = 'shared-cpu-1x'
-  memory = '256mb'
+  memory = '512mb'
