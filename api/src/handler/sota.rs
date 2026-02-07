@@ -303,6 +303,10 @@ pub struct GeneratePdfQuery {
     pub callsign: String,
     /// 達成サミット数
     pub summits: u32,
+    /// チェイサー用: 最多アクティベータ数（Best）
+    pub best_activators: Option<u32>,
+    /// チェイサー用: 最多アクティベータのサミットコード
+    pub best_summit: Option<String>,
 }
 
 /// PDF証明書生成エンドポイント
@@ -353,14 +357,36 @@ async fn generate_award_pdf(
     }
 
     // 達成内容のテキスト生成
-    let achievement_text = match award_type {
-        AwardType::Activator => format!("{} summits activated with 10+ QSOs each", query.summits),
-        AwardType::Chaser => format!("{} unique activators contacted", query.summits),
+    let (achievement_text, achievement_line2, description) = match award_type {
+        AwardType::Activator => (
+            format!("{} Summits Activated", query.summits),
+            None,
+            "SOTA Japan Branch 10th Anniversary Award - Activator".to_string(),
+        ),
+        AwardType::Chaser => {
+            let line2 = match (&query.best_activators, &query.best_summit) {
+                (Some(activators), Some(summit)) => {
+                    Some(format!("Best: {} from {}", activators, summit))
+                }
+                _ => None,
+            };
+            (
+                format!("{} Summits Chased", query.summits),
+                line2,
+                "SOTA Japan Branch 10th Anniversary Award - Chaser".to_string(),
+            )
+        }
     };
+
+    // 発行日を生成
+    let issue_date = chrono::Utc::now().format("%Y %b. %-d").to_string();
 
     let info = CertificateInfo {
         callsign: query.callsign.clone(),
         achievement_text,
+        achievement_line2,
+        description: Some(description),
+        issue_date: Some(issue_date),
     };
 
     // PDF生成
