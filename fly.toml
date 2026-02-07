@@ -15,6 +15,9 @@ swap_size_mb = 256
   destination = '/data'
   processes = ['app']
 
+[deploy]
+  strategy = 'immediate'
+
 [http_service]
   internal_port = 8080
   force_https = true
@@ -40,4 +43,4 @@ swap_size_mb = 256
 
 [[vm]]
   size = 'shared-cpu-1x'
-  memory = '512mb'
+  memory = '256mb'
