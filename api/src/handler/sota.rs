@@ -14,12 +14,11 @@ use common::award_config::AwardTemplateConfig;
 use common::error::AppResult;
 use domain::model::sota::SummitCode;
 use domain::model::{
-    event::{DeleteRef, FindActBuilder, FindLogBuilder, FindRefBuilder},
+    event::{DeleteRef, FindActBuilder, FindRefBuilder},
     id::UserId,
 };
 use registry::{AppRegistry, AppState};
 use service::implement::award_pdf::{AwardPdfGenerator, AwardType, CertificateInfo};
-use service::model::award::AwardPeriod;
 use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
 use service::services::{AdminService, SotaLogService, UserService};
 use std::path::PathBuf;
@@ -101,20 +100,6 @@ async fn delete_log(
         .delete_sota_log(user_id)
         .await
         .map(|_| StatusCode::OK)
-}
-
-async fn show_progress(
-    sota_log_service: Inject<AppRegistry, dyn SotaLogService>,
-    Extension(user_id): Extension<UserId>,
-) -> AppResult<Json<String>> {
-    let period = AwardPeriod::default();
-    let query = FindLogBuilder::default()
-        .after(period.start)
-        .before(period.end)
-        .build();
-
-    let result = sota_log_service.award_progress(user_id, query).await?;
-    Ok(Json(result))
 }
 
 async fn delete_sota_reference(
@@ -414,7 +399,6 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
             .route("/import/ja", post(import_sota_opt_reference))
             .route("/log", post(upload_log))
             .route("/log", delete(delete_log))
-            .route("/log", get(show_progress))
             .route("/update", post(update_summit_list))
             .route("/summits/{summit_code}", put(update_sota_reference))
             .route("/summits/{summit_code}", delete(delete_sota_reference)),
