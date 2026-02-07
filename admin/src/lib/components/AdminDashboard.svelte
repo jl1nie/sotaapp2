@@ -28,15 +28,31 @@
 	let activatorCallsignX = 297;
 	let activatorCallsignY = 450;
 	let activatorCallsignFontSize = 36;
+	let activatorCallsignColor = '#000080';
 	let activatorAchievementX = 297;
 	let activatorAchievementY = 380;
 	let activatorAchievementFontSize = 18;
+	let activatorAchievementColor = '#000000';
 	let chaserCallsignX = 297;
 	let chaserCallsignY = 450;
 	let chaserCallsignFontSize = 36;
+	let chaserCallsignColor = '#000080';
 	let chaserAchievementX = 297;
 	let chaserAchievementY = 380;
 	let chaserAchievementFontSize = 18;
+	let chaserAchievementColor = '#000000';
+
+	// Helper functions for color conversion
+	function rgbToHex(rgb: [number, number, number]): string {
+		return '#' + rgb.map(c => c.toString(16).padStart(2, '0')).join('');
+	}
+
+	function hexToRgb(hex: string): [number, number, number] {
+		const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+		return result
+			? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
+			: [0, 0, 0];
+	}
 
 	auth.subscribe((state) => {
 		email = state.email || '';
@@ -101,15 +117,19 @@
 			activatorCallsignX = configResult.data.activator.callsign.x;
 			activatorCallsignY = configResult.data.activator.callsign.y;
 			activatorCallsignFontSize = configResult.data.activator.callsign.font_size;
+			activatorCallsignColor = rgbToHex(configResult.data.activator.callsign.color);
 			activatorAchievementX = configResult.data.activator.achievement.x;
 			activatorAchievementY = configResult.data.activator.achievement.y;
 			activatorAchievementFontSize = configResult.data.activator.achievement.font_size;
+			activatorAchievementColor = rgbToHex(configResult.data.activator.achievement.color);
 			chaserCallsignX = configResult.data.chaser.callsign.x;
 			chaserCallsignY = configResult.data.chaser.callsign.y;
 			chaserCallsignFontSize = configResult.data.chaser.callsign.font_size;
+			chaserCallsignColor = rgbToHex(configResult.data.chaser.callsign.color);
 			chaserAchievementX = configResult.data.chaser.achievement.x;
 			chaserAchievementY = configResult.data.chaser.achievement.y;
 			chaserAchievementFontSize = configResult.data.chaser.achievement.font_size;
+			chaserAchievementColor = rgbToHex(configResult.data.chaser.achievement.color);
 		}
 
 		templateLoading = false;
@@ -147,17 +167,21 @@
 				callsignX: activatorCallsignX,
 				callsignY: activatorCallsignY,
 				callsignFontSize: activatorCallsignFontSize,
+				callsignColor: hexToRgb(activatorCallsignColor),
 				achievementX: activatorAchievementX,
 				achievementY: activatorAchievementY,
-				achievementFontSize: activatorAchievementFontSize
+				achievementFontSize: activatorAchievementFontSize,
+				achievementColor: hexToRgb(activatorAchievementColor)
 			},
 			chaser: {
 				callsignX: chaserCallsignX,
 				callsignY: chaserCallsignY,
 				callsignFontSize: chaserCallsignFontSize,
+				callsignColor: hexToRgb(chaserCallsignColor),
 				achievementX: chaserAchievementX,
 				achievementY: chaserAchievementY,
-				achievementFontSize: chaserAchievementFontSize
+				achievementFontSize: chaserAchievementFontSize,
+				achievementColor: hexToRgb(chaserAchievementColor)
 			}
 		});
 
@@ -501,7 +525,7 @@
 
 						<div class="space-y-3">
 							<p class="text-sm text-slate-400 font-medium">コールサイン</p>
-							<div class="grid grid-cols-3 gap-3">
+							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={activatorCallsignX} step="0.1"
@@ -517,12 +541,17 @@
 									<input type="number" bind:value={activatorCallsignFontSize} step="0.5"
 										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
 								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">色</label>
+									<input type="color" bind:value={activatorCallsignColor}
+										class="w-full h-[38px] bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer" />
+								</div>
 							</div>
 						</div>
 
 						<div class="space-y-3">
 							<p class="text-sm text-slate-400 font-medium">達成内容</p>
-							<div class="grid grid-cols-3 gap-3">
+							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={activatorAchievementX} step="0.1"
@@ -538,6 +567,11 @@
 									<input type="number" bind:value={activatorAchievementFontSize} step="0.5"
 										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
 								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">色</label>
+									<input type="color" bind:value={activatorAchievementColor}
+										class="w-full h-[38px] bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer" />
+								</div>
 							</div>
 						</div>
 					</div>
@@ -548,7 +582,7 @@
 
 						<div class="space-y-3">
 							<p class="text-sm text-slate-400 font-medium">コールサイン</p>
-							<div class="grid grid-cols-3 gap-3">
+							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={chaserCallsignX} step="0.1"
@@ -564,12 +598,17 @@
 									<input type="number" bind:value={chaserCallsignFontSize} step="0.5"
 										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
 								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">色</label>
+									<input type="color" bind:value={chaserCallsignColor}
+										class="w-full h-[38px] bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer" />
+								</div>
 							</div>
 						</div>
 
 						<div class="space-y-3">
 							<p class="text-sm text-slate-400 font-medium">達成内容</p>
-							<div class="grid grid-cols-3 gap-3">
+							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={chaserAchievementX} step="0.1"
@@ -584,6 +623,11 @@
 									<label class="block text-xs text-slate-500 mb-1">サイズ</label>
 									<input type="number" bind:value={chaserAchievementFontSize} step="0.5"
 										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">色</label>
+									<input type="color" bind:value={chaserAchievementColor}
+										class="w-full h-[38px] bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer" />
 								</div>
 							</div>
 						</div>
