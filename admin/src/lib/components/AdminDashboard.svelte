@@ -451,7 +451,7 @@
 						</div>
 						<div>
 							<h3 class="text-lg font-semibold text-white">アクティベータ賞</h3>
-							<p class="text-sm text-slate-400">activator_template.pdf</p>
+							<p class="text-sm text-slate-400">activator_template.jpg/png</p>
 						</div>
 					</div>
 					<div class="flex items-center gap-3 mb-4">
@@ -463,7 +463,7 @@
 						<span class="sr-only">アクティベータテンプレートを選択</span>
 						<input
 							type="file"
-							accept=".pdf"
+							accept=".jpg,.jpeg,.png"
 							on:change={(e) => handleTemplateUpload('activator', e)}
 							disabled={templateLoading}
 							class="block w-full text-sm text-slate-400
@@ -486,7 +486,7 @@
 						</div>
 						<div>
 							<h3 class="text-lg font-semibold text-white">チェイサー賞</h3>
-							<p class="text-sm text-slate-400">chaser_template.pdf</p>
+							<p class="text-sm text-slate-400">chaser_template.jpg/png</p>
 						</div>
 					</div>
 					<div class="flex items-center gap-3 mb-4">
@@ -498,7 +498,7 @@
 						<span class="sr-only">チェイサーテンプレートを選択</span>
 						<input
 							type="file"
-							accept=".pdf"
+							accept=".jpg,.jpeg,.png"
 							on:change={(e) => handleTemplateUpload('chaser', e)}
 							disabled={templateLoading}
 							class="block w-full text-sm text-slate-400
