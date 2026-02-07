@@ -58,10 +58,17 @@ pub struct TemplateConfigUpdate {
     pub callsign_y: Option<f32>,
     pub callsign_font_size: Option<f32>,
     pub callsign_color: Option<[u8; 3]>,
+    pub callsign_centered: Option<bool>,
     pub achievement_x: Option<f32>,
     pub achievement_y: Option<f32>,
     pub achievement_font_size: Option<f32>,
     pub achievement_color: Option<[u8; 3]>,
+    pub achievement_centered: Option<bool>,
+    pub issue_date_x: Option<f32>,
+    pub issue_date_y: Option<f32>,
+    pub issue_date_font_size: Option<f32>,
+    pub issue_date_color: Option<[u8; 3]>,
+    pub issue_date_centered: Option<bool>,
 }
 
 /// テンプレート画像が存在するかチェック（JPG/PNG対応）
@@ -160,6 +167,9 @@ fn apply_config_update(
     if let Some(color) = update.callsign_color {
         config.callsign.color = color;
     }
+    if let Some(centered) = update.callsign_centered {
+        config.callsign.centered = centered;
+    }
     if let Some(x) = update.achievement_x {
         config.achievement.x = x;
     }
@@ -171,6 +181,24 @@ fn apply_config_update(
     }
     if let Some(color) = update.achievement_color {
         config.achievement.color = color;
+    }
+    if let Some(centered) = update.achievement_centered {
+        config.achievement.centered = centered;
+    }
+    if let Some(x) = update.issue_date_x {
+        config.issue_date.x = x;
+    }
+    if let Some(y) = update.issue_date_y {
+        config.issue_date.y = y;
+    }
+    if let Some(size) = update.issue_date_font_size {
+        config.issue_date.font_size = size;
+    }
+    if let Some(color) = update.issue_date_color {
+        config.issue_date.color = color;
+    }
+    if let Some(centered) = update.issue_date_centered {
+        config.issue_date.centered = centered;
     }
 }
 

@@ -252,11 +252,13 @@ export interface TextOverlayConfig {
 	y: number;
 	font_size: number;
 	color: [number, number, number];
+	centered: boolean;
 }
 
 export interface TemplateConfig {
 	callsign: TextOverlayConfig;
 	achievement: TextOverlayConfig;
+	issue_date: TextOverlayConfig;
 }
 
 export interface AwardTemplateConfig {
@@ -370,20 +372,34 @@ export async function updateAwardConfig(config: Partial<{
 		callsignY: number;
 		callsignFontSize: number;
 		callsignColor: [number, number, number];
+		callsignCentered: boolean;
 		achievementX: number;
 		achievementY: number;
 		achievementFontSize: number;
 		achievementColor: [number, number, number];
+		achievementCentered: boolean;
+		issueDateX: number;
+		issueDateY: number;
+		issueDateFontSize: number;
+		issueDateColor: [number, number, number];
+		issueDateCentered: boolean;
 	}>;
 	chaser: Partial<{
 		callsignX: number;
 		callsignY: number;
 		callsignFontSize: number;
 		callsignColor: [number, number, number];
+		callsignCentered: boolean;
 		achievementX: number;
 		achievementY: number;
 		achievementFontSize: number;
 		achievementColor: [number, number, number];
+		achievementCentered: boolean;
+		issueDateX: number;
+		issueDateY: number;
+		issueDateFontSize: number;
+		issueDateColor: [number, number, number];
+		issueDateCentered: boolean;
 	}>;
 }>): Promise<AwardConfigResponse> {
 	const token = auth.getToken();

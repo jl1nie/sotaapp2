@@ -266,6 +266,15 @@ impl AwardPdfGenerator {
         (A4_WIDTH_MM / 25.4 * 72.0 / 2.0) - (text_width / 2.0)
     }
 
+    /// テキストのX座標を計算（centered設定に基づく）
+    fn resolve_x(text: &str, font_size: f32, is_bold: bool, config_x: f32, centered: bool) -> f32 {
+        if centered {
+            Self::centered_x(text, font_size, is_bold)
+        } else {
+            config_x
+        }
+    }
+
     /// 白い縁取り付きでテキストを描画
     #[allow(clippy::too_many_arguments)]
     fn draw_text_with_outline(
@@ -302,7 +311,7 @@ impl AwardPdfGenerator {
         // 組み込みフォントを使用（Helvetica Bold）
         let font = doc.add_builtin_font(BuiltinFont::HelveticaBold)?;
 
-        // コールサインを描画（センタリング、白縁取り付き）
+        // コールサインを描画（白縁取り付き）
         let cs = &config.callsign;
         let cs_color = Color::Rgb(Rgb::new(
             cs.color[0] as f32 / 255.0,
@@ -311,8 +320,7 @@ impl AwardPdfGenerator {
             None,
         ));
 
-        // センタリング計算
-        let cs_x = Self::centered_x(&info.callsign, cs.font_size, true);
+        let cs_x = Self::resolve_x(&info.callsign, cs.font_size, true, cs.x, cs.centered);
 
         // 縁取りの太さはフォントサイズの約10%
         let outline_width = cs.font_size * 0.10;
@@ -327,7 +335,7 @@ impl AwardPdfGenerator {
             outline_width,
         );
 
-        // 達成内容を描画（センタリング、白縁取り付き）
+        // 達成内容を描画（白縁取り付き）
         let ach = &config.achievement;
         let ach_color = Color::Rgb(Rgb::new(
             ach.color[0] as f32 / 255.0,
@@ -336,8 +344,13 @@ impl AwardPdfGenerator {
             None,
         ));
 
-        // センタリング計算
-        let ach_x = Self::centered_x(&info.achievement_text, ach.font_size, true);
+        let ach_x = Self::resolve_x(
+            &info.achievement_text,
+            ach.font_size,
+            true,
+            ach.x,
+            ach.centered,
+        );
 
         let outline_width = ach.font_size * 0.10;
         Self::draw_text_with_outline(
@@ -355,7 +368,7 @@ impl AwardPdfGenerator {
         let mut next_y = ach.y - 40.0; // 達成内容の40pt下
         if let Some(ref line2) = info.achievement_line2 {
             let line2_font_size = ach.font_size * 0.8; // 達成内容より少し小さく
-            let line2_x = Self::centered_x(line2, line2_font_size, true);
+            let line2_x = Self::resolve_x(line2, line2_font_size, true, ach.x, ach.centered);
             let outline_width = line2_font_size * 0.10;
 
             Self::draw_text_with_outline(
@@ -374,7 +387,7 @@ impl AwardPdfGenerator {
         // 説明文を描画（小さいフォント）
         if let Some(ref description) = info.description {
             let desc_font_size = 14.0; // 14pt
-            let desc_x = Self::centered_x(description, desc_font_size, true);
+            let desc_x = Self::resolve_x(description, desc_font_size, true, ach.x, ach.centered);
             let outline_width = desc_font_size * 0.10;
 
             Self::draw_text_with_outline(
@@ -390,19 +403,28 @@ impl AwardPdfGenerator {
             next_y -= 24.0; // 次の行へ
         }
 
-        // 発行日を描画（説明文のすぐ下）
+        // 発行日を描画（設定値を使用）
         if let Some(ref issue_date) = info.issue_date {
-            let date_font_size = 14.0; // 14pt
-            let date_x = Self::centered_x(issue_date, date_font_size, true);
-            let outline_width = date_font_size * 0.10;
+            let id = &config.issue_date;
+            let id_color = Color::Rgb(Rgb::new(
+                id.color[0] as f32 / 255.0,
+                id.color[1] as f32 / 255.0,
+                id.color[2] as f32 / 255.0,
+                None,
+            ));
+
+            // Y座標: issue_date設定のyが指定されていればそれを使用、なければnext_yを使用
+            let date_y = if id.y > 0.0 { id.y } else { next_y };
+            let date_x = Self::resolve_x(issue_date, id.font_size, true, id.x, id.centered);
+            let outline_width = id.font_size * 0.10;
 
             Self::draw_text_with_outline(
                 layer,
                 issue_date,
-                date_font_size,
+                id.font_size,
                 date_x * 25.4 / 72.0,
-                next_y * 25.4 / 72.0,
-                &ach_color,
+                date_y * 25.4 / 72.0,
+                &id_color,
                 &font,
                 outline_width,
             );
