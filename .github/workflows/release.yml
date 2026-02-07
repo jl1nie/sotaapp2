@@ -162,7 +162,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           # SHAタグを明示的に指定してデプロイ（キャッシュ問題を回避）
-          flyctl deploy --image "${{ needs.build-and-push.outputs.full_image }}"
+          flyctl deploy --image "${{ needs.build-and-push.outputs.full_image }}" --wait-timeout 300
 
       - name: Health check
         id: health
@@ -185,7 +185,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           echo "::error::Rolling back to ${{ steps.current.outputs.current_image }}"
-          flyctl deploy --image "${{ steps.current.outputs.current_image }}"
+          flyctl deploy --image "${{ steps.current.outputs.current_image }}" --wait-timeout 300
 
   # GitHub Release 作成
   create-release:

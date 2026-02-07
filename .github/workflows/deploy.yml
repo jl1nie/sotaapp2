@@ -134,7 +134,7 @@ jobs:
         run: |
           # CIでビルド済みのイメージを直接デプロイ（再ビルドなし）
           echo "Deploying image: ${{ needs.resolve-image.outputs.deploy_image }}"
-          flyctl deploy --image "${{ needs.resolve-image.outputs.deploy_image }}"
+          flyctl deploy --image "${{ needs.resolve-image.outputs.deploy_image }}" --wait-timeout 300
 
       - name: Health check
         id: health-check
@@ -164,7 +164,7 @@ jobs:
         run: |
           echo "::error::Deployment failed, rolling back..."
           echo "Rolling back to: ${{ steps.current.outputs.current_image }}"
-          flyctl deploy --image "${{ steps.current.outputs.current_image }}"
+          flyctl deploy --image "${{ steps.current.outputs.current_image }}" --wait-timeout 300
 
   # デプロイ結果のサマリ
   summary:

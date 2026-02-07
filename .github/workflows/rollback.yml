@@ -52,7 +52,7 @@ jobs:
           TARGET="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
           echo "Rolling back to: ${TARGET}"
           echo "| Target | \`${TARGET}\` |" >> $GITHUB_STEP_SUMMARY
-          flyctl deploy --image "${TARGET}"
+          flyctl deploy --image "${TARGET}" --wait-timeout 300
 
       - name: Health check
         run: |
