@@ -15,6 +15,13 @@ pub struct TextOverlayConfig {
     pub font_size: f32,
     /// 色（R, G, B、0-255）
     pub color: [u8; 3],
+    /// 水平方向のセンタリング（trueの場合、x座標を無視してページ中央に配置）
+    #[serde(default = "default_true")]
+    pub centered: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for TextOverlayConfig {
@@ -24,6 +31,7 @@ impl Default for TextOverlayConfig {
             y: 300.0,
             font_size: 24.0,
             color: [0, 0, 0], // 黒
+            centered: true,
         }
     }
 }
@@ -35,6 +43,9 @@ pub struct TemplateConfig {
     pub callsign: TextOverlayConfig,
     /// 達成内容の印字設定
     pub achievement: TextOverlayConfig,
+    /// 発行日の印字設定
+    #[serde(default)]
+    pub issue_date: TextOverlayConfig,
 }
 
 impl Default for TemplateConfig {
@@ -46,12 +57,21 @@ impl Default for TemplateConfig {
                 y: 320.0, // やや上
                 font_size: 48.0,
                 color: [0, 0, 128], // ネイビー
+                centered: true,
             },
             achievement: TextOverlayConfig {
                 x: 420.0, // 中央
                 y: 250.0, // コールサインの下
                 font_size: 24.0,
                 color: [0, 0, 0],
+                centered: true,
+            },
+            issue_date: TextOverlayConfig {
+                x: 420.0, // 中央
+                y: 120.0, // ページ下部
+                font_size: 14.0,
+                color: [0, 0, 0],
+                centered: true,
             },
         }
     }

@@ -24,23 +24,37 @@
 	let templateSuccess = '';
 	let configSaving = false;
 
-	// Form state for config
-	let activatorCallsignX = 297;
-	let activatorCallsignY = 450;
-	let activatorCallsignFontSize = 36;
+	// Form state for config (defaults match Rust backend)
+	let activatorCallsignX = 420;
+	let activatorCallsignY = 320;
+	let activatorCallsignFontSize = 48;
 	let activatorCallsignColor = '#000080';
-	let activatorAchievementX = 297;
-	let activatorAchievementY = 380;
-	let activatorAchievementFontSize = 18;
+	let activatorCallsignCentered = true;
+	let activatorAchievementX = 420;
+	let activatorAchievementY = 250;
+	let activatorAchievementFontSize = 24;
 	let activatorAchievementColor = '#000000';
-	let chaserCallsignX = 297;
-	let chaserCallsignY = 450;
-	let chaserCallsignFontSize = 36;
+	let activatorAchievementCentered = true;
+	let activatorIssueDateX = 420;
+	let activatorIssueDateY = 120;
+	let activatorIssueDateFontSize = 14;
+	let activatorIssueDateColor = '#000000';
+	let activatorIssueDateCentered = true;
+	let chaserCallsignX = 420;
+	let chaserCallsignY = 320;
+	let chaserCallsignFontSize = 48;
 	let chaserCallsignColor = '#000080';
-	let chaserAchievementX = 297;
-	let chaserAchievementY = 380;
-	let chaserAchievementFontSize = 18;
+	let chaserCallsignCentered = true;
+	let chaserAchievementX = 420;
+	let chaserAchievementY = 250;
+	let chaserAchievementFontSize = 24;
 	let chaserAchievementColor = '#000000';
+	let chaserAchievementCentered = true;
+	let chaserIssueDateX = 420;
+	let chaserIssueDateY = 120;
+	let chaserIssueDateFontSize = 14;
+	let chaserIssueDateColor = '#000000';
+	let chaserIssueDateCentered = true;
 
 	// Helper functions for color conversion
 	function rgbToHex(rgb: [number, number, number]): string {
@@ -118,18 +132,36 @@
 			activatorCallsignY = configResult.data.activator.callsign.y;
 			activatorCallsignFontSize = configResult.data.activator.callsign.font_size;
 			activatorCallsignColor = rgbToHex(configResult.data.activator.callsign.color);
+			activatorCallsignCentered = configResult.data.activator.callsign.centered ?? true;
 			activatorAchievementX = configResult.data.activator.achievement.x;
 			activatorAchievementY = configResult.data.activator.achievement.y;
 			activatorAchievementFontSize = configResult.data.activator.achievement.font_size;
 			activatorAchievementColor = rgbToHex(configResult.data.activator.achievement.color);
+			activatorAchievementCentered = configResult.data.activator.achievement.centered ?? true;
+			if (configResult.data.activator.issue_date) {
+				activatorIssueDateX = configResult.data.activator.issue_date.x;
+				activatorIssueDateY = configResult.data.activator.issue_date.y;
+				activatorIssueDateFontSize = configResult.data.activator.issue_date.font_size;
+				activatorIssueDateColor = rgbToHex(configResult.data.activator.issue_date.color);
+				activatorIssueDateCentered = configResult.data.activator.issue_date.centered ?? true;
+			}
 			chaserCallsignX = configResult.data.chaser.callsign.x;
 			chaserCallsignY = configResult.data.chaser.callsign.y;
 			chaserCallsignFontSize = configResult.data.chaser.callsign.font_size;
 			chaserCallsignColor = rgbToHex(configResult.data.chaser.callsign.color);
+			chaserCallsignCentered = configResult.data.chaser.callsign.centered ?? true;
 			chaserAchievementX = configResult.data.chaser.achievement.x;
 			chaserAchievementY = configResult.data.chaser.achievement.y;
 			chaserAchievementFontSize = configResult.data.chaser.achievement.font_size;
 			chaserAchievementColor = rgbToHex(configResult.data.chaser.achievement.color);
+			chaserAchievementCentered = configResult.data.chaser.achievement.centered ?? true;
+			if (configResult.data.chaser.issue_date) {
+				chaserIssueDateX = configResult.data.chaser.issue_date.x;
+				chaserIssueDateY = configResult.data.chaser.issue_date.y;
+				chaserIssueDateFontSize = configResult.data.chaser.issue_date.font_size;
+				chaserIssueDateColor = rgbToHex(configResult.data.chaser.issue_date.color);
+				chaserIssueDateCentered = configResult.data.chaser.issue_date.centered ?? true;
+			}
 		}
 
 		templateLoading = false;
@@ -168,20 +200,34 @@
 				callsignY: activatorCallsignY,
 				callsignFontSize: activatorCallsignFontSize,
 				callsignColor: hexToRgb(activatorCallsignColor),
+				callsignCentered: activatorCallsignCentered,
 				achievementX: activatorAchievementX,
 				achievementY: activatorAchievementY,
 				achievementFontSize: activatorAchievementFontSize,
-				achievementColor: hexToRgb(activatorAchievementColor)
+				achievementColor: hexToRgb(activatorAchievementColor),
+				achievementCentered: activatorAchievementCentered,
+				issueDateX: activatorIssueDateX,
+				issueDateY: activatorIssueDateY,
+				issueDateFontSize: activatorIssueDateFontSize,
+				issueDateColor: hexToRgb(activatorIssueDateColor),
+				issueDateCentered: activatorIssueDateCentered
 			},
 			chaser: {
 				callsignX: chaserCallsignX,
 				callsignY: chaserCallsignY,
 				callsignFontSize: chaserCallsignFontSize,
 				callsignColor: hexToRgb(chaserCallsignColor),
+				callsignCentered: chaserCallsignCentered,
 				achievementX: chaserAchievementX,
 				achievementY: chaserAchievementY,
 				achievementFontSize: chaserAchievementFontSize,
-				achievementColor: hexToRgb(chaserAchievementColor)
+				achievementColor: hexToRgb(chaserAchievementColor),
+				achievementCentered: chaserAchievementCentered,
+				issueDateX: chaserIssueDateX,
+				issueDateY: chaserIssueDateY,
+				issueDateFontSize: chaserIssueDateFontSize,
+				issueDateColor: hexToRgb(chaserIssueDateColor),
+				issueDateCentered: chaserIssueDateCentered
 			}
 		});
 
@@ -524,12 +570,20 @@
 						<h4 class="text-md font-medium text-amber-400 border-b border-slate-700 pb-2">アクティベータ賞</h4>
 
 						<div class="space-y-3">
-							<p class="text-sm text-slate-400 font-medium">コールサイン</p>
+							<div class="flex items-center justify-between">
+								<p class="text-sm text-slate-400 font-medium">コールサイン</p>
+								<label class="flex items-center gap-2 text-xs text-slate-400">
+									<input type="checkbox" bind:checked={activatorCallsignCentered}
+										class="rounded border-slate-600 bg-slate-700/50 text-amber-500 focus:ring-amber-500" />
+									中央揃え
+								</label>
+							</div>
 							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={activatorCallsignX} step="0.1"
-										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+										disabled={activatorCallsignCentered}
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 disabled:opacity-40" />
 								</div>
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
@@ -550,12 +604,20 @@
 						</div>
 
 						<div class="space-y-3">
-							<p class="text-sm text-slate-400 font-medium">達成内容</p>
+							<div class="flex items-center justify-between">
+								<p class="text-sm text-slate-400 font-medium">達成内容</p>
+								<label class="flex items-center gap-2 text-xs text-slate-400">
+									<input type="checkbox" bind:checked={activatorAchievementCentered}
+										class="rounded border-slate-600 bg-slate-700/50 text-amber-500 focus:ring-amber-500" />
+									中央揃え
+								</label>
+							</div>
 							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={activatorAchievementX} step="0.1"
-										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+										disabled={activatorAchievementCentered}
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 disabled:opacity-40" />
 								</div>
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
@@ -574,6 +636,40 @@
 								</div>
 							</div>
 						</div>
+
+						<div class="space-y-3">
+							<div class="flex items-center justify-between">
+								<p class="text-sm text-slate-400 font-medium">発行日</p>
+								<label class="flex items-center gap-2 text-xs text-slate-400">
+									<input type="checkbox" bind:checked={activatorIssueDateCentered}
+										class="rounded border-slate-600 bg-slate-700/50 text-amber-500 focus:ring-amber-500" />
+									中央揃え
+								</label>
+							</div>
+							<div class="grid grid-cols-4 gap-3">
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">X座標</label>
+									<input type="number" bind:value={activatorIssueDateX} step="0.1"
+										disabled={activatorIssueDateCentered}
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 disabled:opacity-40" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
+									<input type="number" bind:value={activatorIssueDateY} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">サイズ</label>
+									<input type="number" bind:value={activatorIssueDateFontSize} step="0.5"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">色</label>
+									<input type="color" bind:value={activatorIssueDateColor}
+										class="w-full h-[38px] bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer" />
+								</div>
+							</div>
+						</div>
 					</div>
 
 					<!-- Chaser Config -->
@@ -581,12 +677,20 @@
 						<h4 class="text-md font-medium text-cyan-400 border-b border-slate-700 pb-2">チェイサー賞</h4>
 
 						<div class="space-y-3">
-							<p class="text-sm text-slate-400 font-medium">コールサイン</p>
+							<div class="flex items-center justify-between">
+								<p class="text-sm text-slate-400 font-medium">コールサイン</p>
+								<label class="flex items-center gap-2 text-xs text-slate-400">
+									<input type="checkbox" bind:checked={chaserCallsignCentered}
+										class="rounded border-slate-600 bg-slate-700/50 text-cyan-500 focus:ring-cyan-500" />
+									中央揃え
+								</label>
+							</div>
 							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={chaserCallsignX} step="0.1"
-										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+										disabled={chaserCallsignCentered}
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500 disabled:opacity-40" />
 								</div>
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
@@ -607,12 +711,20 @@
 						</div>
 
 						<div class="space-y-3">
-							<p class="text-sm text-slate-400 font-medium">達成内容</p>
+							<div class="flex items-center justify-between">
+								<p class="text-sm text-slate-400 font-medium">達成内容</p>
+								<label class="flex items-center gap-2 text-xs text-slate-400">
+									<input type="checkbox" bind:checked={chaserAchievementCentered}
+										class="rounded border-slate-600 bg-slate-700/50 text-cyan-500 focus:ring-cyan-500" />
+									中央揃え
+								</label>
+							</div>
 							<div class="grid grid-cols-4 gap-3">
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">X座標</label>
 									<input type="number" bind:value={chaserAchievementX} step="0.1"
-										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+										disabled={chaserAchievementCentered}
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500 disabled:opacity-40" />
 								</div>
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
@@ -627,6 +739,40 @@
 								<div>
 									<label class="block text-xs text-slate-500 mb-1">色</label>
 									<input type="color" bind:value={chaserAchievementColor}
+										class="w-full h-[38px] bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer" />
+								</div>
+							</div>
+						</div>
+
+						<div class="space-y-3">
+							<div class="flex items-center justify-between">
+								<p class="text-sm text-slate-400 font-medium">発行日</p>
+								<label class="flex items-center gap-2 text-xs text-slate-400">
+									<input type="checkbox" bind:checked={chaserIssueDateCentered}
+										class="rounded border-slate-600 bg-slate-700/50 text-cyan-500 focus:ring-cyan-500" />
+									中央揃え
+								</label>
+							</div>
+							<div class="grid grid-cols-4 gap-3">
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">X座標</label>
+									<input type="number" bind:value={chaserIssueDateX} step="0.1"
+										disabled={chaserIssueDateCentered}
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500 disabled:opacity-40" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">Y座標</label>
+									<input type="number" bind:value={chaserIssueDateY} step="0.1"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">サイズ</label>
+									<input type="number" bind:value={chaserIssueDateFontSize} step="0.5"
+										class="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500" />
+								</div>
+								<div>
+									<label class="block text-xs text-slate-500 mb-1">色</label>
+									<input type="color" bind:value={chaserIssueDateColor}
 										class="w-full h-[38px] bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer" />
 								</div>
 							</div>
@@ -653,7 +799,7 @@
 				</div>
 
 				<p class="mt-4 text-xs text-slate-500">
-					※ 座標はPDFの左下を原点とするポイント単位です（A4: 595×842pt）
+					※ 座標はPDFの左下を原点とするポイント単位です（A4横向き: 841.89×595.28pt）。中央揃えON時はX座標は無視されます
 				</p>
 			</div>
 		</div>

@@ -209,12 +209,21 @@ fn main() {
                 y: 500.0,
                 font_size: 72.0,
                 color: [255, 0, 0], // 赤
+                centered: true,
             },
             achievement: TextOverlayConfig {
                 x: 420.0,
                 y: 420.0,
                 font_size: 32.0,
                 color: [255, 0, 0], // 赤
+                centered: true,
+            },
+            issue_date: TextOverlayConfig {
+                x: 420.0,
+                y: 120.0,
+                font_size: 14.0,
+                color: [255, 0, 0],
+                centered: true,
             },
         },
         chaser: TemplateConfig {
@@ -223,12 +232,21 @@ fn main() {
                 y: 500.0,
                 font_size: 72.0,
                 color: [255, 0, 0], // 赤
+                centered: true,
             },
             achievement: TextOverlayConfig {
                 x: 420.0,
                 y: 420.0,
                 font_size: 32.0,
                 color: [255, 0, 0], // 赤
+                centered: true,
+            },
+            issue_date: TextOverlayConfig {
+                x: 420.0,
+                y: 120.0,
+                font_size: 14.0,
+                color: [255, 0, 0],
+                centered: true,
             },
         },
     };
