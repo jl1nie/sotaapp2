@@ -129,10 +129,16 @@ impl AwardPdfGenerator {
         // グラフィックス状態を保存
         content.push_str("q\n");
 
+        // CTM（変換マトリックス）をリセットして標準座標系に戻す
+        // 1 0 0 1 0 0 cm は単位行列だが、先にリセットが必要な場合がある
+        // テンプレートのCTMを上書きするため、明示的に正の向きを指定
+        content.push_str("1 0 0 1 0 0 cm\n");
+
         // コールサインの描画
+        // Tmでテキストマトリックスを明示的に設定（正立、スケール1）
         let cs = &config.callsign;
         content.push_str(&format!(
-            "BT\n/{} {} Tf\n{} {} {} rg\n{} {} Td\n({}) Tj\nET\n",
+            "BT\n/{} {} Tf\n{} {} {} rg\n1 0 0 1 {} {} Tm\n({}) Tj\nET\n",
             "Helvetica-Bold",
             cs.font_size,
             cs.color[0] as f32 / 255.0,
@@ -146,7 +152,7 @@ impl AwardPdfGenerator {
         // 達成内容の描画
         let ach = &config.achievement;
         content.push_str(&format!(
-            "BT\n/{} {} Tf\n{} {} {} rg\n{} {} Td\n({}) Tj\nET\n",
+            "BT\n/{} {} Tf\n{} {} {} rg\n1 0 0 1 {} {} Tm\n({}) Tj\nET\n",
             "Helvetica",
             ach.font_size,
             ach.color[0] as f32 / 255.0,
