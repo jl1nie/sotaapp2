@@ -12,7 +12,7 @@ use common::error::AppResult;
 use domain::model::activation::{Alert, Spot, SpotLog};
 use domain::model::aprslog::{AprsLog, AprsTrack};
 use domain::model::event::{
-    DeleteRef, FindAct, FindAprs, FindLog, FindRef, FindResult, GroupBy, PagenatedResult,
+    DeleteRef, FindAct, FindAprs, FindRef, FindResult, GroupBy, PagenatedResult,
 };
 use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
@@ -26,7 +26,6 @@ use std::path::Path;
 pub trait SotaLogService: Send + Sync + Interface {
     async fn upload_sota_log(&self, user_id: UserId, event: UploadSOTALog) -> AppResult<()>;
     async fn delete_sota_log(&self, user_id: UserId) -> AppResult<()>;
-    async fn award_progress(&self, user_id: UserId, query: FindLog) -> AppResult<String>;
 
     /// SOTA日本支部設立10周年記念アワード判定（in-memory、DBに保存しない）
     fn judge_10th_anniversary_award(
