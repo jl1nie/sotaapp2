@@ -30,7 +30,7 @@ impl Default for TextOverlayConfig {
             x: 420.0, // A4横向き中央付近（841.89pt / 2）
             y: 300.0,
             font_size: 24.0,
-            color: [0, 0, 0], // 黒
+            color: [255, 0, 0], // 赤
             centered: true,
         }
     }
@@ -54,23 +54,23 @@ impl Default for TemplateConfig {
         Self {
             callsign: TextOverlayConfig {
                 x: 420.0, // 中央
-                y: 320.0, // やや上
-                font_size: 48.0,
-                color: [0, 0, 128], // ネイビー
+                y: 500.0, // やや上
+                font_size: 72.0,
+                color: [255, 0, 0], // 赤
                 centered: true,
             },
             achievement: TextOverlayConfig {
                 x: 420.0, // 中央
-                y: 250.0, // コールサインの下
-                font_size: 24.0,
-                color: [0, 0, 0],
+                y: 420.0, // コールサインの下
+                font_size: 32.0,
+                color: [255, 0, 0], // 赤
                 centered: true,
             },
             issue_date: TextOverlayConfig {
                 x: 420.0, // 中央
                 y: 120.0, // ページ下部
                 font_size: 14.0,
-                color: [0, 0, 0],
+                color: [255, 0, 0], // 赤
                 centered: true,
             },
         }
@@ -126,8 +126,8 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = AwardTemplateConfig::default();
-        assert_eq!(config.activator.callsign.font_size, 48.0);
-        assert_eq!(config.chaser.callsign.color, [0, 0, 128]);
+        assert_eq!(config.activator.callsign.font_size, 72.0);
+        assert_eq!(config.chaser.callsign.color, [255, 0, 0]);
     }
 
     #[test]
@@ -153,6 +153,6 @@ mod tests {
         assert!(!path.exists());
         let config = AwardTemplateConfig::load_from_file(&path).unwrap();
         assert!(path.exists());
-        assert_eq!(config.activator.callsign.font_size, 48.0);
+        assert_eq!(config.activator.callsign.font_size, 72.0);
     }
 }

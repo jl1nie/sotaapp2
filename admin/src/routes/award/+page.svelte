@@ -328,7 +328,7 @@
 
 							{#if result.chaser.achieved}
 								<a
-									href={getCertificateUrl(result.callsign, 'chaser', result.chaser.qualifiedSummits[0]?.uniqueActivators || 10)}
+									href={getCertificateUrl(result.callsign, 'chaser', result.chaser.qualifiedSummits.length, result.chaser.qualifiedSummits[0]?.uniqueActivators, result.chaser.qualifiedSummits[0]?.summitCode)}
 									download
 									class="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg shadow-cyan-500/25 transition-all duration-200"
 								>
