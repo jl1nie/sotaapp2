@@ -343,6 +343,12 @@ async fn generate_award_pdf(
         }
     };
 
+    // 発行日を生成（固定発行日が設定されていればそれを使用）
+    let issue_date = config
+        .fixed_issue_date
+        .clone()
+        .unwrap_or_else(|| chrono::Utc::now().format("%Y %b. %-d").to_string());
+
     let generator = AwardPdfGenerator::new(state.config.award_template_dir.clone(), config);
 
     // テンプレート存在チェック
@@ -377,9 +383,6 @@ async fn generate_award_pdf(
             )
         }
     };
-
-    // 発行日を生成
-    let issue_date = chrono::Utc::now().format("%Y %b. %-d").to_string();
 
     let info = CertificateInfo {
         callsign: query.callsign.clone(),

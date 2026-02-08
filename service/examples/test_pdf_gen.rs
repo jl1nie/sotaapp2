@@ -249,6 +249,7 @@ fn main() {
                 centered: true,
             },
         },
+        fixed_issue_date: Some("2026 Feb. 1".to_string()),
     };
 
     // アクティベータログを処理

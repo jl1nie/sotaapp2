@@ -48,6 +48,7 @@ pub struct TemplateStatus {
 pub struct UpdateConfigRequest {
     pub activator: Option<TemplateConfigUpdate>,
     pub chaser: Option<TemplateConfigUpdate>,
+    pub fixed_issue_date: Option<String>,
 }
 
 /// 単一テンプレートの設定更新
@@ -137,6 +138,9 @@ async fn update_config(
     if let Some(update) = req.chaser {
         apply_config_update(&mut config.chaser, update);
     }
+
+    // 固定発行日の更新
+    config.fixed_issue_date = req.fixed_issue_date;
 
     // 保存
     match config.save_to_file(&config_path) {

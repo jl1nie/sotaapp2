@@ -276,6 +276,7 @@ export interface TemplateConfig {
 export interface AwardTemplateConfig {
 	activator: TemplateConfig;
 	chaser: TemplateConfig;
+	fixed_issue_date?: string;
 }
 
 export interface TemplateStatusResponse {
@@ -413,6 +414,7 @@ export async function updateAwardConfig(config: Partial<{
 		issueDateColor: [number, number, number];
 		issueDateCentered: boolean;
 	}>;
+	fixedIssueDate: string | null;
 }>): Promise<AwardConfigResponse> {
 	const token = auth.getToken();
 	if (!token) {
