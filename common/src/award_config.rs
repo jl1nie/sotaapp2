@@ -84,6 +84,9 @@ pub struct AwardTemplateConfig {
     pub activator: TemplateConfig,
     /// チェイサー賞テンプレート設定
     pub chaser: TemplateConfig,
+    /// 固定発行日（未設定時は現在日付を使用）
+    #[serde(default)]
+    pub fixed_issue_date: Option<String>,
 }
 
 impl AwardTemplateConfig {

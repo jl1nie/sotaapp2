@@ -24,36 +24,39 @@
 	let templateSuccess = '';
 	let configSaving = false;
 
+	// Fixed issue date (shared between activator/chaser)
+	let fixedIssueDate = '';
+
 	// Form state for config (defaults match Rust backend)
 	let activatorCallsignX = 420;
-	let activatorCallsignY = 320;
-	let activatorCallsignFontSize = 48;
-	let activatorCallsignColor = '#000080';
+	let activatorCallsignY = 500;
+	let activatorCallsignFontSize = 72;
+	let activatorCallsignColor = '#ff0000';
 	let activatorCallsignCentered = true;
 	let activatorAchievementX = 420;
-	let activatorAchievementY = 250;
-	let activatorAchievementFontSize = 24;
-	let activatorAchievementColor = '#000000';
+	let activatorAchievementY = 420;
+	let activatorAchievementFontSize = 32;
+	let activatorAchievementColor = '#ff0000';
 	let activatorAchievementCentered = true;
 	let activatorIssueDateX = 420;
 	let activatorIssueDateY = 120;
 	let activatorIssueDateFontSize = 14;
-	let activatorIssueDateColor = '#000000';
+	let activatorIssueDateColor = '#ff0000';
 	let activatorIssueDateCentered = true;
 	let chaserCallsignX = 420;
-	let chaserCallsignY = 320;
-	let chaserCallsignFontSize = 48;
-	let chaserCallsignColor = '#000080';
+	let chaserCallsignY = 500;
+	let chaserCallsignFontSize = 72;
+	let chaserCallsignColor = '#ff0000';
 	let chaserCallsignCentered = true;
 	let chaserAchievementX = 420;
-	let chaserAchievementY = 250;
-	let chaserAchievementFontSize = 24;
-	let chaserAchievementColor = '#000000';
+	let chaserAchievementY = 420;
+	let chaserAchievementFontSize = 32;
+	let chaserAchievementColor = '#ff0000';
 	let chaserAchievementCentered = true;
 	let chaserIssueDateX = 420;
 	let chaserIssueDateY = 120;
 	let chaserIssueDateFontSize = 14;
-	let chaserIssueDateColor = '#000000';
+	let chaserIssueDateColor = '#ff0000';
 	let chaserIssueDateCentered = true;
 
 	// Helper functions for color conversion
@@ -127,6 +130,8 @@
 
 		if (configResult.success && configResult.data) {
 			awardConfig = configResult.data;
+			// Populate fixed issue date
+			fixedIssueDate = configResult.data.fixed_issue_date ?? '';
 			// Populate form fields
 			activatorCallsignX = configResult.data.activator.callsign.x;
 			activatorCallsignY = configResult.data.activator.callsign.y;
@@ -195,6 +200,7 @@
 		templateSuccess = '';
 
 		const result = await updateAwardConfig({
+			fixedIssueDate: fixedIssueDate.trim() || null,
 			activator: {
 				callsignX: activatorCallsignX,
 				callsignY: activatorCallsignY,
@@ -563,6 +569,16 @@
 			<!-- Config Section -->
 			<div class="p-6 bg-slate-800/30 rounded-xl border border-slate-700/50">
 				<h3 class="text-lg font-semibold text-white mb-6">印字設定</h3>
+
+				<!-- Fixed Issue Date -->
+				<div class="mb-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
+					<div class="flex items-center gap-3 mb-2">
+						<p class="text-sm text-slate-300 font-medium">発行日（固定）</p>
+						<span class="text-xs text-slate-500">空欄の場合はダウンロード時の日付を使用</span>
+					</div>
+					<input type="text" bind:value={fixedIssueDate} placeholder="例: 2026 Feb. 1"
+						class="w-full max-w-xs px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 placeholder-slate-500" />
+				</div>
 
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					<!-- Activator Config -->
