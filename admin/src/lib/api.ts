@@ -232,12 +232,24 @@ export async function judgeAward(file: File, mode: JudgmentMode = 'strict'): Pro
 
 export type AwardType = 'activator' | 'chaser';
 
-export function getCertificateUrl(callsign: string, awardType: AwardType, summits: number): string {
+export function getCertificateUrl(
+	callsign: string,
+	awardType: AwardType,
+	summits: number,
+	bestActivators?: number,
+	bestSummit?: string
+): string {
 	const params = new URLSearchParams({
 		callsign,
 		award_type: awardType,
 		summits: summits.toString()
 	});
+	if (bestActivators !== undefined) {
+		params.set('best_activators', bestActivators.toString());
+	}
+	if (bestSummit !== undefined) {
+		params.set('best_summit', bestSummit);
+	}
 	return `/api/v2/sota/award/10th-anniversary/certificate?${params.toString()}`;
 }
 
