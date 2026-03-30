@@ -4,6 +4,7 @@ use shaku::module;
 use std::sync::Arc;
 
 use aprs_message::AprsIS;
+use tokio::sync::Mutex;
 
 use adapter::{
     aprs::{AprsRepositryImpl, AprsRepositryImplParameters},
@@ -59,6 +60,7 @@ impl AppRegistry {
         geomag: GeoMag,
         kvs: Arc<MiniKvs>,
     ) -> Self {
+        let aprs = Arc::new(Mutex::new(aprs));
         AppRegistry::builder()
             .with_component_parameters::<SotaRepositoryImpl>(SotaRepositoryImplParameters {
                 pool: pool.clone(),
@@ -90,7 +92,10 @@ impl AppRegistry {
                 geomag: geomag.clone(),
             })
             .with_component_parameters::<AprsRepositryImpl>(AprsRepositryImplParameters {
-                aprs: aprs.clone(),
+                aprs,
+                aprs_host: config.aprs_host.clone(),
+                aprs_user: config.aprs_user.clone(),
+                aprs_password: config.aprs_password.clone(),
             })
             .with_component_parameters::<MiniKvsRepositryImpl>(MiniKvsRepositryImplParameters {
                 kvs: kvs.clone(),
