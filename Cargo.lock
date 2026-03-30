@@ -2579,6 +2579,7 @@ dependencies = [
  "common",
  "service",
  "shaku",
+ "tokio",
  "tracing",
 ]
 
