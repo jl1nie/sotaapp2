@@ -3,7 +3,6 @@ use aprs_message::{AprsCallsign, AprsData, AprsIS};
 use async_trait::async_trait;
 use shaku::Component;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use common::config::AppConfig;
 use common::error::{AppError, AppResult};
@@ -36,18 +35,13 @@ async fn connect_aprsis(host: &str, user: &str, password: &str) -> Result<AprsIS
 #[derive(Component)]
 #[shaku(interface = AprsRepositry)]
 pub struct AprsRepositryImpl {
-    aprs: Arc<Mutex<AprsIS>>,
-    aprs_host: String,
-    aprs_user: String,
-    aprs_password: String,
+    aprs: Arc<AprsIS>,
 }
 
 #[async_trait]
 impl AprsRepositry for AprsRepositryImpl {
     async fn write_message(&self, addressee: &AprsCallsign, message: &str) -> AppResult<()> {
         self.aprs
-            .lock()
-            .await
             .write_message(addressee, message)
             .await
             .map_err(|_| AppError::APRSError)?;
@@ -56,8 +50,6 @@ impl AprsRepositry for AprsRepositryImpl {
 
     async fn set_filter(&self, filter: String) -> AppResult<()> {
         self.aprs
-            .lock()
-            .await
             .set_filter(filter)
             .await
             .map_err(|_| AppError::APRSError)?;
@@ -65,17 +57,7 @@ impl AprsRepositry for AprsRepositryImpl {
     }
 
     async fn set_buddy_list(&self, buddy: Vec<String>) -> AppResult<()> {
-        let aprs =
-            match tokio::time::timeout(std::time::Duration::from_secs(5), self.aprs.lock()).await {
-                Ok(guard) => guard,
-                Err(_) => {
-                    tracing::warn!(
-                        "APRS mutex acquisition timed out (packet reader is holding the lock)"
-                    );
-                    return Err(AppError::APRSError);
-                }
-            };
-        aprs.set_budlist_filter(buddy).await.map_err(|e| {
+        self.aprs.set_budlist_filter(buddy).await.map_err(|e| {
             tracing::warn!("APRS set_budlist_filter failed: {e}");
             AppError::APRSError
         })?;
@@ -83,23 +65,9 @@ impl AprsRepositry for AprsRepositryImpl {
     }
 
     async fn get_aprs_packet(&self) -> AppResult<AprsData> {
-        let mut aprs = self.aprs.lock().await;
-        match aprs.read_packet().await {
-            Ok(packet) => Ok(packet),
-            Err(e) => {
-                tracing::warn!("APRS-IS connection lost ({e}), reconnecting...");
-                match connect_aprsis(&self.aprs_host, &self.aprs_user, &self.aprs_password).await {
-                    Ok(new_conn) => {
-                        *aprs = new_conn;
-                        tracing::info!("APRS-IS reconnected successfully");
-                        aprs.read_packet().await.map_err(|_| AppError::APRSError)
-                    }
-                    Err(e) => {
-                        tracing::error!("APRS-IS reconnect failed: {e}");
-                        Err(AppError::APRSError)
-                    }
-                }
-            }
-        }
+        self.aprs.read_packet().await.map_err(|e| {
+            tracing::warn!("APRS read_packet failed: {e}");
+            AppError::APRSError
+        })
     }
 }
