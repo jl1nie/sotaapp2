@@ -85,6 +85,7 @@ impl AppRegistry {
             .with_component_parameters::<AdminPeriodicServiceImpl>(
                 AdminPeriodicServiceImplParameters {
                     config: config.clone(),
+                    buddy_callsigns: Default::default(),
                 },
             )
             .with_component_parameters::<GeoMagRepositryImpl>(GeoMagRepositryImplParameters {

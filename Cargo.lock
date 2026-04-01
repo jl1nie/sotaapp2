@@ -34,6 +34,7 @@ dependencies = [
  "tokio",
  "tokio-cron-scheduler",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -178,7 +179,6 @@ dependencies = [
 [[package]]
 name = "aprs-message"
 version = "0.1.0"
-source = "git+https://github.com/jl1nie/aprs-message.git#3c272f76b669d2d5e532f8176e72462bd84ad8db"
 dependencies = [
  "anyhow",
  "aprs-parser",
