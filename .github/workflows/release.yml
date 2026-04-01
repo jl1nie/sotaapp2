@@ -44,6 +44,7 @@ jobs:
   backup-database:
     name: Backup Database
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       backup_file: ${{ steps.backup.outputs.backup_file }}
 
@@ -53,6 +54,7 @@ jobs:
 
       - name: Download database
         id: backup
+        timeout-minutes: 3
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
