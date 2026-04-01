@@ -21,6 +21,7 @@ plotters.workspace = true
 serde_json.workspace = true
 zip.workspace = true
 once_cell.workspace = true
+tokio = { workspace = true, features = ["time"] }
 lopdf.workspace = true
 printpdf.workspace = true
 image.workspace = true
