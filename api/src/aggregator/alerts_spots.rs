@@ -16,38 +16,70 @@ pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> A
     let client = http::client();
 
     let endpoint = config.sota_alert_endpoint.clone();
-    let response = client
-        .get(&endpoint)
-        .send()
-        .await
-        .map_err(AppError::GetError)?
-        .json::<Vec<SotaAlert>>()
-        .await
-        .map_err(AppError::GetError)?;
-
-    let mut requests: Vec<Alert> = response
-        .into_iter()
-        .filter_map(|sa| AppResult::<Alert>::from(sa).ok())
-        .collect();
+    let mut requests: Vec<Alert> = match client.get(&endpoint).send().await {
+        Err(e) => {
+            tracing::error!("Failed to fetch SOTA alerts: {:?}", e);
+            vec![]
+        }
+        Ok(resp) => match resp.json::<Vec<SotaAlert>>().await {
+            Err(e) => {
+                tracing::error!("Failed to parse SOTA alerts: {:?}", e);
+                vec![]
+            }
+            Ok(sota_alerts) => {
+                let total = sota_alerts.len();
+                let converted: Vec<Alert> = sota_alerts
+                    .into_iter()
+                    .filter_map(|sa| match AppResult::<Alert>::from(sa) {
+                        Ok(a) => Some(a),
+                        Err(e) => {
+                            tracing::warn!("Failed to convert SOTA alert: {:?}", e);
+                            None
+                        }
+                    })
+                    .collect();
+                tracing::info!(
+                    "Fetched SOTA alerts: {}/{} converted",
+                    converted.len(),
+                    total
+                );
+                converted
+            }
+        },
+    };
 
     let endpoint = config.pota_alert_endpoint.clone();
-    let response = client
-        .get(&endpoint)
-        .send()
-        .await
-        .map_err(AppError::GetError)?
-        .json::<Vec<PotaAlert>>()
-        .await
-        .map_err(AppError::GetError)?;
+    match client.get(&endpoint).send().await {
+        Err(e) => {
+            tracing::error!("Failed to fetch POTA alerts: {:?}", e);
+        }
+        Ok(resp) => match resp.json::<Vec<PotaAlert>>().await {
+            Err(e) => {
+                tracing::error!("Failed to parse POTA alerts: {:?}", e);
+            }
+            Ok(pota_alerts) => {
+                let total = pota_alerts.len();
+                let converted: Vec<Alert> = pota_alerts
+                    .into_iter()
+                    .filter_map(|pa| match AppResult::<Alert>::from(pa) {
+                        Ok(a) => Some(a),
+                        Err(e) => {
+                            tracing::warn!("Failed to convert POTA alert: {:?}", e);
+                            None
+                        }
+                    })
+                    .collect();
+                tracing::info!(
+                    "Fetched POTA alerts: {}/{} converted",
+                    converted.len(),
+                    total
+                );
+                requests.extend(converted);
+            }
+        },
+    }
 
-    let requests_pota: Vec<Alert> = response
-        .into_iter()
-        .filter_map(|pa| AppResult::<Alert>::from(pa).ok())
-        .collect();
-
-    requests.extend(requests_pota);
-
-    tracing::info!("Update {} alerts.", requests.len());
+    tracing::info!("Updating {} alerts total.", requests.len());
 
     service.update_alerts(requests).await?;
     Ok(())

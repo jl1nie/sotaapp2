@@ -23,7 +23,9 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
 
     let alert_handle = tokio::spawn(async move {
         'outer: loop {
-            let _ = update_alerts(&config_alert, &registry_alert).await;
+            if let Err(e) = update_alerts(&config_alert, &registry_alert).await {
+                tracing::error!("Update Alert Error {:?}", e);
+            }
 
             for _ in 0..30 {
                 if *shutdown.borrow() {

@@ -99,7 +99,9 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
             buddy.push(format!("{}-*", callsign));
         }
 
-        self.aprs_repo.set_buddy_list(buddy).await?;
+        if let Err(e) = self.aprs_repo.set_buddy_list(buddy).await {
+            tracing::warn!("Failed to set APRS buddy list: {:?}", e);
+        }
 
         self.act_repo.update_alerts(alerts).await?;
 
