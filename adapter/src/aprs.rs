@@ -65,12 +65,20 @@ impl AprsRepositry for AprsRepositryImpl {
     }
 
     async fn set_buddy_list(&self, buddy: Vec<String>) -> AppResult<()> {
-        self.aprs
-            .lock()
-            .await
-            .set_budlist_filter(buddy)
-            .await
-            .map_err(|_| AppError::APRSError)?;
+        let aprs =
+            match tokio::time::timeout(std::time::Duration::from_secs(5), self.aprs.lock()).await {
+                Ok(guard) => guard,
+                Err(_) => {
+                    tracing::warn!(
+                        "APRS mutex acquisition timed out (packet reader is holding the lock)"
+                    );
+                    return Err(AppError::APRSError);
+                }
+            };
+        aprs.set_budlist_filter(buddy).await.map_err(|e| {
+            tracing::warn!("APRS set_budlist_filter failed: {e}");
+            AppError::APRSError
+        })?;
         Ok(())
     }
 
