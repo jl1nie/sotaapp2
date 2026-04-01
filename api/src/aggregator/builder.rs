@@ -23,8 +23,16 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
 
     let alert_handle = tokio::spawn(async move {
         'outer: loop {
-            if let Err(e) = update_alerts(&config_alert, &registry_alert).await {
-                tracing::error!("Update Alert Error {:?}", e);
+            tracing::info!("Starting alert update");
+            match tokio::time::timeout(
+                Duration::from_secs(120),
+                update_alerts(&config_alert, &registry_alert),
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => tracing::error!("Update Alert Error {:?}", e),
+                Err(_) => tracing::error!("Update Alert timed out after 120s"),
             }
 
             for _ in 0..30 {
@@ -43,8 +51,16 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
 
     let spot_handle = tokio::spawn(async move {
         'outer: loop {
-            if let Err(e) = update_spots(&config_spot, &registry_spot).await {
-                tracing::error!("Update Spot Error {:?}", e);
+            tracing::info!("Starting spot update");
+            match tokio::time::timeout(
+                Duration::from_secs(120),
+                update_spots(&config_spot, &registry_spot),
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => tracing::error!("Update Spot Error {:?}", e),
+                Err(_) => tracing::error!("Update Spot timed out after 120s"),
             }
 
             for _ in 0..10 {

@@ -30,7 +30,9 @@ pub mod connect {
     use anyhow::Result;
     use common::config::AppConfig;
     use sqlx::migrate::Migrator;
-    use sqlx::sqlite::SqlitePool;
+    use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
+    use std::str::FromStr;
+    use std::time::Duration;
     use std::{fs, path::Path};
 
     #[derive(Clone)]
@@ -50,7 +52,10 @@ pub mod connect {
         let m = Migrator::new(std::path::Path::new(&cfg.migration_path)).await?;
         let dbname = cfg.database.replace("sqlite:", "");
         let database_path = Path::new(&dbname);
-        let pool = ConnectionPool(SqlitePool::connect_lazy(&cfg.database)?);
+        let options = SqliteConnectOptions::from_str(&cfg.database)?
+            .journal_mode(SqliteJournalMode::Wal)
+            .busy_timeout(Duration::from_secs(10));
+        let pool = ConnectionPool(SqlitePoolOptions::new().connect_lazy_with(options));
         let mut force_migrate = false;
 
         if fs::metadata(database_path).is_err() {
