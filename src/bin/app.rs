@@ -163,9 +163,10 @@ async fn bootstrap() -> Result<()> {
 
     let pool = connect_database_with(&config).await?;
 
-    // サーバー起動後に非同期でDB最適化（起動時間短縮のため）
+    // サーバー起動後5分待ってからDB最適化（起動直後のDBロック競合を避けるため）
     let pool_for_optimize = pool.clone();
     tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(300)).await;
         if let Err(e) = optimize_database(&pool_for_optimize).await {
             tracing::error!("Database optimization failed: {:?}", e);
         }
