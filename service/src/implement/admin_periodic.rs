@@ -7,7 +7,7 @@ use shaku::Component;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use common::{config::AppConfig, error::AppError, error::AppResult};
 use domain::model::event::{DeleteRef, FindRefBuilder};
@@ -38,6 +38,10 @@ pub struct AdminPeriodicServiceImpl {
     pub pota_repo: Arc<dyn PotaRepository>,
 
     pub config: AppConfig,
+    /// APRSバディリスト（コールサイン、SSIDなし）
+    /// r/+t/ フィルターで受信後にアプリ側でフィルタリングするために保持する
+    #[shaku(default)]
+    pub buddy_callsigns: Mutex<HashSet<String>>,
 }
 
 fn is_valid_summit(r: &SotaReference) -> bool {
@@ -85,22 +89,29 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
         let now: DateTime<Utc> = Utc::now();
         let alert_window_start = now - TimeDelta::hours(5);
         let alert_window_end = now + TimeDelta::hours(6);
-        let mut buddy: Vec<_> = alerts
+        let buddy_callsigns: HashSet<String> = alerts
             .iter()
             .filter(|a| {
                 a.program == domain::model::AwardProgram::SOTA
                     && a.start_time > alert_window_start
                     && a.start_time < alert_window_end
             })
-            .map(|a| format!("{}-*", a.operator))
+            .map(|a| a.operator.clone())
             .collect();
 
-        if let Some(callsign) = self.config.aprs_user.split('-').next() {
-            buddy.push(format!("{}-*", callsign));
+        tracing::info!(
+            "APRS buddy list updated: {} callsigns",
+            buddy_callsigns.len()
+        );
+
+        // バディリストをメモリに保存（受信後フィルタリング用）
+        if let Ok(mut guard) = self.buddy_callsigns.lock() {
+            *guard = buddy_callsigns;
         }
 
-        if let Err(e) = self.aprs_repo.set_buddy_list(buddy).await {
-            tracing::warn!("APRS buddy list update skipped: {:?}", e);
+        // r/+t/ フィルターを設定（コールサインはアプリ側でフィルタリング）
+        if let Err(e) = self.aprs_repo.set_buddy_list(vec![]).await {
+            tracing::warn!("APRS set_buddy_list skipped: {:?}", e);
         }
 
         self.act_repo.update_alerts(alerts).await?;
@@ -148,6 +159,15 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
                 latitude,
                 longitude,
             } => {
+                // バディリストに含まれるコールサインのみ処理（SSID除いた基本コールで照合）
+                let in_buddy = self
+                    .buddy_callsigns
+                    .lock()
+                    .map(|guard| guard.contains(&callsign.callsign))
+                    .unwrap_or(false);
+                if !in_buddy {
+                    return Ok(());
+                }
                 if let Some(ssid) = callsign.ssid {
                     if [5, 6, 7, 8, 9].contains(&ssid) {
                         return self.process_position(callsign, latitude, longitude).await;

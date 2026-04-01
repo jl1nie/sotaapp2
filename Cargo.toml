@@ -103,3 +103,6 @@ clap = { version = "4", features = ["derive"] }
 sqlx.workspace = true
 utoipa.workspace = true
 utoipa-swagger-ui.workspace = true
+
+[patch."https://github.com/jl1nie/aprs-message.git"]
+aprs-message = { path = "/home/minoru/src/aprs-message" }

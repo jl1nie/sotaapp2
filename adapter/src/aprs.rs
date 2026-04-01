@@ -56,11 +56,16 @@ impl AprsRepositry for AprsRepositryImpl {
         Ok(())
     }
 
-    async fn set_buddy_list(&self, buddy: Vec<String>) -> AppResult<()> {
-        self.aprs.set_budlist_filter(buddy).await.map_err(|e| {
-            tracing::warn!("APRS set_budlist_filter failed: {e}");
-            AppError::APRSError
-        })?;
+    async fn set_buddy_list(&self, _buddy: Vec<String>) -> AppResult<()> {
+        // b/ buddy filter と f/ friend filter はサーバー側の実装不具合で動作しない。
+        // r/ レンジ + t/ タイプフィルターで代替し、コールサインフィルタリングはアプリ側で行う。
+        self.aprs
+            .set_filter("r/36/137/1500 t/p/m".to_string())
+            .await
+            .map_err(|e| {
+                tracing::warn!("APRS set_filter failed: {e}");
+                AppError::APRSError
+            })?;
         Ok(())
     }
 
