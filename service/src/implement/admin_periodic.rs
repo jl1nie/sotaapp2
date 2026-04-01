@@ -99,15 +99,8 @@ impl AdminPeriodicService for AdminPeriodicServiceImpl {
             buddy.push(format!("{}-*", callsign));
         }
 
-        match tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            self.aprs_repo.set_buddy_list(buddy),
-        )
-        .await
-        {
-            Ok(Ok(())) => {}
-            Ok(Err(e)) => tracing::warn!("Failed to set APRS buddy list: {:?}", e),
-            Err(_) => tracing::warn!("APRS buddy list update timed out"),
+        if let Err(e) = self.aprs_repo.set_buddy_list(buddy).await {
+            tracing::warn!("APRS buddy list update skipped: {:?}", e);
         }
 
         self.act_repo.update_alerts(alerts).await?;
