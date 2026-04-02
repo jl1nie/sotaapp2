@@ -1,7 +1,7 @@
 FROM rust:1.88.0-slim-bookworm AS builder
 WORKDIR /app
 ENV DATABASE_URL=sqlite:./data/sotaapp2.db
-RUN apt update && apt install -y libssl-dev pkg-config sqlite3 wget
+RUN apt update && apt install -y libssl-dev pkg-config sqlite3 wget curl
 COPY . .
 COPY adapter/migrations/sqlite migrations/
 RUN mkdir ./data && sqlite3 ./data/sotaapp2.db < ./migrations/20241130234000_start.up.sql
