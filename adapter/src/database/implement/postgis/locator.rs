@@ -5,7 +5,7 @@ use shaku::Component;
 use sqlx::PgConnection;
 
 use common::config::AppConfig;
-use common::error::{db_error, tx_error, AppResult};
+use common::error::{db_error, row_not_found, tx_error, AppResult};
 use common::http;
 use domain::model::locator::MunicipalityCenturyCode;
 
@@ -68,7 +68,7 @@ impl LocatorRepositryImpl {
         )
         .fetch_one(self.pool.inner_ref())
         .await
-        .map_err(db_error("locator operation postgis"))?;
+        .map_err(row_not_found("fetch municipality_century_codes by muni_code postgis"))?;
         Ok(results.into())
     }
 }

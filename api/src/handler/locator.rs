@@ -36,12 +36,7 @@ async fn find_century_code(
 ) -> AppResult<Json<CenturyCodeView>> {
     let muni_code: i32 = param.muni_code.unwrap_or_default();
     let (lon, lat) = (param.lon.unwrap_or_default(), param.lat.unwrap_or_default());
-    let result = user_service.find_century_code(muni_code).await;
-
-    let mut res = CenturyCodeView::default();
-    if let Ok(result) = result {
-        res = result.into();
-    }
+    let mut res: CenturyCodeView = user_service.find_century_code(muni_code).await?.into();
     res.maidenhead = maidenhead(lon, lat);
     Ok(Json(res))
 }

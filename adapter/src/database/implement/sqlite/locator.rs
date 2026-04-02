@@ -5,7 +5,7 @@ use shaku::Component;
 use sqlx::SqliteConnection;
 
 use common::config::AppConfig;
-use common::error::{db_error, tx_error, AppError, AppResult};
+use common::error::{db_error, row_not_found, tx_error, AppError, AppResult};
 use common::http;
 use domain::model::locator::MunicipalityCenturyCode;
 
@@ -72,7 +72,7 @@ impl LocatorRepositryImpl {
         )
         .fetch_one(self.pool.inner_ref())
         .await
-        .map_err(db_error("fetch municipality_century_codes by muni_code"))?;
+        .map_err(row_not_found("fetch municipality_century_codes by muni_code"))?;
         Ok(results.into())
     }
 }
