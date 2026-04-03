@@ -77,12 +77,12 @@ impl IntoResponse for AppError {
                 )
             }
             AppError::EntityNotFound(msg) => {
-                tracing::error!("Not found {:?}", msg);
+                tracing::warn!("Not found {:?}", msg);
                 (StatusCode::NOT_FOUND, msg.clone(), Some("NOT_FOUND"))
             }
             AppError::RowNotFound { source, location } => {
                 // locationは内部情報なのでログにのみ記録し、レスポンスには含めない
-                tracing::error!("Row not found at {}: {:?}", location, source);
+                tracing::warn!("Row not found at {}: {:?}", location, source);
                 (
                     StatusCode::NOT_FOUND,
                     "指定されたリソースが見つかりません".to_string(),
@@ -90,7 +90,7 @@ impl IntoResponse for AppError {
                 )
             }
             AppError::UuidError(e) => {
-                tracing::error!("UUID Error {:?}", e);
+                tracing::warn!("UUID Error {:?}", e);
                 (
                     StatusCode::BAD_REQUEST,
                     "UUIDの変換に失敗しました".to_string(),
