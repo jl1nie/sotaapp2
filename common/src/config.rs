@@ -137,7 +137,7 @@ impl AppConfig {
             // 必須の設定
             host: env_or("HOST", "0.0.0.0"),
             port: env_parse_or("PORT", 8080),
-            log_level: env_or("LOG_LEVEL", "info"),
+            log_level: env_or("LOG_LEVEL", "info,aprs_message=error"),
             database: env_required("DATABASE_URL")?,
             migration_path: env_or("MIGRATION_PATH", "./migrations"),
             firebase_api_key: env_required("FIREBASE_API_KEY")?,
