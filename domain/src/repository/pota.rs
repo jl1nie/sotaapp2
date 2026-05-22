@@ -22,7 +22,7 @@ pub trait PotaRepository: Send + Sync + Interface {
         &self,
         query: &FindRef,
     ) -> AppResult<PagenatedResult<PotaReference>>;
-    async fn update_reference(&self, refernces: Vec<PotaReference>) -> AppResult<()>;
+    async fn update_reference(&self, id: &str, references: Vec<PotaReference>) -> AppResult<()>;
     async fn delete_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
 
     async fn upload_activator_log(&self, logs: Vec<PotaActLog>) -> AppResult<()>;

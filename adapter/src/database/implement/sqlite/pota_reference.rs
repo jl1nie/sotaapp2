@@ -84,24 +84,31 @@ impl PotaRepositoryImpl {
         Ok(())
     }
 
-    async fn update(&self, r: PotaReferenceRow, db: &mut SqliteConnection) -> AppResult<()> {
+    async fn update(
+        &self,
+        id: &str,
+        r: PotaReferenceRow,
+        db: &mut SqliteConnection,
+    ) -> AppResult<()> {
         sqlx::query!(
             r#"
                 UPDATE pota_references SET
-                    wwff_code = $2,
-                    park_name = $3,
-                    park_name_j = $4,
-                    park_location = $5,
-                    park_locid = $6,
-                    park_type = $7,
-                    park_inactive = $8,
-                    park_area = $9,
-                    longitude = $10, 
-                    latitude = $11,
-                    maidenhead = $12,
-                    "update" = $13
-                WHERE pota_code = $1
+                    pota_code = $2,
+                    wwff_code = $3,
+                    park_name = $4,
+                    park_name_j = $5,
+                    park_location = $6,
+                    park_locid = $7,
+                    park_type = $8,
+                    park_inactive = $9,
+                    park_area = $10,
+                    longitude = $11,
+                    latitude = $12,
+                    maidenhead = $13,
+                    "update" = $14
+                WHERE pota_code = $1 OR (pota_code = '' AND wwff_code = $1)
             "#,
+            id,
             r.pota_code,
             r.wwff_code,
             r.park_name,
@@ -127,7 +134,7 @@ impl PotaRepositoryImpl {
         sqlx::query!(
             r#"
                 DELETE FROM pota_references
-               WHERE pota_code = $1
+                WHERE pota_code = $1 OR (pota_code = '' AND wwff_code = $1)
             "#,
             ref_id,
         )
@@ -646,7 +653,7 @@ impl PotaRepository for PotaRepositoryImpl {
         })
     }
 
-    async fn update_reference(&self, references: Vec<PotaReference>) -> AppResult<()> {
+    async fn update_reference(&self, id: &str, references: Vec<PotaReference>) -> AppResult<()> {
         let mut tx = self
             .pool
             .inner_ref()
@@ -654,7 +661,7 @@ impl PotaRepository for PotaRepositoryImpl {
             .await
             .map_err(tx_error("begin update_reference pota"))?;
         for r in references.into_iter() {
-            self.update(PotaReferenceRow::from(r), &mut tx).await?;
+            self.update(id, PotaReferenceRow::from(r), &mut tx).await?;
         }
         tx.commit()
             .await

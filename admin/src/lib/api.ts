@@ -70,6 +70,189 @@ async function uploadFile(endpoint: string, file: File): Promise<UploadResult> {
 	}
 }
 
+// ─── Reference edit types ───────────────────────────────────────────────────
+
+export interface SotaRefView {
+	summitCode: string;
+	associationName: string;
+	regionName: string;
+	summitName: string;
+	summitNameJ?: string;
+	city?: string;
+	cityJ?: string;
+	altM: number;
+	altFt: number;
+	gridRef1: string;
+	gridRef2: string;
+	longitude: number;
+	latitude: number;
+	maidenhead: string;
+	points: number;
+	bonusPoints: number;
+	validFrom: string;
+	validTo: string;
+	activationCount: number;
+	activationDate?: string;
+	activationCall?: string;
+}
+
+export interface PotaRefView {
+	potaCode: string;
+	wwffCode: string;
+	parkName: string;
+	parkNameJ: string;
+	parkLocation: string;
+	parkLocid: string;
+	parkType: string;
+	parkInactive: boolean;
+	parkArea: number;
+	longitude: number;
+	latitude: number;
+	maidenhead: string;
+}
+
+export interface PagenatedResponse<T> {
+	total: number;
+	limit: number;
+	offset: number;
+	results: T[];
+}
+
+export interface RefEditResult {
+	success: boolean;
+	message: string;
+}
+
+// ─── SOTA reference CRUD ─────────────────────────────────────────────────────
+
+export async function getSotaSummits(params: {
+	sotaCode?: string;
+	name?: string;
+	limit?: number;
+	offset?: number;
+}): Promise<PagenatedResponse<SotaRefView> | null> {
+	const query = new URLSearchParams();
+	if (params.sotaCode) query.set('sota_code', params.sotaCode);
+	if (params.name) query.set('name', params.name);
+	query.set('limit', String(params.limit ?? 20));
+	query.set('offset', String(params.offset ?? 0));
+
+	try {
+		const response = await fetch(`/api/v2/sota/summits?${query}`);
+		if (!response.ok) return null;
+		return await response.json();
+	} catch {
+		return null;
+	}
+}
+
+export async function updateSotaSummit(code: string, data: SotaRefView): Promise<RefEditResult> {
+	const token = auth.getToken();
+	if (!token) return { success: false, message: '認証されていません' };
+
+	try {
+		const response = await fetch(`/api/v2/sota/summits/${encodeURIComponent(code)}`, {
+			method: 'PUT',
+			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです' };
+		}
+		if (!response.ok) return { success: false, message: `更新失敗: ${response.status}` };
+		return { success: true, message: '更新しました' };
+	} catch {
+		return { success: false, message: 'ネットワークエラー' };
+	}
+}
+
+export async function deleteSotaSummit(code: string): Promise<RefEditResult> {
+	const token = auth.getToken();
+	if (!token) return { success: false, message: '認証されていません' };
+
+	try {
+		const response = await fetch(`/api/v2/sota/summits/${encodeURIComponent(code)}`, {
+			method: 'DELETE',
+			headers: { 'Authorization': `Bearer ${token}` }
+		});
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです' };
+		}
+		if (!response.ok) return { success: false, message: `削除失敗: ${response.status}` };
+		return { success: true, message: '削除しました' };
+	} catch {
+		return { success: false, message: 'ネットワークエラー' };
+	}
+}
+
+// ─── POTA/JAFF reference CRUD ────────────────────────────────────────────────
+
+export async function getPotaParks(params: {
+	potaCode?: string;
+	wwffCode?: string;
+	name?: string;
+	limit?: number;
+	offset?: number;
+}): Promise<PagenatedResponse<PotaRefView> | null> {
+	const query = new URLSearchParams();
+	if (params.potaCode) query.set('pota_code', params.potaCode);
+	if (params.wwffCode) query.set('wwff_code', params.wwffCode);
+	if (params.name) query.set('name', params.name);
+	query.set('limit', String(params.limit ?? 20));
+	query.set('offset', String(params.offset ?? 0));
+
+	try {
+		const response = await fetch(`/api/v2/pota/parks?${query}`);
+		if (!response.ok) return null;
+		return await response.json();
+	} catch {
+		return null;
+	}
+}
+
+export async function updatePotaPark(parkCode: string, data: PotaRefView): Promise<RefEditResult> {
+	const token = auth.getToken();
+	if (!token) return { success: false, message: '認証されていません' };
+
+	try {
+		const response = await fetch(`/api/v2/pota/parks/${encodeURIComponent(parkCode)}`, {
+			method: 'PUT',
+			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです' };
+		}
+		if (!response.ok) return { success: false, message: `更新失敗: ${response.status}` };
+		return { success: true, message: '更新しました' };
+	} catch {
+		return { success: false, message: 'ネットワークエラー' };
+	}
+}
+
+export async function deletePotaPark(parkCode: string): Promise<RefEditResult> {
+	const token = auth.getToken();
+	if (!token) return { success: false, message: '認証されていません' };
+
+	try {
+		const response = await fetch(`/api/v2/pota/parks/${encodeURIComponent(parkCode)}`, {
+			method: 'DELETE',
+			headers: { 'Authorization': `Bearer ${token}` }
+		});
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです' };
+		}
+		if (!response.ok) return { success: false, message: `削除失敗: ${response.status}` };
+		return { success: true, message: '削除しました' };
+	} catch {
+		return { success: false, message: 'ネットワークエラー' };
+	}
+}
+
 export async function uploadPotaParks(file: File): Promise<UploadResult> {
 	return uploadFile('/api/v2/pota/import', file);
 }

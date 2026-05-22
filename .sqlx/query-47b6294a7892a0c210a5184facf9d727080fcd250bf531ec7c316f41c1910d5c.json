@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM pota_references\n                WHERE pota_code = $1 OR (pota_code = '' AND wwff_code = $1)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "47b6294a7892a0c210a5184facf9d727080fcd250bf531ec7c316f41c1910d5c"
+}

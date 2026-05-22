@@ -172,18 +172,22 @@ pub struct SotaRefView {
     pub city: Option<String>,
     pub city_j: Option<String>,
     pub alt_m: i32,
+    pub alt_ft: i32,
+    pub grid_ref1: String,
+    pub grid_ref2: String,
     pub longitude: f64,
     pub latitude: f64,
     pub maidenhead: Maidenhead,
     pub points: i32,
     pub bonus_points: i32,
+    pub valid_from: String,
+    pub valid_to: String,
     pub activation_count: i32,
     pub activation_date: Option<String>,
     pub activation_call: Option<String>,
 }
 
 impl From<SotaReference> for SotaRefView {
-    #[allow(unused_variables)]
     fn from(value: SotaReference) -> Self {
         let SotaReference {
             summit_code,
@@ -218,30 +222,6 @@ impl From<SotaReference> for SotaRefView {
             city,
             city_j,
             alt_m,
-            longitude,
-            latitude,
-            maidenhead,
-            points,
-            bonus_points,
-            activation_count,
-            activation_date,
-            activation_call,
-        }
-    }
-}
-
-impl From<(Maidenhead, SotaReference)> for SotaRefView {
-    #[allow(unused_variables)]
-    fn from((maidenhead, value): (Maidenhead, SotaReference)) -> Self {
-        let SotaReference {
-            summit_code,
-            association_name,
-            region_name,
-            summit_name,
-            summit_name_j,
-            city,
-            city_j,
-            alt_m,
             alt_ft,
             grid_ref1,
             grid_ref2,
@@ -250,31 +230,18 @@ impl From<(Maidenhead, SotaReference)> for SotaRefView {
             maidenhead,
             points,
             bonus_points,
-            valid_from,
-            valid_to,
-            activation_count,
-            activation_date,
-            activation_call,
-        } = value;
-
-        Self {
-            summit_code,
-            association_name,
-            region_name,
-            summit_name,
-            summit_name_j,
-            city,
-            city_j,
-            alt_m,
-            longitude,
-            latitude,
-            maidenhead,
-            points,
-            bonus_points,
+            valid_from: valid_from.format("%d/%m/%Y").to_string(),
+            valid_to: valid_to.format("%d/%m/%Y").to_string(),
             activation_count,
             activation_date,
             activation_call,
         }
+    }
+}
+
+impl From<(Maidenhead, SotaReference)> for SotaRefView {
+    fn from((_maidenhead, value): (Maidenhead, SotaReference)) -> Self {
+        SotaRefView::from(value)
     }
 }
 

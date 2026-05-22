@@ -254,8 +254,12 @@ impl AdminService for AdminServiceImpl {
         Ok(self.pota_repo.show_all_references(&event).await?)
     }
 
-    async fn update_pota_reference(&self, references: Vec<PotaReference>) -> AppResult<()> {
-        self.pota_repo.update_reference(references).await?;
+    async fn update_pota_reference(
+        &self,
+        id: String,
+        references: Vec<PotaReference>,
+    ) -> AppResult<()> {
+        self.pota_repo.update_reference(&id, references).await?;
         Ok(())
     }
 

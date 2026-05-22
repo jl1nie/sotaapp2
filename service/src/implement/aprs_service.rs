@@ -63,7 +63,7 @@ impl AdminPeriodicServiceImpl {
         }
 
         let mut spots: Vec<_> = latest.into_values().collect();
-        spots.sort_by(|a, b| b.spot_time.cmp(&a.spot_time));
+        spots.sort_by_key(|b| std::cmp::Reverse(b.spot_time));
         spots.truncate(3);
 
         let mut message = String::new();

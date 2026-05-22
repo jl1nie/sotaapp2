@@ -40,10 +40,11 @@ use super::multipart::extract_text_file;
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
+    Path(park_code): Path<String>,
     Json(req): Json<UpdateRefRequest>,
 ) -> AppResult<StatusCode> {
     admin_service
-        .update_pota_reference(req.into())
+        .update_pota_reference(park_code, req.into())
         .await
         .map(|_| StatusCode::CREATED)
 }
@@ -112,11 +113,21 @@ async fn show_pota_reference(
 ) -> AppResult<Json<PotaRefView>> {
     let query = FindRefBuilder::default()
         .pota()
-        .pota_code(park_code)
+        .pota_code(park_code.clone())
         .build();
 
-    let result = admin_service.show_pota_reference(query).await?;
+    match admin_service.show_pota_reference(query).await {
+        Ok(result) => return Ok(Json(result.into())),
+        Err(AppError::RowNotFound { .. }) => {}
+        Err(e) => return Err(e),
+    }
 
+    // JAFF-only レコードは wwff_code で検索
+    let query = FindRefBuilder::default()
+        .pota()
+        .wwff_code(park_code)
+        .build();
+    let result = admin_service.show_pota_reference(query).await?;
     Ok(Json(result.into()))
 }
 
