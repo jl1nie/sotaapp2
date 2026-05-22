@@ -297,6 +297,45 @@
 
 	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		<div class="mb-8">
+			<h2 class="text-2xl font-bold text-white">エントリ編集</h2>
+			<p class="text-slate-400 mt-1">個々のエントリを検索・編集します</p>
+		</div>
+
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+			<a href="/admin-console/sota"
+				class="group flex items-center gap-4 p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50 hover:border-emerald-500/50 hover:bg-slate-800 transition-all">
+				<div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500/30 transition-colors">
+					<svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z" />
+					</svg>
+				</div>
+				<div>
+					<h3 class="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors">SOTA サミット編集</h3>
+					<p class="text-sm text-slate-400">summit_code で検索・編集・削除</p>
+				</div>
+				<svg class="w-5 h-5 text-slate-500 ml-auto group-hover:text-emerald-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+			</a>
+
+			<a href="/admin-console/pota"
+				class="group flex items-center gap-4 p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800 transition-all">
+				<div class="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500/30 transition-colors">
+					<svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+					</svg>
+				</div>
+				<div>
+					<h3 class="text-lg font-semibold text-white group-hover:text-cyan-400 transition-colors">POTA / JAFF パーク編集</h3>
+					<p class="text-sm text-slate-400">pota_code / wwff_code で検索・編集・削除</p>
+				</div>
+				<svg class="w-5 h-5 text-slate-500 ml-auto group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+			</a>
+		</div>
+
+		<div class="mb-8">
 			<h2 class="text-2xl font-bold text-white">Reference Data Upload</h2>
 			<p class="text-slate-400 mt-1">Upload CSV files to update reference databases</p>
 		</div>

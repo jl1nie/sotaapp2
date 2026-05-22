@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE pota_references SET\n                    pota_code = $2,\n                    wwff_code = $3,\n                    park_name = $4,\n                    park_name_j = $5,\n                    park_location = $6,\n                    park_locid = $7,\n                    park_type = $8,\n                    park_inactive = $9,\n                    park_area = $10,\n                    longitude = $11,\n                    latitude = $12,\n                    maidenhead = $13,\n                    \"update\" = $14\n                WHERE pota_code = $1 OR (pota_code = '' AND wwff_code = $1)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 14
+    },
+    "nullable": []
+  },
+  "hash": "2d2c2ea4a66f525ff558b2405c622d82d9734ad1287d5383ef2c362db903ffd8"
+}

@@ -98,7 +98,7 @@ pub fn judge_award_with_mode(
             .collect();
 
         // ユニーク局数で降順ソート
-        summits.sort_by(|a, b| b.unique_stations.cmp(&a.unique_stations));
+        summits.sort_by_key(|b| std::cmp::Reverse(b.unique_stations));
 
         let qualified_summits = summits.iter().filter(|s| s.qualified).count() as u32;
         Some(ActivatorResult {
@@ -131,7 +131,7 @@ pub fn judge_award_with_mode(
             .collect();
 
         // ユニークアクティベータ数で降順ソート
-        qualified_chase_summits.sort_by(|a, b| b.unique_activators.cmp(&a.unique_activators));
+        qualified_chase_summits.sort_by_key(|b| std::cmp::Reverse(b.unique_activators));
 
         Some(ChaserResult {
             // チェイサー賞: 1つの山から10人以上のアクティベータと交信で達成
