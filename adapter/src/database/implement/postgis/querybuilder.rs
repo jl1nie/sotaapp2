@@ -178,8 +178,11 @@ fn build_pota_conditions<'a>(builder: &mut QueryBuilder<'a, Postgres>, r: &'a Fi
             if i > 0 {
                 builder.push(" OR ");
             }
-            builder.push(" p.pota_code LIKE ");
+            builder.push(" (p.pota_code LIKE ");
             builder.push_bind(format!("{}-%%", assoc));
+            builder.push(" OR p.wwff_code LIKE ");
+            builder.push_bind(format!("{}-%%", assoc));
+            builder.push(")");
         }
         builder.push(" ) AND ");
     }
