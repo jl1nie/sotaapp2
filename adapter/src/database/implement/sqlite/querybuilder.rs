@@ -123,8 +123,11 @@ pub fn findref_query_builder<'a>(
             if i > 0 {
                 builder.push(" OR ");
             }
-            builder.push(" p.pota_code LIKE ");
+            builder.push(" (p.pota_code LIKE ");
             builder.push_bind(format!("{}-%%", assoc));
+            builder.push(" OR p.wwff_code LIKE ");
+            builder.push_bind(format!("{}-%%", assoc));
+            builder.push(")");
         }
         builder.push(" ) AND ");
     }
