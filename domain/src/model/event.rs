@@ -28,6 +28,7 @@ pub struct FindRef {
     pub pota_code: Option<String>,
     pub wwff_code: Option<String>,
     pub name: Option<String>,
+    pub associations: Vec<String>,
     pub lon: Option<f64>,
     pub lat: Option<f64>,
     pub bbox: Option<BoundingBox>,
@@ -109,6 +110,11 @@ impl FindRefBuilder {
 
     pub fn name(mut self, n: String) -> Self {
         self.param.name = Some(n);
+        self
+    }
+
+    pub fn association(mut self, a: String) -> Self {
+        self.param.associations.push(a);
         self
     }
 

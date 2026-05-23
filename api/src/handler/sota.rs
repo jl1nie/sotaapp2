@@ -129,16 +129,18 @@ async fn show_all_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
 ) -> AppResult<Json<PagenatedResponse<SotaRefView>>> {
-    let mut query = FindRefBuilder::default()
-        .sota()
-        .limit(param.limit.unwrap_or(500));
-
-    if let Some(offset) = param.offset {
-        query = query.offset(offset);
-    }
-    let result = admin_service
-        .show_all_sota_references(query.build())
-        .await?;
+    let limit = param.limit.unwrap_or(500);
+    let offset = param.offset.unwrap_or(0);
+    let query_param = GetParam {
+        limit: Some(limit),
+        offset: Some(offset),
+        name: param.name,
+        sota_code: param.sota_code,
+        association: param.association,
+        ..Default::default()
+    };
+    let query = build_findref_query(query_param, FindRefBuilder::default().sota())?;
+    let result = admin_service.show_all_sota_references(query).await?;
     Ok(Json(result.into()))
 }
 

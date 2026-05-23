@@ -495,11 +495,13 @@ impl PotaRepositoryImpl {
     }
 
     async fn select_pagenated(&self, query: &FindRef) -> AppResult<(i64, Vec<PotaReferenceRow>)> {
-        let row = sqlx::query!("SELECT COUNT(*) as count FROM pota_references")
+        let count_select = r#"SELECT COUNT(*) FROM pota_references AS p WHERE "#;
+        let mut count_builder = findref_query_builder(POTA, None, count_select, query);
+        let total: i64 = count_builder
+            .build_query_scalar::<i64>()
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(db_error("count pota_references"))?;
-        let total: i64 = row.count;
+            .unwrap_or(0);
 
         let select = r#"
             SELECT

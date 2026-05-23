@@ -85,6 +85,20 @@ fn build_sota_conditions<'a>(builder: &mut QueryBuilder<'a, Postgres>, r: &'a Fi
             builder.push(") AND ");
         }
     }
+
+    // associationフィルター（SOTAのみ）
+    if !r.associations.is_empty() {
+        builder.push(" (");
+        for (i, assoc) in r.associations.iter().enumerate() {
+            if i > 0 {
+                builder.push(" OR ");
+            }
+            builder.push(" summit_code LIKE ");
+            builder.push_bind(format!("{}/%", assoc));
+        }
+        builder.push(" ) AND ");
+    }
+
     builder.push("TRUE ");
 
     if r.min_elev.is_some() {
@@ -156,6 +170,20 @@ fn build_pota_conditions<'a>(builder: &mut QueryBuilder<'a, Postgres>, r: &'a Fi
             builder.push(") AND ");
         }
     }
+
+    // associationフィルター（POTAのみ）
+    if !r.associations.is_empty() {
+        builder.push(" (");
+        for (i, assoc) in r.associations.iter().enumerate() {
+            if i > 0 {
+                builder.push(" OR ");
+            }
+            builder.push(" p.pota_code LIKE ");
+            builder.push_bind(format!("{}-%%", assoc));
+        }
+        builder.push(" ) AND ");
+    }
+
     builder.push("TRUE ");
 
     if r.min_area.is_some() {

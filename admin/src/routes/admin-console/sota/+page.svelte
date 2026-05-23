@@ -3,9 +3,11 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/auth';
 	import {
-		getSotaSummits, updateSotaSummit, deleteSotaSummit,
+		getSotaSummits, updateSotaSummit,
 		type SotaRefView
 	} from '$lib/api';
+
+	const SOTA_REGIONS = ['JA', 'JA5', 'JA6', 'JA8'];
 
 	let summits: SotaRefView[] = [];
 	let total = 0;
@@ -15,15 +17,13 @@
 
 	let searchCode = '';
 	let searchName = '';
+	let selectedRegions: string[] = [];
 	let page = 0;
 	const pageSize = 20;
 
 	let editTarget: SotaRefView | null = null;
 	let editForm: SotaRefView | null = null;
 	let editLoading = false;
-
-	let deleteTarget: SotaRefView | null = null;
-	let deleteLoading = false;
 
 	onMount(() => {
 		auth.subscribe((state) => {
@@ -38,6 +38,7 @@
 		const result = await getSotaSummits({
 			sotaCode: searchCode || undefined,
 			name: searchName || undefined,
+			associations: selectedRegions.length > 0 ? selectedRegions : undefined,
 			limit: pageSize,
 			offset: page * pageSize
 		});
@@ -49,6 +50,14 @@
 			messageOk = false;
 		}
 		loading = false;
+	}
+
+	function toggleRegion(region: string) {
+		if (selectedRegions.includes(region)) {
+			selectedRegions = selectedRegions.filter(r => r !== region);
+		} else {
+			selectedRegions = [...selectedRegions, region];
+		}
 	}
 
 	function openEdit(s: SotaRefView) {
@@ -74,27 +83,6 @@
 		}
 	}
 
-	function openDelete(s: SotaRefView) {
-		deleteTarget = s;
-	}
-
-	function closeDelete() {
-		deleteTarget = null;
-	}
-
-	async function confirmDelete() {
-		if (!deleteTarget) return;
-		deleteLoading = true;
-		const result = await deleteSotaSummit(deleteTarget.summitCode);
-		message = result.message;
-		messageOk = result.success;
-		deleteLoading = false;
-		if (result.success) {
-			closeDelete();
-			await loadSummits();
-		}
-	}
-
 	function handleSearch(e: Event) {
 		e.preventDefault();
 		page = 0;
@@ -108,7 +96,7 @@
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
 	<nav class="border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
-			<a href="/admin-console" class="text-slate-400 hover:text-white transition-colors">
+			<a href="/admin-console" aria-label="管理画面に戻る" class="text-slate-400 hover:text-white transition-colors">
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 				</svg>
@@ -119,20 +107,46 @@
 
 	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		<!-- Search -->
-		<form on:submit={handleSearch} class="flex flex-wrap gap-3 mb-6">
-			<input
-				bind:value={searchCode}
-				placeholder="Summit Code (例: JA/TK-001)"
-				class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-64"
-			/>
-			<input
-				bind:value={searchName}
-				placeholder="山名で検索"
-				class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-48"
-			/>
-			<button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors">
-				検索
-			</button>
+		<form on:submit={handleSearch} class="space-y-3 mb-6">
+			<div class="flex flex-wrap gap-3">
+				<input
+					bind:value={searchCode}
+					placeholder="Summit Code (例: JA/TK-001)"
+					class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-64"
+				/>
+				<input
+					bind:value={searchName}
+					placeholder="山名で検索"
+					class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-48"
+				/>
+				<button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors">
+					検索
+				</button>
+			</div>
+			<!-- Region filter -->
+			<div class="flex items-center gap-3 flex-wrap">
+				<span class="text-xs text-slate-400 font-medium">リージョン:</span>
+				{#each SOTA_REGIONS as region}
+					<label class="flex items-center gap-1.5 cursor-pointer select-none">
+						<input
+							type="checkbox"
+							checked={selectedRegions.includes(region)}
+							on:change={() => { toggleRegion(region); page = 0; loadSummits(); }}
+							class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-1"
+						/>
+						<span class="text-sm font-mono text-slate-300">{region}</span>
+					</label>
+				{/each}
+				{#if selectedRegions.length > 0}
+					<button
+						type="button"
+						on:click={() => { selectedRegions = []; page = 0; loadSummits(); }}
+						class="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+					>
+						クリア
+					</button>
+				{/if}
+			</div>
 		</form>
 
 		{#if message}
@@ -169,8 +183,7 @@
 									<td class="px-4 py-3 text-right text-slate-300">{s.altM}</td>
 									<td class="px-4 py-3 text-right text-slate-300">{s.points}</td>
 									<td class="px-4 py-3 text-center">
-										<button on:click={() => openEdit(s)} class="px-3 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 rounded text-xs mr-2 transition-colors">編集</button>
-										<button on:click={() => openDelete(s)} class="px-3 py-1 bg-red-600/30 hover:bg-red-600/50 text-red-300 rounded text-xs transition-colors">削除</button>
+										<button on:click={() => openEdit(s)} class="px-3 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 rounded text-xs transition-colors">編集</button>
 									</td>
 								</tr>
 							{/each}
@@ -193,11 +206,12 @@
 
 <!-- Edit Modal -->
 {#if editTarget && editForm}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" on:click|self={closeEdit}>
 		<div class="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 			<div class="p-6 border-b border-slate-700 flex items-center justify-between">
 				<h2 class="text-lg font-semibold text-white">編集: {editTarget.summitCode}</h2>
-				<button on:click={closeEdit} class="text-slate-400 hover:text-white">
+				<button on:click={closeEdit} aria-label="閉じる" class="text-slate-400 hover:text-white">
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
 				</button>
 			</div>
@@ -294,26 +308,6 @@
 					</button>
 				</div>
 			</form>
-		</div>
-	</div>
-{/if}
-
-<!-- Delete Confirmation Modal -->
-{#if deleteTarget}
-	<div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" on:click|self={closeDelete}>
-		<div class="bg-slate-800 rounded-2xl border border-slate-600 p-6 max-w-sm w-full">
-			<h2 class="text-lg font-semibold text-white mb-2">削除の確認</h2>
-			<p class="text-slate-400 text-sm mb-6">
-				<span class="text-emerald-400 font-mono">{deleteTarget.summitCode}</span>（{deleteTarget.summitName}）を削除します。この操作は取り消せません。
-			</p>
-			<div class="flex gap-3">
-				<button on:click={confirmDelete} disabled={deleteLoading} class="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors">
-					{deleteLoading ? '削除中...' : '削除する'}
-				</button>
-				<button on:click={closeDelete} class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
-					キャンセル
-				</button>
-			</div>
 		</div>
 	</div>
 {/if}

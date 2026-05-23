@@ -102,6 +102,33 @@ pub fn findref_query_builder<'a>(
             builder.push(" ) AND ");
         }
     }
+
+    // associationフィルター（SOTAのみ）
+    if r.is_sota() && mode == SOTA && !r.associations.is_empty() {
+        builder.push(" (");
+        for (i, assoc) in r.associations.iter().enumerate() {
+            if i > 0 {
+                builder.push(" OR ");
+            }
+            builder.push(" summit_code LIKE ");
+            builder.push_bind(format!("{}/%", assoc));
+        }
+        builder.push(" ) AND ");
+    }
+
+    // associationフィルター（POTAのみ）
+    if r.is_pota() && (mode == POTA || mode == WWFF) && !r.associations.is_empty() {
+        builder.push(" (");
+        for (i, assoc) in r.associations.iter().enumerate() {
+            if i > 0 {
+                builder.push(" OR ");
+            }
+            builder.push(" p.pota_code LIKE ");
+            builder.push_bind(format!("{}-%%", assoc));
+        }
+        builder.push(" ) AND ");
+    }
+
     builder.push(" TRUE ");
 
     if r.is_sota() && mode == SOTA {

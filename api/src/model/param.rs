@@ -167,6 +167,8 @@ pub struct GetParam {
     pub by_ref: Option<String>,
     #[validate(length(max = 50, message = "pat_refは50文字以内で指定してください"))]
     pub pat_ref: Option<String>,
+    #[validate(length(max = 100, message = "associationは100文字以内で指定してください"))]
+    pub association: Option<String>,
 }
 
 impl GetParam {
@@ -240,6 +242,16 @@ pub fn build_findref_query(param: GetParam, mut query: FindRefBuilder) -> AppRes
         query = query.bbox(min_lon, min_lat, max_lon, max_lat);
     } else if let (Some(lon), Some(lat), Some(dist)) = (param.lon, param.lat, param.dist) {
         query = query.center(lon, lat, dist);
+    }
+
+    if let Some(assoc) = param.association {
+        for a in assoc
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+        {
+            query = query.association(a);
+        }
     }
 
     Ok(query.build())

@@ -7,6 +7,8 @@
 		type PotaRefView
 	} from '$lib/api';
 
+	const POTA_REGIONS = ['JP', 'JAFF'];
+
 	let parks: PotaRefView[] = [];
 	let total = 0;
 	let loading = false;
@@ -16,6 +18,7 @@
 	let searchPota = '';
 	let searchWwff = '';
 	let searchName = '';
+	let selectedRegions: string[] = [];
 	let page = 0;
 	const pageSize = 20;
 
@@ -26,7 +29,6 @@
 	let deleteTarget: PotaRefView | null = null;
 	let deleteLoading = false;
 
-	// park_code used as PUT/DELETE identifier (pota_code if non-empty, else wwff_code)
 	function parkKey(p: PotaRefView): string {
 		return p.potaCode || p.wwffCode;
 	}
@@ -45,6 +47,7 @@
 			potaCode: searchPota || undefined,
 			wwffCode: searchWwff || undefined,
 			name: searchName || undefined,
+			associations: selectedRegions.length > 0 ? selectedRegions : undefined,
 			limit: pageSize,
 			offset: page * pageSize
 		});
@@ -56,6 +59,14 @@
 			messageOk = false;
 		}
 		loading = false;
+	}
+
+	function toggleRegion(region: string) {
+		if (selectedRegions.includes(region)) {
+			selectedRegions = selectedRegions.filter(r => r !== region);
+		} else {
+			selectedRegions = [...selectedRegions, region];
+		}
 	}
 
 	function openEdit(p: PotaRefView) {
@@ -115,7 +126,7 @@
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
 	<nav class="border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
-			<a href="/admin-console" class="text-slate-400 hover:text-white transition-colors">
+			<a href="/admin-console" aria-label="管理画面に戻る" class="text-slate-400 hover:text-white transition-colors">
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 				</svg>
@@ -126,25 +137,51 @@
 
 	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		<!-- Search -->
-		<form on:submit={handleSearch} class="flex flex-wrap gap-3 mb-6">
-			<input
-				bind:value={searchPota}
-				placeholder="POTA Code (例: JA-0001)"
-				class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-48"
-			/>
-			<input
-				bind:value={searchWwff}
-				placeholder="JAFF Code (例: JAFF-0001)"
-				class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-48"
-			/>
-			<input
-				bind:value={searchName}
-				placeholder="公園名で検索"
-				class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-40"
-			/>
-			<button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-sm font-medium transition-colors">
-				検索
-			</button>
+		<form on:submit={handleSearch} class="space-y-3 mb-6">
+			<div class="flex flex-wrap gap-3">
+				<input
+					bind:value={searchPota}
+					placeholder="POTA Code (例: JP-0001)"
+					class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-48"
+				/>
+				<input
+					bind:value={searchWwff}
+					placeholder="JAFF Code (例: JAFF-0001)"
+					class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-48"
+				/>
+				<input
+					bind:value={searchName}
+					placeholder="公園名で検索"
+					class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-40"
+				/>
+				<button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-sm font-medium transition-colors">
+					検索
+				</button>
+			</div>
+			<!-- Region filter -->
+			<div class="flex items-center gap-3 flex-wrap">
+				<span class="text-xs text-slate-400 font-medium">リージョン:</span>
+				{#each POTA_REGIONS as region}
+					<label class="flex items-center gap-1.5 cursor-pointer select-none">
+						<input
+							type="checkbox"
+							checked={selectedRegions.includes(region)}
+							on:change={() => { toggleRegion(region); page = 0; loadParks(); }}
+							class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-700 text-cyan-500 focus:ring-cyan-500 focus:ring-1"
+						/>
+						<span class="text-sm font-mono text-slate-300">{region}</span>
+					</label>
+				{/each}
+				{#if selectedRegions.length > 0}
+					<button
+						type="button"
+						on:click={() => { selectedRegions = []; page = 0; loadParks(); }}
+						class="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+					>
+						クリア
+					</button>
+				{/if}
+			</div>
 		</form>
 
 		{#if message}
@@ -175,11 +212,14 @@
 						<tbody class="divide-y divide-slate-700/30">
 							{#each parks as p}
 								<tr class="hover:bg-slate-700/20 transition-colors">
-									<td class="px-4 py-3 font-mono {p.potaCode ? 'text-cyan-400' : 'text-slate-600'}">{p.potaCode || '—'}</td>
-									<td class="px-4 py-3 font-mono {p.wwffCode ? 'text-emerald-400' : 'text-slate-600'}">{p.wwffCode || '—'}</td>
-									<td class="px-4 py-3 text-slate-200">{p.parkName}</td>
-									<td class="px-4 py-3 text-slate-400">{p.parkNameJ}</td>
-									<td class="px-4 py-3 text-slate-400">{p.parkType}</td>
+									<td class="px-4 py-3 font-mono {p.parkInactive ? 'opacity-40' : ''} {p.potaCode ? 'text-cyan-400' : 'text-slate-600'}">
+										{p.potaCode || '—'}
+										{#if p.parkInactive}<span class="ml-1 text-slate-500 text-xs">●</span>{/if}
+									</td>
+									<td class="px-4 py-3 font-mono {p.parkInactive ? 'opacity-40' : ''} {p.wwffCode ? 'text-emerald-400' : 'text-slate-600'}">{p.wwffCode || '—'}</td>
+									<td class="px-4 py-3 text-slate-200 {p.parkInactive ? 'opacity-40' : ''}">{p.parkName}</td>
+									<td class="px-4 py-3 text-slate-400 {p.parkInactive ? 'opacity-40' : ''}">{p.parkNameJ}</td>
+									<td class="px-4 py-3 text-slate-400 {p.parkInactive ? 'opacity-40' : ''}">{p.parkType}</td>
 									<td class="px-4 py-3 text-center">
 										<button on:click={() => openEdit(p)} class="px-3 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 rounded text-xs mr-2 transition-colors">編集</button>
 										<button on:click={() => openDelete(p)} class="px-3 py-1 bg-red-600/30 hover:bg-red-600/50 text-red-300 rounded text-xs transition-colors">削除</button>
@@ -205,11 +245,12 @@
 
 <!-- Edit Modal -->
 {#if editTarget && editForm}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" on:click|self={closeEdit}>
 		<div class="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 			<div class="p-6 border-b border-slate-700 flex items-center justify-between">
 				<h2 class="text-lg font-semibold text-white">編集: {parkKey(editTarget)}</h2>
-				<button on:click={closeEdit} class="text-slate-400 hover:text-white">
+				<button on:click={closeEdit} aria-label="閉じる" class="text-slate-400 hover:text-white">
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
 				</button>
 			</div>
@@ -255,9 +296,9 @@
 						<span class="text-xs text-slate-400">Park Type</span>
 						<input bind:value={editForm.parkType} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
 					</label>
-					<label class="block flex items-center gap-3 pt-5">
-						<input type="checkbox" bind:checked={editForm.parkInactive} class="w-4 h-4 rounded" />
-						<span class="text-sm text-slate-300">非アクティブ (Park Inactive)</span>
+					<label class="flex items-center gap-3 pt-5 cursor-pointer">
+						<input type="checkbox" bind:checked={editForm.parkInactive} class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-cyan-500 focus:ring-cyan-500" />
+						<span class="text-sm text-slate-300">非表示 (Park Inactive)</span>
 					</label>
 					<label class="block">
 						<span class="text-xs text-slate-400">Park Area (ha)</span>
@@ -289,6 +330,7 @@
 
 <!-- Delete Confirmation Modal -->
 {#if deleteTarget}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" on:click|self={closeDelete}>
 		<div class="bg-slate-800 rounded-2xl border border-slate-600 p-6 max-w-sm w-full">
 			<h2 class="text-lg font-semibold text-white mb-2">削除の確認</h2>
