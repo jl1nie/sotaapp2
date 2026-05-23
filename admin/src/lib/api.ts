@@ -128,12 +128,14 @@ export interface RefEditResult {
 export async function getSotaSummits(params: {
 	sotaCode?: string;
 	name?: string;
+	associations?: string[];
 	limit?: number;
 	offset?: number;
 }): Promise<PagenatedResponse<SotaRefView> | null> {
 	const query = new URLSearchParams();
 	if (params.sotaCode) query.set('sota_code', params.sotaCode);
 	if (params.name) query.set('name', params.name);
+	if (params.associations && params.associations.length > 0) query.set('association', params.associations.join(','));
 	query.set('limit', String(params.limit ?? 20));
 	query.set('offset', String(params.offset ?? 0));
 
@@ -193,6 +195,7 @@ export async function getPotaParks(params: {
 	potaCode?: string;
 	wwffCode?: string;
 	name?: string;
+	associations?: string[];
 	limit?: number;
 	offset?: number;
 }): Promise<PagenatedResponse<PotaRefView> | null> {
@@ -200,6 +203,7 @@ export async function getPotaParks(params: {
 	if (params.potaCode) query.set('pota_code', params.potaCode);
 	if (params.wwffCode) query.set('wwff_code', params.wwffCode);
 	if (params.name) query.set('name', params.name);
+	if (params.associations && params.associations.length > 0) query.set('association', params.associations.join(','));
 	query.set('limit', String(params.limit ?? 20));
 	query.set('offset', String(params.offset ?? 0));
 

@@ -328,11 +328,13 @@ impl SotaRepositoryImpl {
     }
 
     async fn select_pagenated(&self, event: &FindRef) -> AppResult<(i64, Vec<SotaReferenceRow>)> {
-        let row = sqlx::query!("SELECT COUNT(*) as count FROM sota_references")
+        let count_select = r#"SELECT COUNT(*) FROM sota_references WHERE "#;
+        let mut count_builder = findref_query_builder(SOTA, None, count_select, event);
+        let total: i64 = count_builder
+            .build_query_scalar::<i64>()
             .fetch_one(self.pool.inner_ref())
             .await
-            .map_err(db_error("count sota_references"))?;
-        let total: i64 = row.count;
+            .unwrap_or(0);
 
         let select = r#"
             SELECT
