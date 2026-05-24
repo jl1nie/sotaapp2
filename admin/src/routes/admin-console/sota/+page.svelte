@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/auth';
 	import {
-		getSotaSummits, updateSotaSummit,
+		getSotaSummits, updateSotaSummit, uploadSotaJaSummits, exportSotaSummits,
 		type SotaRefView
 	} from '$lib/api';
 
@@ -24,6 +24,29 @@
 	let editTarget: SotaRefView | null = null;
 	let editForm: SotaRefView | null = null;
 	let editLoading = false;
+
+	let uploadLoading = false;
+	let exportLoading = false;
+	let uploadInput: HTMLInputElement;
+
+	async function handleUpload(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+		uploadLoading = true;
+		message = '';
+		const result = await uploadSotaJaSummits(file);
+		message = result.message;
+		messageOk = result.success;
+		uploadLoading = false;
+		uploadInput.value = '';
+		if (result.success) await loadSummits();
+	}
+
+	async function handleExport() {
+		exportLoading = true;
+		await exportSotaSummits();
+		exportLoading = false;
+	}
 
 	let abortController: AbortController | null = null;
 
@@ -114,6 +137,15 @@
 				</svg>
 			</a>
 			<h1 class="text-lg font-semibold">SOTA サミット編集</h1>
+			<div class="ml-auto flex gap-2">
+				<button on:click={handleExport} disabled={exportLoading} class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded-lg text-xs font-medium transition-colors">
+					{exportLoading ? 'ダウンロード中...' : 'CSVダウンロード'}
+				</button>
+				<input bind:this={uploadInput} type="file" accept=".csv" class="hidden" on:change={handleUpload} />
+				<button on:click={() => uploadInput.click()} disabled={uploadLoading} class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 rounded-lg text-xs font-medium transition-colors">
+					{uploadLoading ? 'アップロード中...' : 'CSVアップロード'}
+				</button>
+			</div>
 		</div>
 	</nav>
 

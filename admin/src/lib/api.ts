@@ -302,6 +302,28 @@ export async function exportPotaParks(): Promise<void> {
 	URL.revokeObjectURL(url);
 }
 
+export async function exportSotaSummits(): Promise<void> {
+	const token = auth.getToken();
+	if (!token) return;
+
+	const response = await fetch('/api/v2/sota/summits/export', {
+		headers: { 'Authorization': `Bearer ${token}` }
+	});
+	if (!response.ok) return;
+
+	const blob = await response.blob();
+	const disposition = response.headers.get('content-disposition') ?? '';
+	const match = disposition.match(/filename="([^"]+)"/);
+	const filename = match ? match[1] : 'ja_summits.csv';
+
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
 export async function uploadPotaParks(file: File): Promise<UploadResult> {
 	return uploadFile('/api/v2/pota/import', file);
 }

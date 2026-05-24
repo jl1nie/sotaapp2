@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/auth';
 	import {
-		getPotaParks, createPotaPark, updatePotaPark, deletePotaPark, exportPotaParks,
+		getPotaParks, createPotaPark, updatePotaPark, deletePotaPark, exportPotaParks, uploadPotaParks,
 		type PotaRefView
 	} from '$lib/api';
 
@@ -33,6 +33,8 @@
 	let createForm: PotaRefView = emptyPark();
 	let createLoading = false;
 	let exportLoading = false;
+	let uploadLoading = false;
+	let uploadInput: HTMLInputElement;
 
 	function emptyPark(): PotaRefView {
 		return {
@@ -58,6 +60,19 @@
 		exportLoading = true;
 		await exportPotaParks();
 		exportLoading = false;
+	}
+
+	async function handleUpload(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+		uploadLoading = true;
+		message = '';
+		const result = await uploadPotaParks(file);
+		message = result.message;
+		messageOk = result.success;
+		uploadLoading = false;
+		uploadInput.value = '';
+		if (result.success) await loadParks();
 	}
 
 	let abortController: AbortController | null = null;
@@ -178,6 +193,10 @@
 			<div class="ml-auto flex gap-2">
 				<button on:click={downloadCsv} disabled={exportLoading} class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded-lg text-xs font-medium transition-colors">
 					{exportLoading ? 'ダウンロード中...' : 'CSVダウンロード'}
+				</button>
+				<input bind:this={uploadInput} type="file" accept=".csv" class="hidden" on:change={handleUpload} />
+				<button on:click={() => uploadInput.click()} disabled={uploadLoading} class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 rounded-lg text-xs font-medium transition-colors">
+					{uploadLoading ? 'アップロード中...' : 'CSVアップロード'}
 				</button>
 				<button on:click={openCreate} class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-xs font-medium transition-colors">
 					＋ 新規登録
