@@ -155,6 +155,53 @@ impl SOTALogCSV {
     }
 }
 
+/// JA サミットCSVエクスポート用（インポートと同フォーマット）
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SOTAExportRow {
+    pub summit_code: String,
+    pub association_name: String,
+    pub region_name: String,
+    pub summit_name: String,
+    pub alt_m: i32,
+    pub alt_ft: i32,
+    pub grid_ref1: String,
+    pub grid_ref2: String,
+    pub longitude: f64,
+    pub latitude: f64,
+    pub points: i32,
+    pub bonus_points: i32,
+    pub valid_from: String,
+    pub valid_to: String,
+    pub activation_count: i32,
+    pub activation_date: Option<String>,
+    pub activation_call: Option<String>,
+}
+
+impl From<domain::model::sota::SotaReference> for SOTAExportRow {
+    fn from(r: domain::model::sota::SotaReference) -> Self {
+        Self {
+            summit_code: r.summit_code,
+            association_name: r.association_name,
+            region_name: r.region_name,
+            summit_name: r.summit_name,
+            alt_m: r.alt_m,
+            alt_ft: r.alt_ft,
+            grid_ref1: r.grid_ref1,
+            grid_ref2: r.grid_ref2,
+            longitude: r.longitude,
+            latitude: r.latitude,
+            points: r.points,
+            bonus_points: r.bonus_points,
+            valid_from: r.valid_from.format("%d/%m/%Y").to_string(),
+            valid_to: r.valid_to.format("%d/%m/%Y").to_string(),
+            activation_count: r.activation_count,
+            activation_date: r.activation_date,
+            activation_call: r.activation_call,
+        }
+    }
+}
+
 pub struct UploadSOTASummit {
     pub data: String,
 }

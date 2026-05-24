@@ -39,6 +39,24 @@ use crate::model::{
 use super::auth::with_auth;
 use super::multipart::extract_text_file;
 
+async fn export_sota_reference_ja(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+) -> AppResult<Response> {
+    let csv = admin_service.export_sota_summits_csv().await?;
+    let filename = format!("ja_summits_{}.csv", Utc::now().format("%Y%m%d"));
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{}\"", filename),
+            ),
+        ],
+        csv,
+    )
+        .into_response())
+}
+
 async fn update_sota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
     Json(req): Json<UpdateRefRequest>,
@@ -431,6 +449,7 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
             .route("/log", post(upload_log))
             .route("/log", delete(delete_log))
             .route("/update", post(update_summit_list))
+            .route("/summits/export", get(export_sota_reference_ja))
             .route("/summits/{summit_code}", put(update_sota_reference))
             .route("/summits/{summit_code}", delete(delete_sota_reference)),
         auth,

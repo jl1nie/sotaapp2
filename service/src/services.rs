@@ -89,6 +89,7 @@ pub trait AdminService: Send + Sync + Interface {
     ) -> AppResult<()>;
     async fn delete_pota_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
     async fn export_pota_parks_csv(&self) -> AppResult<String>;
+    async fn export_sota_summits_csv(&self) -> AppResult<String>;
     async fn health_check(&self) -> AppResult<bool>;
 }
 

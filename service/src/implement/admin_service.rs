@@ -19,7 +19,7 @@ use domain::repository::{
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
 use crate::model::pota::{POTAAllCSVFile, POTACSVFile, POTAExportRow, UploadPOTAReference};
-use crate::model::sota::{SOTASumitOptCSV, SOTASummitCSV};
+use crate::model::sota::{SOTAExportRow, SOTASumitOptCSV, SOTASummitCSV};
 use crate::model::sota::{UploadSOTASummit, UploadSOTASummitOpt};
 
 use crate::services::AdminService;
@@ -304,6 +304,43 @@ impl AdminService for AdminServiceImpl {
             .map_err(|e| common::error::AppError::ConversionEntityError(e.to_string()))
     }
 
+    async fn export_sota_summits_csv(&self) -> AppResult<String> {
+        let limit = 5000;
+        let mut offset = 0;
+        let mut wtr = csv::Writer::from_writer(vec![]);
+
+        loop {
+            // JA系アソシエーション全体 (JA, JA5, JA6, JA7, JA8, JA9) を対象
+            let query = FindRefBuilder::new()
+                .sota()
+                .association("JA".to_string())
+                .association("JA5".to_string())
+                .association("JA6".to_string())
+                .association("JA7".to_string())
+                .association("JA8".to_string())
+                .association("JA9".to_string())
+                .limit(limit)
+                .offset(offset)
+                .build();
+            let result = self.sota_repo.show_all_references(&query).await?;
+            let is_last = result.results.len() < limit as usize;
+            for summit in result.results {
+                wtr.serialize(SOTAExportRow::from(summit))
+                    .map_err(|e| common::error::AppError::ConversionEntityError(e.to_string()))?;
+            }
+            if is_last {
+                break;
+            }
+            offset += limit;
+        }
+
+        let data = wtr
+            .into_inner()
+            .map_err(|e| common::error::AppError::ConversionEntityError(e.to_string()))?;
+        String::from_utf8(data)
+            .map_err(|e| common::error::AppError::ConversionEntityError(e.to_string()))
+    }
+
     async fn health_check(&self) -> AppResult<bool> {
         Ok(self.check_repo.check_database().await?)
     }
@@ -388,5 +425,113 @@ mod tests {
         let summit = make_test_summit(valid_from, valid_to);
 
         assert!(!is_valid_summit(&summit));
+    }
+
+    fn make_full_summit() -> SotaReference {
+        SotaReference {
+            summit_code: "JA/TK-001".to_string(),
+            association_name: "Japan".to_string(),
+            region_name: "Tokyo".to_string(),
+            summit_name: "Mt. Takao".to_string(),
+            summit_name_j: Some("高尾山".to_string()),
+            city: Some("Hachioji".to_string()),
+            city_j: Some("八王子市".to_string()),
+            alt_m: 599,
+            alt_ft: 1965,
+            grid_ref1: "PM95".to_string(),
+            grid_ref2: "".to_string(),
+            longitude: 139.2431,
+            latitude: 35.6254,
+            maidenhead: "PM95wv".to_string(),
+            points: 1,
+            bonus_points: 0,
+            valid_from: NaiveDate::from_ymd_opt(2010, 1, 1).unwrap(),
+            valid_to: NaiveDate::from_ymd_opt(2099, 12, 31).unwrap(),
+            activation_count: 42,
+            activation_date: Some("20/03/2024".to_string()),
+            activation_call: Some("JA1ABC".to_string()),
+        }
+    }
+
+    #[test]
+    fn test_sota_export_row_field_mapping() {
+        use crate::model::sota::SOTAExportRow;
+        let summit = make_full_summit();
+        let row = SOTAExportRow::from(summit);
+
+        assert_eq!(row.summit_code, "JA/TK-001");
+        assert_eq!(row.association_name, "Japan");
+        assert_eq!(row.region_name, "Tokyo");
+        assert_eq!(row.summit_name, "Mt. Takao");
+        assert_eq!(row.alt_m, 599);
+        assert_eq!(row.alt_ft, 1965);
+        assert_eq!(row.longitude, 139.2431);
+        assert_eq!(row.latitude, 35.6254);
+        assert_eq!(row.points, 1);
+        assert_eq!(row.bonus_points, 0);
+        assert_eq!(row.activation_count, 42);
+        assert_eq!(row.activation_date, Some("20/03/2024".to_string()));
+        assert_eq!(row.activation_call, Some("JA1ABC".to_string()));
+    }
+
+    #[test]
+    fn test_sota_export_row_date_format() {
+        use crate::model::sota::SOTAExportRow;
+        let summit = make_full_summit();
+        let row = SOTAExportRow::from(summit);
+
+        // SOTA標準フォーマット: dd/mm/yyyy
+        assert_eq!(row.valid_from, "01/01/2010");
+        assert_eq!(row.valid_to, "31/12/2099");
+    }
+
+    #[test]
+    fn test_sota_export_row_optional_fields_none() {
+        use crate::model::sota::SOTAExportRow;
+        let mut summit = make_full_summit();
+        summit.activation_date = None;
+        summit.activation_call = None;
+        let row = SOTAExportRow::from(summit);
+
+        assert!(row.activation_date.is_none());
+        assert!(row.activation_call.is_none());
+    }
+
+    #[test]
+    fn test_sota_export_row_csv_header() {
+        use crate::model::sota::SOTAExportRow;
+        let summit = make_full_summit();
+        let row = SOTAExportRow::from(summit);
+
+        let mut wtr = csv::Writer::from_writer(vec![]);
+        wtr.serialize(&row).unwrap();
+        let csv = String::from_utf8(wtr.into_inner().unwrap()).unwrap();
+        let first_line = csv.lines().next().unwrap();
+
+        // PascalCase ヘッダーがSOTA標準フォーマットと一致すること
+        assert!(first_line.contains("SummitCode"));
+        assert!(first_line.contains("AssociationName"));
+        assert!(first_line.contains("ValidFrom"));
+        assert!(first_line.contains("ValidTo"));
+        assert!(first_line.contains("ActivationCount"));
+    }
+
+    #[test]
+    fn test_sota_export_row_csv_roundtrip() {
+        use crate::model::sota::SOTAExportRow;
+        use crate::model::sota::SOTASummitCSV;
+        let summit = make_full_summit();
+        let row = SOTAExportRow::from(summit);
+
+        let mut wtr = csv::Writer::from_writer(vec![]);
+        wtr.serialize(&row).unwrap();
+        let csv = String::from_utf8(wtr.into_inner().unwrap()).unwrap();
+
+        // エクスポートしたCSVをそのままインポートできること
+        let mut rdr = csv::Reader::from_reader(csv.as_bytes());
+        let records: Vec<SOTASummitCSV> = rdr.deserialize().collect::<Result<_, _>>().unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].summit_code, "JA/TK-001");
+        assert_eq!(records[0].valid_from, "01/01/2010");
     }
 }
