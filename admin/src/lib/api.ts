@@ -259,6 +259,49 @@ export async function deletePotaPark(parkCode: string): Promise<RefEditResult> {
 	}
 }
 
+export async function createPotaPark(data: PotaRefView): Promise<RefEditResult> {
+	const token = auth.getToken();
+	if (!token) return { success: false, message: '認証されていません' };
+
+	try {
+		const response = await fetch('/api/v2/pota/parks', {
+			method: 'POST',
+			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
+		if (response.status === 401 || response.status === 403) {
+			auth.logout();
+			return { success: false, message: 'セッションが期限切れです' };
+		}
+		if (!response.ok) return { success: false, message: `登録失敗: ${response.status}` };
+		return { success: true, message: '登録しました' };
+	} catch {
+		return { success: false, message: 'ネットワークエラー' };
+	}
+}
+
+export async function exportPotaParks(): Promise<void> {
+	const token = auth.getToken();
+	if (!token) return;
+
+	const response = await fetch('/api/v2/pota/parks/export', {
+		headers: { 'Authorization': `Bearer ${token}` }
+	});
+	if (!response.ok) return;
+
+	const blob = await response.blob();
+	const disposition = response.headers.get('content-disposition') ?? '';
+	const match = disposition.match(/filename="([^"]+)"/);
+	const filename = match ? match[1] : 'jp_parks.csv';
+
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
 export async function uploadPotaParks(file: File): Promise<UploadResult> {
 	return uploadFile('/api/v2/pota/import', file);
 }

@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/auth';
 	import {
-		getPotaParks, updatePotaPark, deletePotaPark,
+		getPotaParks, createPotaPark, updatePotaPark, deletePotaPark, exportPotaParks,
 		type PotaRefView
 	} from '$lib/api';
 
@@ -28,6 +28,37 @@
 
 	let deleteTarget: PotaRefView | null = null;
 	let deleteLoading = false;
+
+	let createOpen = false;
+	let createForm: PotaRefView = emptyPark();
+	let createLoading = false;
+	let exportLoading = false;
+
+	function emptyPark(): PotaRefView {
+		return {
+			potaCode: '', wwffCode: '', parkName: '', parkNameJ: '',
+			parkLocation: '', parkLocid: '', parkType: '', parkInactive: false,
+			parkArea: 0, longitude: 0, latitude: 0, maidenhead: ''
+		};
+	}
+
+	function openCreate() { createForm = emptyPark(); createOpen = true; }
+	function closeCreate() { createOpen = false; }
+
+	async function saveCreate() {
+		createLoading = true;
+		const result = await createPotaPark(createForm);
+		message = result.message;
+		messageOk = result.success;
+		createLoading = false;
+		if (result.success) { closeCreate(); await loadParks(); }
+	}
+
+	async function downloadCsv() {
+		exportLoading = true;
+		await exportPotaParks();
+		exportLoading = false;
+	}
 
 	let abortController: AbortController | null = null;
 
@@ -144,6 +175,14 @@
 				</svg>
 			</a>
 			<h1 class="text-lg font-semibold">POTA / JAFF パーク編集</h1>
+			<div class="ml-auto flex gap-2">
+				<button on:click={downloadCsv} disabled={exportLoading} class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded-lg text-xs font-medium transition-colors">
+					{exportLoading ? 'ダウンロード中...' : 'CSVダウンロード'}
+				</button>
+				<button on:click={openCreate} class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-xs font-medium transition-colors">
+					＋ 新規登録
+				</button>
+			</div>
 		</div>
 	</nav>
 
@@ -332,6 +371,73 @@
 						{editLoading ? '保存中...' : '保存'}
 					</button>
 					<button type="button" on:click={closeEdit} class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
+						キャンセル
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- Create Modal -->
+{#if createOpen}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	<div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" on:click|self={closeCreate}>
+		<div class="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+			<div class="p-6 border-b border-slate-700 flex items-center justify-between">
+				<h2 class="text-lg font-semibold text-white">新規登録</h2>
+				<button on:click={closeCreate} aria-label="閉じる" class="text-slate-400 hover:text-white">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<form on:submit|preventDefault={saveCreate} class="p-6 space-y-4">
+				<div class="grid grid-cols-2 gap-4">
+					<label class="block">
+						<span class="text-xs text-slate-400">POTA Code</span>
+						<input bind:value={createForm.potaCode} placeholder="例: JP-2123" class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 font-mono" />
+					</label>
+					<label class="block">
+						<span class="text-xs text-slate-400">JAFF Code (wwff_code)</span>
+						<input bind:value={createForm.wwffCode} placeholder="例: JAFF-0189" class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 font-mono" />
+					</label>
+					<label class="block col-span-2">
+						<span class="text-xs text-slate-400">公園名 (英語)</span>
+						<input bind:value={createForm.parkName} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+					<label class="block col-span-2">
+						<span class="text-xs text-slate-400">公園名 (日本語)</span>
+						<input bind:value={createForm.parkNameJ} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+					<label class="block">
+						<span class="text-xs text-slate-400">Park Location</span>
+						<input bind:value={createForm.parkLocation} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+					<label class="block">
+						<span class="text-xs text-slate-400">Park Loc ID</span>
+						<input bind:value={createForm.parkLocid} placeholder="例: JP-13" class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+					<label class="block">
+						<span class="text-xs text-slate-400">Park Type</span>
+						<input bind:value={createForm.parkType} placeholder="例: National Park" class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+					<label class="block">
+						<span class="text-xs text-slate-400">Park Area (ha)</span>
+						<input type="number" bind:value={createForm.parkArea} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+					<label class="block">
+						<span class="text-xs text-slate-400">経度 (Longitude)</span>
+						<input type="number" step="any" bind:value={createForm.longitude} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+					<label class="block">
+						<span class="text-xs text-slate-400">緯度 (Latitude)</span>
+						<input type="number" step="any" bind:value={createForm.latitude} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
+					</label>
+				</div>
+				<div class="flex gap-3 pt-2">
+					<button type="submit" disabled={createLoading} class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors">
+						{createLoading ? '登録中...' : '登録'}
+					</button>
+					<button type="button" on:click={closeCreate} class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
 						キャンセル
 					</button>
 				</div>

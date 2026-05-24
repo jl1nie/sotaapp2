@@ -18,7 +18,7 @@ use domain::repository::{
 };
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
-use crate::model::pota::{POTAAllCSVFile, POTACSVFile, UploadPOTAReference};
+use crate::model::pota::{POTAAllCSVFile, POTACSVFile, POTAExportRow, UploadPOTAReference};
 use crate::model::sota::{SOTASumitOptCSV, SOTASummitCSV};
 use crate::model::sota::{UploadSOTASummit, UploadSOTASummitOpt};
 
@@ -254,6 +254,11 @@ impl AdminService for AdminServiceImpl {
         Ok(self.pota_repo.show_all_references(&event).await?)
     }
 
+    async fn create_pota_reference(&self, references: Vec<PotaReference>) -> AppResult<()> {
+        self.pota_repo.create_reference(references).await?;
+        Ok(())
+    }
+
     async fn update_pota_reference(
         &self,
         id: String,
@@ -266,6 +271,37 @@ impl AdminService for AdminServiceImpl {
     async fn delete_pota_reference(&self, event: DeleteRef<ParkCode>) -> AppResult<()> {
         self.pota_repo.delete_reference(event).await?;
         Ok(())
+    }
+
+    async fn export_pota_parks_csv(&self) -> AppResult<String> {
+        let limit = 5000;
+        let mut offset = 0;
+        let mut wtr = csv::Writer::from_writer(vec![]);
+
+        loop {
+            let query = FindRefBuilder::new()
+                .pota()
+                .pota_code("JP-".to_string())
+                .limit(limit)
+                .offset(offset)
+                .build();
+            let result = self.pota_repo.show_all_references(&query).await?;
+            let is_last = result.results.len() < limit as usize;
+            for park in result.results {
+                wtr.serialize(POTAExportRow::from(park))
+                    .map_err(|e| common::error::AppError::ConversionEntityError(e.to_string()))?;
+            }
+            if is_last {
+                break;
+            }
+            offset += limit;
+        }
+
+        let data = wtr
+            .into_inner()
+            .map_err(|e| common::error::AppError::ConversionEntityError(e.to_string()))?;
+        String::from_utf8(data)
+            .map_err(|e| common::error::AppError::ConversionEntityError(e.to_string()))
     }
 
     async fn health_check(&self) -> AppResult<bool> {
