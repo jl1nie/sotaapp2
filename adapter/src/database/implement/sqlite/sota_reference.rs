@@ -329,7 +329,10 @@ impl SotaRepositoryImpl {
 
     async fn select_pagenated(&self, event: &FindRef) -> AppResult<(i64, Vec<SotaReferenceRow>)> {
         let count_select = r#"SELECT COUNT(*) FROM sota_references WHERE "#;
-        let mut count_builder = findref_query_builder(SOTA, None, count_select, event);
+        let mut count_event = event.clone();
+        count_event.limit = None;
+        count_event.offset = None;
+        let mut count_builder = findref_query_builder(SOTA, None, count_select, &count_event);
         let total: i64 = count_builder
             .build_query_scalar::<i64>()
             .fetch_one(self.pool.inner_ref())

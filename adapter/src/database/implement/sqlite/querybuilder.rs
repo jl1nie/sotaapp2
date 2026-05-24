@@ -27,14 +27,14 @@ pub fn findref_query_builder<'a>(
         }
     } else if let Some(code) = &r.pota_code {
         if mode == POTA {
-            builder.push(" (p.pota_code =");
-            builder.push_bind(code.as_str());
+            builder.push(" (p.pota_code LIKE ");
+            builder.push_bind(format!("{}%", code));
             builder.push(" ) AND ");
         }
     } else if let Some(code) = &r.wwff_code {
-        if mode == WWFF {
-            builder.push("(p.wwff_code =");
-            builder.push_bind(code.as_str());
+        if mode == POTA || mode == WWFF {
+            builder.push(" (p.wwff_code LIKE ");
+            builder.push_bind(format!("{}%", code));
             builder.push(" ) AND ");
         }
     } else {

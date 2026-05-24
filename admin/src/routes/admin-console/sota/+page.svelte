@@ -25,6 +25,8 @@
 	let editForm: SotaRefView | null = null;
 	let editLoading = false;
 
+	let abortController: AbortController | null = null;
+
 	onMount(() => {
 		auth.subscribe((state) => {
 			if (!state.loading && !state.isAuthenticated) goto('/admin-console');
@@ -33,19 +35,29 @@
 	});
 
 	async function loadSummits() {
+		if (abortController) abortController.abort();
+		abortController = new AbortController();
+		const signal = abortController.signal;
+
 		loading = true;
 		message = '';
-		const result = await getSotaSummits({
-			sotaCode: searchCode || undefined,
-			name: searchName || undefined,
-			associations: selectedRegions.length > 0 ? selectedRegions : undefined,
-			limit: pageSize,
-			offset: page * pageSize
-		});
-		if (result) {
-			summits = result.results;
-			total = result.total;
-		} else {
+		try {
+			const result = await getSotaSummits({
+				sotaCode: searchCode || undefined,
+				name: searchName || undefined,
+				associations: selectedRegions.length > 0 ? selectedRegions : undefined,
+				limit: pageSize,
+				offset: page * pageSize
+			}, signal);
+			if (result) {
+				summits = result.results;
+				total = result.total;
+			} else {
+				message = '取得に失敗しました';
+				messageOk = false;
+			}
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
 			message = '取得に失敗しました';
 			messageOk = false;
 		}
@@ -119,8 +131,8 @@
 					placeholder="山名で検索"
 					class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-48"
 				/>
-				<button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors">
-					検索
+				<button type="submit" disabled={loading} class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors">
+					{loading ? '検索中...' : '検索'}
 				</button>
 			</div>
 			<!-- Region filter -->

@@ -121,12 +121,12 @@ fn build_sota_conditions<'a>(builder: &mut QueryBuilder<'a, Postgres>, r: &'a Fi
 
 fn build_pota_conditions<'a>(builder: &mut QueryBuilder<'a, Postgres>, r: &'a FindRef) {
     if let Some(code) = &r.pota_code {
-        builder.push("p.pota_code = ");
-        builder.push_bind(code);
+        builder.push("p.pota_code ILIKE ");
+        builder.push_bind(format!("{}%", code));
         builder.push(" AND ");
     } else if let Some(code) = &r.wwff_code {
-        builder.push("p.wwff_code = ");
-        builder.push_bind(code);
+        builder.push("p.wwff_code ILIKE ");
+        builder.push_bind(format!("{}%", code));
         builder.push(" AND ");
     } else {
         if let Some(name) = &r.name {

@@ -131,7 +131,7 @@ export async function getSotaSummits(params: {
 	associations?: string[];
 	limit?: number;
 	offset?: number;
-}): Promise<PagenatedResponse<SotaRefView> | null> {
+}, signal?: AbortSignal): Promise<PagenatedResponse<SotaRefView> | null> {
 	const query = new URLSearchParams();
 	if (params.sotaCode) query.set('sota_code', params.sotaCode);
 	if (params.name) query.set('name', params.name);
@@ -140,10 +140,11 @@ export async function getSotaSummits(params: {
 	query.set('offset', String(params.offset ?? 0));
 
 	try {
-		const response = await fetch(`/api/v2/sota/summits?${query}`);
+		const response = await fetch(`/api/v2/sota/summits?${query}`, { signal });
 		if (!response.ok) return null;
 		return await response.json();
-	} catch {
+	} catch (e) {
+		if (e instanceof DOMException && e.name === 'AbortError') throw e;
 		return null;
 	}
 }
@@ -198,7 +199,7 @@ export async function getPotaParks(params: {
 	associations?: string[];
 	limit?: number;
 	offset?: number;
-}): Promise<PagenatedResponse<PotaRefView> | null> {
+}, signal?: AbortSignal): Promise<PagenatedResponse<PotaRefView> | null> {
 	const query = new URLSearchParams();
 	if (params.potaCode) query.set('pota_code', params.potaCode);
 	if (params.wwffCode) query.set('wwff_code', params.wwffCode);
@@ -208,10 +209,11 @@ export async function getPotaParks(params: {
 	query.set('offset', String(params.offset ?? 0));
 
 	try {
-		const response = await fetch(`/api/v2/pota/parks?${query}`);
+		const response = await fetch(`/api/v2/pota/parks?${query}`, { signal });
 		if (!response.ok) return null;
 		return await response.json();
-	} catch {
+	} catch (e) {
+		if (e instanceof DOMException && e.name === 'AbortError') throw e;
 		return null;
 	}
 }
