@@ -29,6 +29,8 @@
 	let deleteTarget: PotaRefView | null = null;
 	let deleteLoading = false;
 
+	let abortController: AbortController | null = null;
+
 	function parkKey(p: PotaRefView): string {
 		return p.potaCode || p.wwffCode;
 	}
@@ -41,20 +43,30 @@
 	});
 
 	async function loadParks() {
+		if (abortController) abortController.abort();
+		abortController = new AbortController();
+		const signal = abortController.signal;
+
 		loading = true;
 		message = '';
-		const result = await getPotaParks({
-			potaCode: searchPota || undefined,
-			wwffCode: searchWwff || undefined,
-			name: searchName || undefined,
-			associations: selectedRegions.length > 0 ? selectedRegions : undefined,
-			limit: pageSize,
-			offset: page * pageSize
-		});
-		if (result) {
-			parks = result.results;
-			total = result.total;
-		} else {
+		try {
+			const result = await getPotaParks({
+				potaCode: searchPota || undefined,
+				wwffCode: searchWwff || undefined,
+				name: searchName || undefined,
+				associations: selectedRegions.length > 0 ? selectedRegions : undefined,
+				limit: pageSize,
+				offset: page * pageSize
+			}, signal);
+			if (result) {
+				parks = result.results;
+				total = result.total;
+			} else {
+				message = '取得に失敗しました';
+				messageOk = false;
+			}
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
 			message = '取得に失敗しました';
 			messageOk = false;
 		}
@@ -154,8 +166,8 @@
 					placeholder="公園名で検索"
 					class="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-40"
 				/>
-				<button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-sm font-medium transition-colors">
-					検索
+				<button type="submit" disabled={loading} class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors">
+					{loading ? '検索中...' : '検索'}
 				</button>
 			</div>
 			<!-- Region filter -->

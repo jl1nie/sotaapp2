@@ -496,7 +496,10 @@ impl PotaRepositoryImpl {
 
     async fn select_pagenated(&self, query: &FindRef) -> AppResult<(i64, Vec<PotaReferenceRow>)> {
         let count_select = r#"SELECT COUNT(*) FROM pota_references AS p WHERE "#;
-        let mut count_builder = findref_query_builder(POTA, None, count_select, query);
+        let mut count_query = query.clone();
+        count_query.limit = None;
+        count_query.offset = None;
+        let mut count_builder = findref_query_builder(POTA, None, count_select, &count_query);
         let total: i64 = count_builder
             .build_query_scalar::<i64>()
             .fetch_one(self.pool.inner_ref())
@@ -774,5 +777,222 @@ impl PotaRepository for PotaRepositoryImpl {
             .await
             .map_err(tx_error("commit update_logid pota"))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::model::event::FindRefBuilder;
+    use sqlx::migrate::Migrator;
+    use sqlx::sqlite::SqlitePool;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    async fn setup_test_db() -> (SqlitePool, tempfile::TempDir) {
+        let temp_dir = tempdir().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let db_url = format!("sqlite:{}", db_path.display());
+        std::fs::File::create(&db_path).expect("Failed to create db file");
+        let pool = SqlitePool::connect(&db_url)
+            .await
+            .expect("Failed to connect to test db");
+        let migration_path = Path::new("migrations/sqlite");
+        let migrator = Migrator::new(migration_path)
+            .await
+            .expect("Failed to load migrations");
+        migrator.run(&pool).await.expect("Failed to run migrations");
+        (pool, temp_dir)
+    }
+
+    fn make_pota_ref(pota_code: &str, wwff_code: &str, park_name: &str) -> PotaReference {
+        PotaReference {
+            pota_code: pota_code.to_string(),
+            wwff_code: wwff_code.to_string(),
+            park_name: park_name.to_string(),
+            park_name_j: park_name.to_string(),
+            park_location: "Japan".to_string(),
+            park_locid: "JP-TK".to_string(),
+            park_type: "National Park".to_string(),
+            park_inactive: false,
+            park_area: 100,
+            longitude: 139.0,
+            latitude: 35.0,
+            maidenhead: "PM95wv".to_string(),
+            update: Utc::now(),
+        }
+    }
+
+    fn make_repo(pool: SqlitePool) -> PotaRepositoryImpl {
+        let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+        let d0 = chrono::Duration::zero();
+        PotaRepositoryImpl {
+            pool: ConnectionPool::new(pool),
+            config: AppConfig {
+                host: String::new(),
+                port: 8080,
+                database: String::new(),
+                run_migration: false,
+                migration_path: String::new(),
+                cors_origin: None,
+                firebase_api_key: String::new(),
+                auth_token_ttl: d0,
+                log_level: String::new(),
+                sota_alert_endpoint: String::new(),
+                sota_spot_endpoint: String::new(),
+                pota_alert_endpoint: String::new(),
+                pota_spot_endpoint: String::new(),
+                sota_summitlist_endpoint: String::new(),
+                sota_summitlist_update_schedule: String::new(),
+                pota_parklist_endpoint: String::new(),
+                pota_parklist_update_schedule: String::new(),
+                geomag_endpoint: String::new(),
+                geomag_update_schedule: String::new(),
+                mapcode_endpoint: String::new(),
+                alert_update_interval: 0,
+                alert_expire: d0,
+                spot_update_interval: 0,
+                spot_expire: d0,
+                aprs_log_expire: d0,
+                pota_log_expire: d0,
+                aprs_host: String::new(),
+                aprs_user: String::new(),
+                aprs_password: String::new(),
+                aprs_exclude_user: None,
+                aprs_arrival_mesg_regex: None,
+                openapi_level: common::config::OpenApiLevel::None,
+                award_template_dir: String::new(),
+                award_config_path: String::new(),
+                shutdown_tx,
+                shutdown_rx,
+            },
+        }
+    }
+
+    /// ページネーション時にtotalが正しく返ること
+    #[tokio::test]
+    async fn test_pagination_total_is_correct_across_pages() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = make_repo(pool);
+
+        let refs: Vec<PotaReference> = (1..=5)
+            .map(|i| make_pota_ref(&format!("JP-{:04}", i), "", &format!("Park {}", i)))
+            .collect();
+        repo.create_reference(refs).await.expect("create");
+
+        // page1: total=5
+        let q1 = FindRefBuilder::default().pota().limit(2).offset(0).build();
+        let r1 = repo.show_all_references(&q1).await.expect("page1");
+        assert_eq!(r1.total, 5, "page1 total should be 5");
+        assert_eq!(r1.results.len(), 2);
+
+        // page2 (offset=2): total must still be 5, not 0
+        let q2 = FindRefBuilder::default().pota().limit(2).offset(2).build();
+        let r2 = repo.show_all_references(&q2).await.expect("page2");
+        assert_eq!(
+            r2.total, 5,
+            "page2 total must remain 5 (pagination bug regression)"
+        );
+        assert_eq!(r2.results.len(), 2);
+
+        // page3 (offset=4): last page
+        let q3 = FindRefBuilder::default().pota().limit(2).offset(4).build();
+        let r3 = repo.show_all_references(&q3).await.expect("page3");
+        assert_eq!(r3.total, 5, "page3 total must remain 5");
+        assert_eq!(r3.results.len(), 1);
+    }
+
+    /// wwff_code の前方一致検索が POTA mode で機能すること
+    #[tokio::test]
+    async fn test_wwff_code_partial_search() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = make_repo(pool);
+
+        let refs = vec![
+            make_pota_ref("", "JAFF-0100", "Park A"),
+            make_pota_ref("", "JAFF-0101", "Park B"),
+            make_pota_ref("JP-0001", "", "JP Park"),
+        ];
+        repo.create_reference(refs).await.expect("create");
+
+        // 前方一致: "JAFF-010" → JAFF-0100, JAFF-0101 の2件
+        let q = FindRefBuilder::default()
+            .pota()
+            .wwff_code("JAFF-010".to_string())
+            .limit(10)
+            .offset(0)
+            .build();
+        let r = repo.show_all_references(&q).await.expect("search");
+        assert_eq!(
+            r.total, 2,
+            "prefix wwff_code 'JAFF-010' should match 2 JAFF entries"
+        );
+
+        // 前方一致: "JAFF-" → 2件
+        let q_prefix = FindRefBuilder::default()
+            .pota()
+            .wwff_code("JAFF-".to_string())
+            .limit(10)
+            .offset(0)
+            .build();
+        let r_prefix = repo
+            .show_all_references(&q_prefix)
+            .await
+            .expect("search_prefix");
+        assert_eq!(
+            r_prefix.total, 2,
+            "prefix wwff_code 'JAFF-' should match all JAFF entries"
+        );
+
+        // 前方一致: "JAFF-0100" → 1件
+        let q2 = FindRefBuilder::default()
+            .pota()
+            .wwff_code("JAFF-0100".to_string())
+            .limit(10)
+            .offset(0)
+            .build();
+        let r2 = repo.show_all_references(&q2).await.expect("search2");
+        assert_eq!(r2.total, 1);
+        assert_eq!(r2.results[0].wwff_code, "JAFF-0100");
+    }
+
+    /// pota_code の前方一致検索が機能すること
+    #[tokio::test]
+    async fn test_pota_code_partial_search() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = make_repo(pool);
+
+        let refs = vec![
+            make_pota_ref("JP-0011", "", "Park 11"),
+            make_pota_ref("JP-0012", "", "Park 12"),
+            make_pota_ref("JP-0099", "", "Park 99"),
+        ];
+        repo.create_reference(refs).await.expect("create");
+
+        // 前方一致: "JP-001" → JP-0011, JP-0012 の2件
+        let q = FindRefBuilder::default()
+            .pota()
+            .pota_code("JP-001".to_string())
+            .limit(10)
+            .offset(0)
+            .build();
+        let r = repo.show_all_references(&q).await.expect("search");
+        assert_eq!(
+            r.total, 2,
+            "prefix pota_code 'JP-001' should match JP-0011 and JP-0012"
+        );
+
+        // 前方一致: "JP-" → 全3件
+        let q2 = FindRefBuilder::default()
+            .pota()
+            .pota_code("JP-".to_string())
+            .limit(10)
+            .offset(0)
+            .build();
+        let r2 = repo.show_all_references(&q2).await.expect("search2");
+        assert_eq!(
+            r2.total, 3,
+            "prefix pota_code 'JP-' should match all 3 parks"
+        );
     }
 }

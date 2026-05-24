@@ -6,7 +6,7 @@ use std::str::FromStr;
 use crate::model::{id::LogId, AwardProgram};
 use crate::model::{pota::PotaRefLog, sota::SotaReference};
 
-#[derive(new, Debug)]
+#[derive(new, Debug, Clone)]
 pub struct BoundingBox {
     pub min_lon: f64,
     pub min_lat: f64,
@@ -14,14 +14,14 @@ pub struct BoundingBox {
     pub max_lat: f64,
 }
 
-#[derive(new, Debug)]
+#[derive(new, Debug, Clone)]
 pub struct CenterRadius {
     pub lon: f64,
     pub lat: f64,
     pub rad: f64,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct FindRef {
     pub program: Vec<AwardProgram>,
     pub sota_code: Option<String>,

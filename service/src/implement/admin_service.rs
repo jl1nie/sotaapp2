@@ -267,6 +267,7 @@ impl AdminService for AdminServiceImpl {
         self.pota_repo.delete_reference(event).await?;
         Ok(())
     }
+
     async fn health_check(&self) -> AppResult<bool> {
         Ok(self.check_repo.check_database().await?)
     }
