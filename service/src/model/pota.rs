@@ -186,6 +186,45 @@ impl POTAHunterLogCSV {
         })
     }
 }
+/// JP公園CSVエクスポート用（インポートと同フォーマット）
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct POTAExportRow {
+    pub pota_code: String,
+    pub wwff_code: String,
+    pub park_name: String,
+    pub park_name_j: String,
+    pub park_location: String,
+    pub park_locid: String,
+    pub park_type: String,
+    pub park_inactive: String,
+    pub park_area: i32,
+    pub longitude: f64,
+    pub latitude: f64,
+}
+
+impl From<domain::model::pota::PotaReference> for POTAExportRow {
+    fn from(r: domain::model::pota::PotaReference) -> Self {
+        Self {
+            pota_code: r.pota_code,
+            wwff_code: r.wwff_code,
+            park_name: r.park_name,
+            park_name_j: r.park_name_j,
+            park_location: r.park_location,
+            park_locid: r.park_locid,
+            park_type: r.park_type,
+            park_inactive: if r.park_inactive {
+                "1".to_string()
+            } else {
+                String::new()
+            },
+            park_area: r.park_area,
+            longitude: r.longitude,
+            latitude: r.latitude,
+        }
+    }
+}
+
 pub struct UploadPOTAReference {
     pub data: String,
 }

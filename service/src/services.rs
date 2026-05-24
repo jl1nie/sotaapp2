@@ -81,12 +81,14 @@ pub trait AdminService: Send + Sync + Interface {
         &self,
         query: FindRef,
     ) -> AppResult<PagenatedResult<PotaReference>>;
+    async fn create_pota_reference(&self, references: Vec<PotaReference>) -> AppResult<()>;
     async fn update_pota_reference(
         &self,
         id: String,
         references: Vec<PotaReference>,
     ) -> AppResult<()>;
     async fn delete_pota_reference(&self, query: DeleteRef<ParkCode>) -> AppResult<()>;
+    async fn export_pota_parks_csv(&self) -> AppResult<String>;
     async fn health_check(&self) -> AppResult<bool>;
 }
 

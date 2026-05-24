@@ -1,6 +1,7 @@
 use axum::{
     extract::{Multipart, Path, Query},
-    http::StatusCode,
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -15,8 +16,8 @@ use std::str::FromStr;
 
 use crate::model::import::ImportResult;
 use crate::model::pota::{
-    PagenatedResponse, PotaLogHistView, PotaLogStatView, PotaRefLogView, PotaRefView,
-    UpdateRefRequest,
+    CreateRefRequest, PagenatedResponse, PotaLogHistView, PotaLogStatView, PotaRefLogView,
+    PotaRefView, UpdateRefRequest,
 };
 use crate::model::{
     activation::ActivationView,
@@ -37,6 +38,34 @@ use service::services::{AdminService, PotaLogService, UserService};
 
 use super::auth::with_auth;
 use super::multipart::extract_text_file;
+
+async fn create_pota_reference(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    Json(req): Json<CreateRefRequest>,
+) -> AppResult<StatusCode> {
+    admin_service
+        .create_pota_reference(req.into())
+        .await
+        .map(|_| StatusCode::CREATED)
+}
+
+async fn export_pota_reference_ja(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+) -> AppResult<Response> {
+    let csv = admin_service.export_pota_parks_csv().await?;
+    let filename = format!("jp_parks_{}.csv", Utc::now().format("%Y%m%d"));
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{}\"", filename),
+            ),
+        ],
+        csv,
+    )
+        .into_response())
+}
 
 async fn update_pota_reference(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -276,6 +305,8 @@ pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
     let protected = with_auth(
         Router::new()
             .route("/import", post(import_pota_reference_ja))
+            .route("/parks", post(create_pota_reference))
+            .route("/parks/export", get(export_pota_reference_ja))
             .route("/parks/{park_code}", put(update_pota_reference))
             .route("/parks/{park_code}", delete(delete_pota_reference))
             .route("/log-migrate", get(log_migrate)),
