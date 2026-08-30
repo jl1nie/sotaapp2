@@ -1,16 +1,21 @@
-use axum::{response::Html, routing::get, Router};
+use axum::{response::Html, routing::get, Json, Router};
 use utoipa::OpenApi;
 
-use crate::model::map::MapParam;
+use crate::model::map::{MapParam, MapView};
 use crate::model::param::ValidatedQuery;
-use common::utils::maidenhead;
 use registry::AppState;
 
 /// Map API
 #[derive(OpenApi)]
 #[openapi(
-    paths(show_map),
-    components(schemas(MapParam, crate::model::map::TileLayer)),
+    paths(show_map, get_map_view),
+    components(schemas(
+        MapParam,
+        MapView,
+        crate::model::map::TileLayer,
+        crate::model::map::TileLayerView,
+        crate::model::map::ExternalMapLinks,
+    )),
     tags((name = "map", description = "座標を中心とした地図表示API"))
 )]
 pub struct MapApi;
@@ -37,10 +42,8 @@ fn escape_html(text: &str) -> String {
 /// Leaflet(CDN)を読み込んだスクリプトから参照する。
 /// 利用者が指定した`label`はエスケープしてから埋め込む。
 fn render_map_html(param: &MapParam) -> String {
-    let MapParam { lat, lon, .. } = param;
-    let tile = param.tile_layer();
-    let zoom = param.effective_zoom();
-    let grid = maidenhead(*lon, *lat);
+    let view = MapView::from(param);
+    let (lat, lon, zoom, grid) = (view.latitude, view.longitude, view.zoom, view.maidenhead);
 
     let label = param.label.as_deref().unwrap_or_default();
     let title = if label.is_empty() {
@@ -51,6 +54,29 @@ fn render_map_html(param: &MapParam) -> String {
     let title = escape_html(&title);
     let label = escape_html(label);
     let coords = format!("{:.6}, {:.6}", lat, lon);
+
+    // iframe埋め込み時はヘッダを省略して地図だけを表示する
+    let header = if param.is_embed() {
+        String::new()
+    } else {
+        format!(
+            r#"<header>
+  <span class="title">{title}</span>
+  <span class="meta">/ {coords} / GL: {grid} /
+    <a href="{google}" target="_blank" rel="noopener">Google Maps</a> ·
+    <a href="{osm}" target="_blank" rel="noopener">OSM</a> ·
+    <a href="{gsi}" target="_blank" rel="noopener">地理院地図</a>
+  </span>
+</header>
+"#,
+            title = title,
+            coords = coords,
+            grid = grid,
+            google = escape_html(&view.external_links.google_maps),
+            osm = escape_html(&view.external_links.open_street_map),
+            gsi = escape_html(&view.external_links.gsi_maps),
+        )
+    };
 
     format!(
         r#"<!DOCTYPE html>
@@ -73,15 +99,7 @@ fn render_map_html(param: &MapParam) -> String {
 </style>
 </head>
 <body>
-<header>
-  <span class="title">{title}</span>
-  <span class="meta">/ {coords} / GL: {grid} /
-    <a href="https://www.google.com/maps?q={lat},{lon}" target="_blank" rel="noopener">Google Maps</a> ·
-    <a href="https://www.openstreetmap.org/?mlat={lat}&amp;mlon={lon}#map={zoom}/{lat}/{lon}" target="_blank" rel="noopener">OSM</a> ·
-    <a href="https://maps.gsi.go.jp/#{zoom}/{lat}/{lon}/" target="_blank" rel="noopener">地理院地図</a>
-  </span>
-</header>
-<div id="map"
+{header}<div id="map"
      data-lat="{lat}"
      data-lon="{lon}"
      data-zoom="{zoom}"
@@ -89,13 +107,13 @@ fn render_map_html(param: &MapParam) -> String {
      data-tile-url="{tile_url}"
      data-tile-attribution="{tile_attribution}"
      data-tile-max-zoom="{tile_max_zoom}"></div>
-<noscript><p class="fallback">地図の表示にはJavaScriptが必要です。上記のリンクから外部地図サービスで位置を確認できます。</p></noscript>
+<noscript><p class="fallback">地図の表示にはJavaScriptが必要です。（{coords} / GL: {grid}）</p></noscript>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   (function () {{
     var el = document.getElementById('map');
     if (typeof L === 'undefined') {{
-      el.innerHTML = '<p class="fallback">地図ライブラリを読み込めませんでした。上記のリンクから外部地図サービスで位置を確認できます。</p>';
+      el.innerHTML = '<p class="fallback">地図ライブラリを読み込めませんでした。（{coords} / GL: {grid}）</p>';
       return;
     }}
     var lat = parseFloat(el.dataset.lat);
@@ -114,15 +132,16 @@ fn render_map_html(param: &MapParam) -> String {
 </html>
 "#,
         title = title,
+        header = header,
         label = label,
         coords = coords,
         grid = grid,
         lat = lat,
         lon = lon,
         zoom = zoom,
-        tile_url = tile.url_template(),
-        tile_attribution = escape_html(tile.attribution()),
-        tile_max_zoom = tile.max_zoom(),
+        tile_url = view.tile.url_template,
+        tile_attribution = escape_html(&view.tile.attribution),
+        tile_max_zoom = view.tile.max_zoom,
     )
 }
 
@@ -142,8 +161,29 @@ async fn show_map(ValidatedQuery(param): ValidatedQuery<MapParam>) -> Html<Strin
     Html(render_map_html(&param))
 }
 
+/// 地図表示に必要な情報を取得（フロントエンド連携用）
+///
+/// 自前の地図コンポーネントで描画する場合や、`embedUrl`をiframeに
+/// 埋め込む場合に利用する。パラメータは`GET /api/v2/map`と共通。
+#[utoipa::path(
+    get,
+    path = "/api/v2/map/view",
+    params(MapParam),
+    responses(
+        (status = 200, description = "地図情報", body = MapView),
+        (status = 400, description = "パラメータの解析に失敗"),
+        (status = 422, description = "パラメータが範囲外"),
+    ),
+    tag = "map"
+)]
+async fn get_map_view(ValidatedQuery(param): ValidatedQuery<MapParam>) -> Json<MapView> {
+    Json(MapView::from(&param))
+}
+
 pub fn build_map_routers() -> Router<AppState> {
-    let routers = Router::new().route("/", get(show_map));
+    let routers = Router::new()
+        .route("/", get(show_map))
+        .route("/view", get(get_map_view));
     Router::new().nest("/map", routers)
 }
 
@@ -162,11 +202,14 @@ mod tests {
             zoom: None,
             label: label.map(|s| s.to_string()),
             tile,
+            embed: None,
         }
     }
 
     fn test_router() -> Router {
-        Router::new().route("/api/v2/map", get(show_map))
+        Router::new()
+            .route("/api/v2/map", get(show_map))
+            .route("/api/v2/map/view", get(get_map_view))
     }
 
     async fn get_map(uri: &str) -> (StatusCode, String) {
@@ -226,6 +269,91 @@ mod tests {
     fn test_render_escapes_label_breaking_out_of_attribute() {
         let html = render_map_html(&param(Some(r#"" onload="alert(1)"#), None));
         assert!(!html.contains(r#"onload="alert(1)"#));
+    }
+
+    #[test]
+    fn test_embed_mode_omits_header() {
+        let mut p = param(Some("富士山"), None);
+        p.embed = Some(true);
+        let html = render_map_html(&p);
+
+        assert!(!html.contains("<header>"));
+        // 地図本体とフォールバック時の座標表示は残る
+        assert!(html.contains(r#"id="map""#));
+        assert!(html.contains("35.360556, 138.727778"));
+    }
+
+    #[test]
+    fn test_default_mode_includes_header() {
+        let html = render_map_html(&param(Some("富士山"), None));
+        assert!(html.contains("<header>"));
+        assert!(html.contains("https://www.google.com/maps?q=35.360556,138.727778"));
+    }
+
+    #[tokio::test]
+    async fn test_map_view_returns_json_for_frontend() {
+        let (status, body) =
+            get_map("/api/v2/map/view?lat=35.360556&lon=138.727778&zoom=12&label=富士山&tile=gsi")
+                .await;
+        assert_eq!(status, StatusCode::OK);
+
+        let view: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(view["latitude"], 35.360556);
+        assert_eq!(view["longitude"], 138.727778);
+        assert_eq!(view["zoom"], 12);
+        assert_eq!(view["label"], "富士山");
+        assert_eq!(view["maidenhead"], "PM95ii76");
+        assert_eq!(view["tile"]["kind"], "gsi");
+        assert_eq!(view["tile"]["maxZoom"], 18);
+        assert!(view["tile"]["urlTemplate"]
+            .as_str()
+            .unwrap()
+            .contains("cyberjapandata.gsi.go.jp"));
+        // フロントエンドがそのまま使えるURL
+        assert_eq!(
+            view["embedUrl"].as_str().unwrap(),
+            "/api/v2/map?lat=35.360556&lon=138.727778&zoom=12&tile=gsi&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1&embed=true"
+        );
+        assert!(!view["mapUrl"].as_str().unwrap().contains("embed"));
+        assert!(view["externalLinks"]["googleMaps"]
+            .as_str()
+            .unwrap()
+            .starts_with("https://www.google.com/maps?q="));
+    }
+
+    #[tokio::test]
+    async fn test_map_view_rejects_invalid_params() {
+        let (status, _) = get_map("/api/v2/map/view?lat=91&lon=139").await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    /// `embedUrl`をそのまま叩けば埋め込み用ページが返ること
+    #[tokio::test]
+    async fn test_embed_url_round_trip() {
+        let (_, body) = get_map("/api/v2/map/view?lat=35.360556&lon=138.727778&label=富士山").await;
+        let view: serde_json::Value = serde_json::from_str(&body).unwrap();
+        let embed_url = view["embedUrl"].as_str().unwrap();
+
+        let (status, html) = get_map(embed_url).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(!html.contains("<header>"));
+        assert!(html.contains("富士山"));
+    }
+
+    /// フロントエンド(`buildMapUrl`)が生成するURLをそのまま受け付けること
+    ///
+    /// `URLSearchParams`は空白を`+`、`/`を`%2F`にエンコードするため、
+    /// サーバ側で正しくデコードされることを確認する。
+    #[tokio::test]
+    async fn test_accepts_url_built_by_frontend_helper() {
+        let url = "/api/v2/map?lat=35.360556&lon=138.727778&zoom=12\
+                   &label=%E5%AF%8C%E5%A3%AB%E5%B1%B1+JA%2FSO-001&tile=gsi";
+        let (status, body) = get_map(url).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert!(body.contains("富士山 JA/SO-001"));
+        assert!(body.contains(r#"data-zoom="12""#));
+        assert!(body.contains("cyberjapandata.gsi.go.jp"));
     }
 
     #[tokio::test]

@@ -221,7 +221,8 @@ makers build && makers migrate run && makers run
 
 | エンドポイント | パラメータ | 説明 |
 |---------------|-----------|------|
-| `GET /api/v2/map` | `lat` (必須), `lon` (必須), `zoom`, `label`, `tile` | 指定座標を中心とした地図をHTMLで表示 |
+| `GET /api/v2/map` | `lat` (必須), `lon` (必須), `zoom`, `label`, `tile`, `embed` | 指定座標を中心とした地図をHTMLで表示 |
+| `GET /api/v2/map/view` | 同上 | 地図描画に必要な情報をJSONで返す（フロントエンド連携用） |
 
 | パラメータ | 既定値 | 説明 |
 |-----------|--------|------|
@@ -230,6 +231,7 @@ makers build && makers migrate run && makers run
 | `zoom` | `15` | ズームレベル（1〜19。タイルの最大ズームに丸められる） |
 | `label` | - | マーカーに表示する名称（100文字以内） |
 | `tile` | `osm` | タイル種別。`osm` = OpenStreetMap、`gsi` = 地理院タイル |
+| `embed` | `false` | `true`でヘッダを省略（iframe埋め込み用） |
 
 **パラメータ例:**
 ```
@@ -238,6 +240,54 @@ makers build && makers migrate run && makers run
 
 ブラウザで開くと、指定座標にマーカーを立てた地図（Leaflet）が表示されます。
 マーカーのポップアップには座標とグリッドロケータ（メイデンヘッド）が表示されます。
+
+#### フロントエンドからの利用
+
+`admin/src/lib/api.ts` にクライアントヘルパーを用意しています。
+
+```ts
+import { buildMapUrl, getMapView, hasValidCoordinates } from '$lib/api';
+
+// 1. 別タブで開く / iframeのsrcに指定する
+const url = buildMapUrl({ lat, lon, label: summitName });
+window.open(url, '_blank', 'noopener');
+
+// 2. iframeに埋め込む（ヘッダ非表示）
+const embedUrl = buildMapUrl({ lat, lon, label: summitName, embed: true });
+
+// 3. 自前の地図コンポーネントで描画する
+const view = await getMapView({ lat, lon, tile: 'gsi' });
+// view.tile.urlTemplate / view.tile.attribution / view.tile.maxZoom を
+// Leaflet等にそのまま渡せる。view.externalLinks には外部地図サービスへのリンク。
+```
+
+`GET /api/v2/map/view` のレスポンス例:
+
+```json
+{
+  "latitude": 35.360556,
+  "longitude": 138.727778,
+  "zoom": 15,
+  "maidenhead": "PM95ii76",
+  "label": "富士山",
+  "tile": {
+    "kind": "osm",
+    "urlTemplate": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
+    "maxZoom": 19
+  },
+  "mapUrl": "/api/v2/map?lat=35.360556&lon=138.727778&zoom=15&tile=osm&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1",
+  "embedUrl": "/api/v2/map?lat=35.360556&lon=138.727778&zoom=15&tile=osm&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1&embed=true",
+  "externalLinks": {
+    "googleMaps": "https://www.google.com/maps?q=35.360556,138.727778",
+    "openStreetMap": "https://www.openstreetmap.org/?mlat=35.360556&mlon=138.727778#map=15/35.360556/138.727778",
+    "gsiMaps": "https://maps.gsi.go.jp/#15/35.360556/138.727778/"
+  }
+}
+```
+
+管理コンソール（`admin/`）のSOTA/POTAリファレンス編集画面には、
+編集中の座標を地図で開く「🗺 地図で位置を確認」ボタンを追加しています。
 
 ## 🔧 設定項目
 

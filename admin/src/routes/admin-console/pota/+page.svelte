@@ -4,6 +4,7 @@
 	import { auth } from '$lib/auth';
 	import {
 		getPotaParks, createPotaPark, updatePotaPark, deletePotaPark, exportPotaParks, uploadPotaParks,
+		buildMapUrl, hasValidCoordinates,
 		type PotaRefView
 	} from '$lib/api';
 
@@ -24,6 +25,16 @@
 
 	let editTarget: PotaRefView | null = null;
 	let editForm: PotaRefView | null = null;
+
+	/** 指定した公園の座標を地図ページで開く */
+	function openMap(park: PotaRefView) {
+		const url = buildMapUrl({
+			lat: park.latitude,
+			lon: park.longitude,
+			label: park.parkNameJ || park.parkName || park.potaCode
+		});
+		window.open(url, '_blank', 'noopener');
+	}
 	let editLoading = false;
 
 	let deleteTarget: PotaRefView | null = null;
@@ -383,6 +394,16 @@
 						<span class="text-xs text-slate-400">緯度 (Latitude)</span>
 						<input type="number" step="any" bind:value={editForm.latitude} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
 					</label>
+					<div class="col-span-2">
+						<button
+							type="button"
+							on:click={() => editForm && openMap(editForm)}
+							disabled={!hasValidCoordinates(editForm.latitude, editForm.longitude)}
+							class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-medium transition-colors"
+						>
+							🗺 地図で位置を確認
+						</button>
+					</div>
 				</div>
 
 				<div class="flex gap-3 pt-2">
@@ -451,6 +472,16 @@
 						<span class="text-xs text-slate-400">緯度 (Latitude)</span>
 						<input type="number" step="any" bind:value={createForm.latitude} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500" />
 					</label>
+					<div class="col-span-2">
+						<button
+							type="button"
+							on:click={() => openMap(createForm)}
+							disabled={!hasValidCoordinates(createForm.latitude, createForm.longitude)}
+							class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-medium transition-colors"
+						>
+							🗺 地図で位置を確認
+						</button>
+					</div>
 				</div>
 				<div class="flex gap-3 pt-2">
 					<button type="submit" disabled={createLoading} class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors">

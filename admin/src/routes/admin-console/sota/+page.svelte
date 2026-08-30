@@ -4,6 +4,7 @@
 	import { auth } from '$lib/auth';
 	import {
 		getSotaSummits, updateSotaSummit, uploadSotaJaSummits, exportSotaSummits,
+		buildMapUrl, hasValidCoordinates,
 		type SotaRefView
 	} from '$lib/api';
 
@@ -24,6 +25,17 @@
 	let editTarget: SotaRefView | null = null;
 	let editForm: SotaRefView | null = null;
 	let editLoading = false;
+
+	/** 編集中の座標を地図ページで開く */
+	function openMap() {
+		if (!editForm) return;
+		const url = buildMapUrl({
+			lat: editForm.latitude,
+			lon: editForm.longitude,
+			label: editForm.summitNameJ || editForm.summitName || editForm.summitCode
+		});
+		window.open(url, '_blank', 'noopener');
+	}
 
 	let uploadLoading = false;
 	let exportLoading = false;
@@ -313,6 +325,16 @@
 						<span class="text-xs text-slate-400">緯度 (Latitude)</span>
 						<input type="number" step="any" bind:value={editForm.latitude} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
 					</label>
+					<div class="col-span-2">
+						<button
+							type="button"
+							on:click={openMap}
+							disabled={!hasValidCoordinates(editForm.latitude, editForm.longitude)}
+							class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-medium transition-colors"
+						>
+							🗺 地図で位置を確認
+						</button>
+					</div>
 					<label class="block">
 						<span class="text-xs text-slate-400">Points</span>
 						<input type="number" bind:value={editForm.points} class="mt-1 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
