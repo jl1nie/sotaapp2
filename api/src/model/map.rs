@@ -1,13 +1,20 @@
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use typeshare::typeshare;
 use utoipa::{IntoParams, ToSchema};
 use validator::{Validate, ValidationError};
+
+use common::utils::maidenhead;
 
 /// 既定のズームレベル
 pub const DEFAULT_ZOOM: u8 = 15;
 
+/// 地図ページのパス
+pub const MAP_PATH: &str = "/api/v2/map";
+
 /// 地図タイルの種別
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+#[typeshare]
 #[serde(rename_all = "lowercase")]
 pub enum TileLayer {
     /// OpenStreetMap（全世界）
@@ -45,6 +52,28 @@ impl TileLayer {
             TileLayer::Gsi => 18,
         }
     }
+
+    /// クエリパラメータでの表記
+    pub fn as_query_value(&self) -> &'static str {
+        match self {
+            TileLayer::Osm => "osm",
+            TileLayer::Gsi => "gsi",
+        }
+    }
+}
+
+/// クエリ文字列に埋め込む値をパーセントエンコードする
+fn percent_encode(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.as_bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(*byte as char)
+            }
+            _ => encoded.push_str(&format!("%{:02X}", byte)),
+        }
+    }
+    encoded
 }
 
 /// 有限の数値であることを検証する
@@ -87,6 +116,8 @@ pub struct MapParam {
     pub label: Option<String>,
     /// 地図タイルの種別（省略時はosm）
     pub tile: Option<TileLayer>,
+    /// 埋め込み表示（ヘッダを省略。iframeでの利用を想定）
+    pub embed: Option<bool>,
 }
 
 impl MapParam {
@@ -95,10 +126,120 @@ impl MapParam {
         self.tile.unwrap_or_default()
     }
 
+    /// 埋め込み表示かどうか
+    pub fn is_embed(&self) -> bool {
+        self.embed.unwrap_or(false)
+    }
+
+    /// 地図ページのURLを組み立てる
+    ///
+    /// `embed`が真の場合はヘッダ非表示のURL（iframe埋め込み用）を返す。
+    pub fn to_url(&self, embed: bool) -> String {
+        let mut url = format!(
+            "{}?lat={}&lon={}&zoom={}&tile={}",
+            MAP_PATH,
+            self.lat,
+            self.lon,
+            self.effective_zoom(),
+            self.tile_layer().as_query_value(),
+        );
+        if let Some(label) = self.label.as_deref().filter(|l| !l.is_empty()) {
+            url.push_str(&format!("&label={}", percent_encode(label)));
+        }
+        if embed {
+            url.push_str("&embed=true");
+        }
+        url
+    }
+
     /// タイルの最大ズームに丸めた実効ズームレベル
     pub fn effective_zoom(&self) -> u8 {
         let zoom = self.zoom.unwrap_or(DEFAULT_ZOOM);
         zoom.min(self.tile_layer().max_zoom()).max(1)
+    }
+}
+
+/// 地図タイルの情報（フロントエンドが自前で地図を描画する場合に使用）
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[typeshare]
+#[serde(rename_all = "camelCase")]
+pub struct TileLayerView {
+    /// タイル種別（osm / gsi）
+    pub kind: TileLayer,
+    /// Leaflet等にそのまま渡せるURLテンプレート
+    pub url_template: String,
+    /// 著作権表示（HTML）
+    pub attribution: String,
+    /// タイルが提供される最大ズームレベル
+    pub max_zoom: u8,
+}
+
+/// 外部地図サービスへのリンク
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[typeshare]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalMapLinks {
+    pub google_maps: String,
+    pub open_street_map: String,
+    pub gsi_maps: String,
+}
+
+/// 地図表示に必要な情報一式
+///
+/// フロントエンドが自前の地図コンポーネントで描画する場合や、
+/// `embedUrl`をiframeに埋め込む場合に使用する。
+#[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
+#[typeshare]
+#[serde(rename_all = "camelCase")]
+pub struct MapView {
+    /// 中心の緯度
+    pub latitude: f64,
+    /// 中心の経度
+    pub longitude: f64,
+    /// 実効ズームレベル
+    pub zoom: u8,
+    /// グリッドロケータ（メイデンヘッド）
+    pub maidenhead: String,
+    /// マーカーに表示する名称
+    pub label: Option<String>,
+    /// タイル情報
+    pub tile: TileLayerView,
+    /// 地図ページのURL（別タブで開く用）
+    pub map_url: String,
+    /// 埋め込み用URL（iframe用。ヘッダ非表示）
+    pub embed_url: String,
+    /// 外部地図サービスへのリンク
+    pub external_links: ExternalMapLinks,
+}
+
+impl From<&MapParam> for MapView {
+    fn from(param: &MapParam) -> Self {
+        let (lat, lon) = (param.lat, param.lon);
+        let zoom = param.effective_zoom();
+        let tile = param.tile_layer();
+
+        Self {
+            latitude: lat,
+            longitude: lon,
+            zoom,
+            maidenhead: maidenhead(lon, lat),
+            label: param.label.clone(),
+            tile: TileLayerView {
+                kind: tile,
+                url_template: tile.url_template().to_string(),
+                attribution: tile.attribution().to_string(),
+                max_zoom: tile.max_zoom(),
+            },
+            map_url: param.to_url(false),
+            embed_url: param.to_url(true),
+            external_links: ExternalMapLinks {
+                google_maps: format!("https://www.google.com/maps?q={lat},{lon}"),
+                open_street_map: format!(
+                    "https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map={zoom}/{lat}/{lon}"
+                ),
+                gsi_maps: format!("https://maps.gsi.go.jp/#{zoom}/{lat}/{lon}/"),
+            },
+        }
     }
 }
 
@@ -113,6 +254,7 @@ mod tests {
             zoom,
             label: None,
             tile,
+            embed: None,
         }
     }
 
@@ -185,6 +327,42 @@ mod tests {
         let mut p = param(None, None);
         p.label = Some("あ".repeat(101));
         assert!(p.validate().is_err());
+    }
+
+    #[test]
+    fn test_percent_encode() {
+        assert_eq!(percent_encode("富士山"), "%E5%AF%8C%E5%A3%AB%E5%B1%B1");
+        assert_eq!(percent_encode("JA/TK-001"), "JA%2FTK-001");
+        assert_eq!(percent_encode("a b&c=d"), "a%20b%26c%3Dd");
+        assert_eq!(percent_encode("Aa0-_.~"), "Aa0-_.~");
+    }
+
+    #[test]
+    fn test_to_url_includes_encoded_label() {
+        let mut p = param(Some(12), Some(TileLayer::Gsi));
+        p.label = Some("富士山 JA/SO-001".to_string());
+
+        assert_eq!(
+            p.to_url(false),
+            "/api/v2/map?lat=35.360556&lon=138.727778&zoom=12&tile=gsi&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1%20JA%2FSO-001"
+        );
+        assert!(p.to_url(true).ends_with("&embed=true"));
+    }
+
+    #[test]
+    fn test_to_url_omits_empty_label() {
+        let mut p = param(None, None);
+        p.label = Some(String::new());
+        assert!(!p.to_url(false).contains("label"));
+    }
+
+    #[test]
+    fn test_map_view_uses_effective_zoom() {
+        // 地理院タイルの最大ズーム(18)に丸められた値がviewにも反映される
+        let view = MapView::from(&param(Some(19), Some(TileLayer::Gsi)));
+        assert_eq!(view.zoom, 18);
+        assert_eq!(view.tile.max_zoom, 18);
+        assert!(view.map_url.contains("zoom=18"));
     }
 
     #[test]
