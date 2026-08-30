@@ -6,6 +6,7 @@ pub mod award;
 pub mod geomag;
 pub mod import;
 pub mod locator;
+pub mod map;
 pub mod param;
 pub mod pota;
 pub mod search;

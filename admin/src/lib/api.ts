@@ -336,6 +336,89 @@ export async function uploadJccJcg(file: File): Promise<UploadResult> {
 	return uploadFile('/api/v2/locator/jcc-jcg/import', file);
 }
 
+// ─── Map (座標の地図表示) ────────────────────────────────────────────────────
+
+export type MapTileKind = 'osm' | 'gsi';
+
+export interface MapParams {
+	lat: number;
+	lon: number;
+	zoom?: number;
+	label?: string;
+	tile?: MapTileKind;
+	/** ヘッダを省略した埋め込み表示（iframe用） */
+	embed?: boolean;
+}
+
+export interface TileLayerView {
+	kind: MapTileKind;
+	urlTemplate: string;
+	attribution: string;
+	maxZoom: number;
+}
+
+export interface ExternalMapLinks {
+	googleMaps: string;
+	openStreetMap: string;
+	gsiMaps: string;
+}
+
+export interface MapView {
+	latitude: number;
+	longitude: number;
+	zoom: number;
+	maidenhead: string;
+	label?: string;
+	tile: TileLayerView;
+	/** 別タブで開く地図ページのURL */
+	mapUrl: string;
+	/** iframeに埋め込むためのURL（ヘッダ非表示） */
+	embedUrl: string;
+	externalLinks: ExternalMapLinks;
+}
+
+function mapQuery(params: MapParams): URLSearchParams {
+	const query = new URLSearchParams();
+	query.set('lat', String(params.lat));
+	query.set('lon', String(params.lon));
+	if (params.zoom !== undefined) query.set('zoom', String(params.zoom));
+	if (params.label) query.set('label', params.label);
+	if (params.tile) query.set('tile', params.tile);
+	if (params.embed) query.set('embed', 'true');
+	return query;
+}
+
+/**
+ * 地図ページのURLを組み立てる。
+ * 別タブで開く場合や、`embed: true` でiframeのsrcに指定する場合に使う。
+ */
+export function buildMapUrl(params: MapParams): string {
+	return `/api/v2/map?${mapQuery(params)}`;
+}
+
+/** 座標が地図表示に使える値かどうか */
+export function hasValidCoordinates(lat: unknown, lon: unknown): boolean {
+	return (
+		typeof lat === 'number' && Number.isFinite(lat) && lat >= -90 && lat <= 90 &&
+		typeof lon === 'number' && Number.isFinite(lon) && lon >= -180 && lon <= 180
+	);
+}
+
+/**
+ * 地図描画に必要な情報（中心座標・タイル・外部リンク等）を取得する。
+ * 自前の地図コンポーネントで描画する場合に利用する。
+ */
+export async function getMapView(params: MapParams, signal?: AbortSignal): Promise<MapView | null> {
+	try {
+		const response = await fetch(`/api/v2/map/view?${mapQuery(params)}`, { signal });
+		if (!response.ok) return null;
+		return await response.json();
+	} catch (e) {
+		if (e instanceof DOMException && e.name === 'AbortError') throw e;
+		return null;
+	}
+}
+
 // Award judgment types
 export type JudgmentMode = 'strict' | 'lenient';
 export type LogType = 'unknown' | 'activator' | 'chaser';
