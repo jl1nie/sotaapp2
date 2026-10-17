@@ -50,7 +50,7 @@ impl GeoMag {
                         }
                     })
                 })
-                .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
+                .unwrap_or_else(|_| panic!("Bad cron format: {}", schedule)),
             )
             .await?;
 
