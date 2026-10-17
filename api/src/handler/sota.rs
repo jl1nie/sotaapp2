@@ -7,7 +7,7 @@ use axum::{
     Extension, Json, Router,
 };
 use chrono::{Duration, Utc};
-use firebase_auth_sdk::FireAuth;
+use fireauth::FireAuth;
 use shaku_axum::Inject;
 
 use common::award_config::AwardTemplateConfig;
