@@ -1,6 +1,6 @@
 use axum::extract::DefaultBodyLimit;
 use axum::Router;
-use firebase_auth_sdk::FireAuth;
+use fireauth::FireAuth;
 use registry::AppState;
 
 use super::{

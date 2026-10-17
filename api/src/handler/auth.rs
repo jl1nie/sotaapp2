@@ -6,7 +6,7 @@ use axum::middleware::{self, Next};
 use axum::response::IntoResponse;
 use axum::Json;
 use axum::{routing::post, Router};
-use firebase_auth_sdk::FireAuth;
+use fireauth::FireAuth;
 
 use crate::model::auth::AuthRequest;
 use domain::model::id::UserId;
