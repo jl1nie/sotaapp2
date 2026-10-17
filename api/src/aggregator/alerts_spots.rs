@@ -2,14 +2,14 @@ use shaku::HasComponent;
 use std::sync::Arc;
 
 use common::config::AppConfig;
-use common::error::{AppError, AppResult};
+use common::error::AppResult;
 use common::http;
 use domain::model::activation::{Alert, Spot};
 use registry::AppRegistry;
 use service::services::AdminPeriodicService;
 
+use super::spot_parse::{pota_spots_from_body, sota_spots_from_body};
 use crate::model::alerts::{PotaAlert, SotaAlert};
-use crate::model::spots::{PotaSpot, SotaSpot};
 
 pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> AppResult<()> {
     let service: &dyn AdminPeriodicService = registry.resolve_ref();
@@ -85,41 +85,43 @@ pub async fn update_alerts(config: &AppConfig, registry: &Arc<AppRegistry>) -> A
     Ok(())
 }
 
+/// 取得元ごとに失敗を分離する。片方が失敗しても、もう片方のスポットは更新する。
+async fn fetch_body(client: &reqwest::Client, endpoint: &str, label: &str) -> Option<Vec<u8>> {
+    let resp = match client.get(endpoint).send().await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to fetch {} spots: {:?}", label, e);
+            return None;
+        }
+    };
+    match resp.bytes().await {
+        Ok(b) => Some(b.to_vec()),
+        Err(e) => {
+            tracing::error!("Failed to read {} spots: {:?}", label, e);
+            None
+        }
+    }
+}
+
 pub async fn update_spots(config: &AppConfig, registry: &Arc<AppRegistry>) -> AppResult<()> {
     let service: &dyn AdminPeriodicService = registry.resolve_ref();
     let client = http::client();
 
-    let endpoint = config.sota_spot_endpoint.clone();
-    let response = client
-        .get(&endpoint)
-        .send()
-        .await
-        .map_err(AppError::GetError)?
-        .json::<Vec<SotaSpot>>()
-        .await
-        .map_err(AppError::GetError)?;
+    let mut requests: Vec<Spot> = vec![];
 
-    let mut requests: Vec<Spot> = response
-        .into_iter()
-        .filter_map(|ss| AppResult::<Spot>::from(ss).ok())
-        .collect();
+    if let Some(body) = fetch_body(client, &config.sota_spot_endpoint, "SOTA").await {
+        let spots = sota_spots_from_body(&body);
+        tracing::info!("Fetched SOTA spots: {}", spots.len());
+        requests.extend(spots);
+    }
 
-    let endpoint = config.pota_spot_endpoint.clone();
-    let response = client
-        .get(&endpoint)
-        .send()
-        .await
-        .map_err(AppError::GetError)?
-        .json::<Vec<PotaSpot>>()
-        .await
-        .map_err(AppError::GetError)?;
+    if let Some(body) = fetch_body(client, &config.pota_spot_endpoint, "POTA").await {
+        let spots = pota_spots_from_body(&body);
+        tracing::info!("Fetched POTA spots: {}", spots.len());
+        requests.extend(spots);
+    }
 
-    let requests_pota: Vec<Spot> = response
-        .into_iter()
-        .filter_map(|ss| AppResult::<Spot>::from(ss).ok())
-        .collect();
-
-    requests.extend(requests_pota);
+    tracing::info!("Updating {} spots total.", requests.len());
 
     service.update_spots(requests).await?;
     Ok(())
