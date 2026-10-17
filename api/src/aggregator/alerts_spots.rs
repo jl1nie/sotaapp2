@@ -109,10 +109,15 @@ pub async fn update_spots(config: &AppConfig, registry: &Arc<AppRegistry>) -> Ap
 
     let mut requests: Vec<Spot> = vec![];
 
-    if let Some(body) = fetch_body(client, &config.sota_spot_endpoint, "SOTA").await {
-        let spots = sota_spots_from_body(&body);
-        tracing::info!("Fetched SOTA spots: {}", spots.len());
-        requests.extend(spots);
+    // 旧スポット API は廃止済み。SOTA 側の新しい取得方法が決まるまで取得しない(SOTA_SPOT_ENABLED=true で有効化)
+    if config.sota_spot_enabled {
+        if let Some(body) = fetch_body(client, &config.sota_spot_endpoint, "SOTA").await {
+            let spots = sota_spots_from_body(&body);
+            tracing::info!("Fetched SOTA spots: {}", spots.len());
+            requests.extend(spots);
+        }
+    } else {
+        tracing::debug!("SOTA spot update is disabled");
     }
 
     if let Some(body) = fetch_body(client, &config.pota_spot_endpoint, "POTA").await {

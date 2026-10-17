@@ -15,6 +15,8 @@ pub struct AppConfig {
     pub log_level: String,
     pub sota_alert_endpoint: String,
     pub sota_spot_endpoint: String,
+    /// SOTA スポットの取得を行うか。旧スポット API (api2.sota.org.uk/api/spots) は廃止されたため既定は無効
+    pub sota_spot_enabled: bool,
     pub pota_alert_endpoint: String,
     pub pota_spot_endpoint: String,
     pub sota_summitlist_endpoint: String,
@@ -158,6 +160,7 @@ impl AppConfig {
                 "SOTA_SPOT_ENDPOINT",
                 "https://api2.sota.org.uk/api/spots/20?",
             ),
+            sota_spot_enabled: env_parse_or("SOTA_SPOT_ENABLED", false),
             sota_summitlist_endpoint: env_or(
                 "SOTA_SUMMITLIST_ENDPOINT",
                 "https://www.sotadata.org.uk/summitslist.csv",
@@ -220,6 +223,14 @@ impl AppConfig {
 mod tests {
     use super::*;
     use std::str::FromStr;
+
+    #[test]
+    fn test_sota_spot_is_disabled_by_default() {
+        // 旧 SOTA スポット API は廃止済みのため、環境変数が無ければ取得しない
+        assert!(!env_parse_or("SOTA_SPOT_ENABLED_UNSET_FOR_TEST", false));
+        std::env::set_var("SOTA_SPOT_ENABLED_SET_FOR_TEST", "true");
+        assert!(env_parse_or("SOTA_SPOT_ENABLED_SET_FOR_TEST", false));
+    }
 
     #[test]
     fn test_openapi_level_from_str_none() {
