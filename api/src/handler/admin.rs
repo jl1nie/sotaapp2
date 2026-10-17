@@ -9,7 +9,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use firebase_auth_sdk::FireAuth;
+use fireauth::FireAuth;
 use registry::AppState;
 use serde::Serialize;
 use shaku_axum::Inject;
