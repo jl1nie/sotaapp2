@@ -840,6 +840,7 @@ mod tests {
                 log_level: String::new(),
                 sota_alert_endpoint: String::new(),
                 sota_spot_endpoint: String::new(),
+                sota_spot_enabled: false,
                 pota_alert_endpoint: String::new(),
                 pota_spot_endpoint: String::new(),
                 sota_summitlist_endpoint: String::new(),
