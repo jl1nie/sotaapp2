@@ -96,7 +96,7 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
                     }
                 })
             })
-            .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
+            .unwrap_or_else(|_| panic!("Bad cron format: {}", schedule)),
         )
         .await
         .map_err(AppError::CronjobError)?;
@@ -114,7 +114,7 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
                     }
                 })
             })
-            .unwrap_or_else(|_| panic!("Bad cron format: {}", &schedule)),
+            .unwrap_or_else(|_| panic!("Bad cron format: {}", schedule)),
         )
         .await
         .map_err(AppError::CronjobError)?;

@@ -6,6 +6,8 @@ use std::str::FromStr;
 use crate::model::{id::LogId, AwardProgram};
 use crate::model::{pota::PotaRefLog, sota::SotaReference};
 
+// derive_new が生成するコードへの clippy の指摘(redundant_field_names)を抑止
+#[allow(clippy::redundant_field_names)]
 #[derive(new, Debug, Clone)]
 pub struct BoundingBox {
     pub min_lon: f64,
@@ -14,6 +16,8 @@ pub struct BoundingBox {
     pub max_lat: f64,
 }
 
+// derive_new が生成するコードへの clippy の指摘(redundant_field_names)を抑止
+#[allow(clippy::redundant_field_names)]
 #[derive(new, Debug, Clone)]
 pub struct CenterRadius {
     pub lon: f64,
