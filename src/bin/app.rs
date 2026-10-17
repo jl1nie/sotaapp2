@@ -3,7 +3,7 @@ use axum::{http::HeaderValue, Router};
 use chrono::Local;
 use clap::{Parser, Subcommand};
 use common::config::AppConfig;
-use firebase_auth_sdk::FireAuth;
+use fireauth::FireAuth;
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
