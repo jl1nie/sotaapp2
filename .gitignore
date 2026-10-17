@@ -3,3 +3,4 @@ target/
 tmp/
 .env
 sotaapp2.db
+bin/

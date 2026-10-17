@@ -9,7 +9,7 @@ use axum::{
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
 use fastrand;
-use firebase_auth_sdk::FireAuth;
+use fireauth::FireAuth;
 use serde_json::{json, Value};
 use shaku_axum::Inject;
 use std::str::FromStr;

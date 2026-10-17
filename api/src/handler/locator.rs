@@ -3,7 +3,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use firebase_auth_sdk::FireAuth;
+use fireauth::FireAuth;
 use shaku_axum::Inject;
 
 use crate::model::import::ImportResult;
