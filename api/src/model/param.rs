@@ -95,8 +95,8 @@ pub struct GetParam {
     pub lat: Option<f64>,
     #[validate(range(
         min = 0.0,
-        max = 500.0,
-        message = "距離は0〜500kmの範囲で指定してください"
+        max = 500000.0,
+        message = "距離は0〜500000m(メートル)の範囲で指定してください"
     ))]
     pub dist: Option<f64>,
     #[validate(range(min = -180.0, max = 180.0, message = "経度は-180〜180の範囲で指定してください"))]
@@ -326,13 +326,22 @@ mod tests {
     #[test]
     fn test_invalid_distance_too_high() {
         let param = GetParam {
-            dist: Some(501.0),
+            dist: Some(500001.0),
             ..Default::default()
         };
         let result = param.validated();
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("距離"));
+    }
+
+    #[test]
+    fn test_valid_distance_meters() {
+        let param = GetParam {
+            dist: Some(25000.0),
+            ..Default::default()
+        };
+        assert!(param.validated().is_ok());
     }
 
     #[test]

@@ -41,8 +41,11 @@ pub fn call_to_operator(callsign: &str) -> String {
 pub fn calculate_bounding_box(lat: f64, lon: f64, distance: f64) -> (f64, f64, f64, f64) {
     let g = Geodesic::wgs84();
 
-    let (max_lat, max_lon, _, _) = g.direct(lat, lon, 45.0, distance);
-    let (min_lat, min_lon, _, _) = g.direct(lat, lon, 225.0, distance);
+    // 東西南北に distance(m) 進んだ点から、半径 distance の円を覆う箱を作る
+    let (max_lat, _, _, _) = g.direct(lat, lon, 0.0, distance);
+    let (min_lat, _, _, _) = g.direct(lat, lon, 180.0, distance);
+    let (_, max_lon, _, _) = g.direct(lat, lon, 90.0, distance);
+    let (_, min_lon, _, _) = g.direct(lat, lon, 270.0, distance);
 
     (min_lat, min_lon, max_lat, max_lon)
 }
@@ -151,5 +154,20 @@ mod tests {
         // 10km範囲のバウンディングボックス
         assert!(min_lat < 35.0 && max_lat > 35.0);
         assert!(min_lon < 139.0 && max_lon > 139.0);
+    }
+
+    #[test]
+    fn test_bounding_box_covers_circle_in_cardinal_directions() {
+        let (lat, lon, d) = (35.0, 139.0, 1000.0);
+        let (min_lat, min_lon, max_lat, max_lon) = calculate_bounding_box(lat, lon, d);
+        let g = Geodesic::wgs84();
+        // 東西南北に d 弱離れた点は箱の内側に入る
+        for az in [0.0, 90.0, 180.0, 270.0] {
+            let (la, lo, _) = g.direct(lat, lon, az, d * 0.99);
+            assert!(la > min_lat && la < max_lat, "az={az}");
+            assert!(lo > min_lon && lo < max_lon, "az={az}");
+        }
+        // 箱の南北幅は約 2d
+        assert!((calculate_distance(min_lat, lon, max_lat, lon) - 2.0 * d).abs() < 1.0);
     }
 }
