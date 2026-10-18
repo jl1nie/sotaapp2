@@ -60,6 +60,150 @@ fn refs_text(r: &RefInfo) -> String {
     parts.join("/")
 }
 
+/// 運用局のコールサインと運用者
+struct Station<'a> {
+    activator: &'a str,
+    operator: String,
+}
+
+/// 項目のうち、自局・相手の参照に依らない部分
+struct QsoFields {
+    /// 公園(POTA)の記録に使う(RST は持たない)
+    base: Vec<String>,
+    /// SOTA と WWFF の記録に使う(RST を持つ)
+    with_rst: Vec<String>,
+}
+
+impl QsoFields {
+    fn new(qso: &QsoRecord, station: &Station, date: &str, time: &str) -> Self {
+        let base = vec![
+            adif_field(AdifField::StationCallsign, station.activator),
+            adif_field(AdifField::Operator, &station.operator),
+            adif_field(AdifField::Call, &qso.callsign),
+            adif_field(AdifField::QsoDate, date),
+            adif_field(AdifField::TimeOn, time),
+            adif_field(AdifField::Band, &qso.band_wlen),
+            adif_field(AdifField::Mode, &qso.mode),
+        ];
+        let mut with_rst = base.clone();
+        with_rst.push(adif_field(AdifField::RstSent, &qso.rst_sent));
+        with_rst.push(adif_field(AdifField::RstRcvd, &qso.rst_rcvd));
+        Self { base, with_rst }
+    }
+}
+
+/// SOTA の記録(自局の山が1つ)。山がなければ None
+fn sota_records(fields: &QsoFields, my: &RefInfo, his: &RefInfo) -> Option<(String, String)> {
+    if my.sota.is_empty() {
+        return None;
+    }
+    let theirs = if his.sota.is_empty() {
+        vec![]
+    } else {
+        vec![vec![adif_field(AdifField::SotaRef, &his.sota)]]
+    };
+    let mine = vec![adif_field(AdifField::MySotaRef, &my.sota)];
+    Some((my.sota.clone(), records_for(&fields.with_rst, mine, theirs)))
+}
+
+/// 公園(POTA)の記録(自局の公園ごと)と、所在地(MY_STATE。複数あれば最後のもの)
+fn park_records(
+    fields: &QsoFields,
+    my: &RefInfo,
+    his: &RefInfo,
+    options: &ConversionOptions,
+) -> (Vec<(String, String)>, Option<String>) {
+    let theirs: Vec<Vec<String>> = his
+        .pota
+        .iter()
+        .map(|h| {
+            vec![
+                adif_field(AdifField::Sig, "POTA"),
+                adif_field(AdifField::SigInfo, h),
+            ]
+        })
+        .collect();
+
+    let mut state = None;
+    let mut records = Vec::new();
+    for park in &my.pota {
+        let mut mine = vec![
+            adif_field(AdifField::MySig, "POTA"),
+            adif_field(AdifField::MySigInfo, park),
+        ];
+        // 所在地が分かる公園は、MY_STATE を入れる
+        if let Some(s) = options.park_states.get(park) {
+            mine.push(adif_field(AdifField::MyState, s));
+            state = Some(s.clone());
+        }
+        records.push((
+            park.clone(),
+            records_for(&fields.base, mine, theirs.clone()),
+        ));
+    }
+    (records, state)
+}
+
+/// WWFF の記録(自局の WWFF ごと)
+fn wwff_records(fields: &QsoFields, my: &RefInfo, his: &RefInfo) -> Vec<(String, String)> {
+    let theirs: Vec<Vec<String>> = his
+        .wwff
+        .iter()
+        .map(|h| {
+            vec![
+                adif_field(AdifField::Sig, "WWFF"),
+                adif_field(AdifField::SigInfo, h),
+            ]
+        })
+        .collect();
+    my.wwff
+        .iter()
+        .map(|wwff| {
+            let mine = vec![
+                adif_field(AdifField::MySig, "WWFF"),
+                adif_field(AdifField::MySigInfo, wwff),
+            ];
+            (
+                wwff.clone(),
+                records_for(&fields.with_rst, mine, theirs.clone()),
+            )
+        })
+        .collect()
+}
+
+/// 確認画面の表の1行
+fn display_row(
+    qso: &QsoRecord,
+    station: &Station,
+    date: &str,
+    time: &str,
+    refs: (&RefInfo, &RefInfo, Option<&str>),
+) -> Vec<String> {
+    let (my, his, my_state) = refs;
+    let mut my_text = refs_text(my);
+    if let Some(state) = my_state {
+        my_text.push_str(&format!("({state})"));
+    }
+    let mode = if qso.sub_mode.is_empty() {
+        qso.mode.clone()
+    } else {
+        format!("{}/{}", qso.mode, qso.sub_mode)
+    };
+    vec![
+        qso.callsign.clone(),
+        date.to_string(),
+        time.to_string(),
+        qso.band_wlen.clone(),
+        mode,
+        qso.rst_sent.clone(),
+        qso.rst_rcvd.clone(),
+        refs_text(his),
+        my_text,
+        station.activator.to_string(),
+        station.operator.clone(),
+    ]
+}
+
 /// 1交信の ADIF を作る。読み取りに失敗した交信は、その理由
 fn adif_qso(qso: &QsoRecord, options: &ConversionOptions) -> Result<AdifQso, String> {
     if qso.has_error() {
@@ -71,103 +215,29 @@ fn adif_qso(qso: &QsoRecord, options: &ConversionOptions) -> Result<AdifQso, Str
     let date = date_key(qso);
     let time = format!("{:02}{:02}", qso.hour, qso.minute);
     let (activator, operator) = station(options);
-
-    // 公園(POTA)の記録は RST を持たない。SOTA と WWFF の記録は RST を持つ
-    let base = vec![
-        adif_field(AdifField::StationCallsign, activator),
-        adif_field(AdifField::Operator, &operator),
-        adif_field(AdifField::Call, &qso.callsign),
-        adif_field(AdifField::QsoDate, &date),
-        adif_field(AdifField::TimeOn, &time),
-        adif_field(AdifField::Band, &qso.band_wlen),
-        adif_field(AdifField::Mode, &qso.mode),
-    ];
-    let mut with_rst = base.clone();
-    with_rst.push(adif_field(AdifField::RstSent, &qso.rst_sent));
-    with_rst.push(adif_field(AdifField::RstRcvd, &qso.rst_rcvd));
-
-    let mut records: Vec<(String, String)> = Vec::new();
-
-    // SOTA
-    if !my.sota.is_empty() {
-        let theirs = if his.sota.is_empty() {
-            vec![]
-        } else {
-            vec![vec![adif_field(AdifField::SotaRef, &his.sota)]]
-        };
-        let mine = vec![adif_field(AdifField::MySotaRef, &my.sota)];
-        records.push((my.sota.clone(), records_for(&with_rst, mine, theirs)));
-    }
-
-    // POTA
-    let mut my_state = String::new();
-    for park in &my.pota {
-        let theirs = his
-            .pota
-            .iter()
-            .map(|h| {
-                vec![
-                    adif_field(AdifField::Sig, "POTA"),
-                    adif_field(AdifField::SigInfo, h),
-                ]
-            })
-            .collect();
-        let mut mine = vec![
-            adif_field(AdifField::MySig, "POTA"),
-            adif_field(AdifField::MySigInfo, park),
-        ];
-        // 所在地が分かる公園は、MY_STATE を入れる
-        if let Some(state) = options.park_states.get(park) {
-            mine.push(adif_field(AdifField::MyState, state));
-            my_state = state.clone();
-        }
-        records.push((park.clone(), records_for(&base, mine, theirs)));
-    }
-
-    // WWFF
-    for wwff in &my.wwff {
-        let theirs = his
-            .wwff
-            .iter()
-            .map(|h| {
-                vec![
-                    adif_field(AdifField::Sig, "WWFF"),
-                    adif_field(AdifField::SigInfo, h),
-                ]
-            })
-            .collect();
-        let mine = vec![
-            adif_field(AdifField::MySig, "WWFF"),
-            adif_field(AdifField::MySigInfo, wwff),
-        ];
-        records.push((wwff.clone(), records_for(&with_rst, mine, theirs)));
-    }
-
-    let mut my_text = refs_text(&my);
-    if !my_state.is_empty() {
-        my_text.push_str(&format!("({my_state})"));
-    }
-    let mode = if qso.sub_mode.is_empty() {
-        qso.mode.clone()
-    } else {
-        format!("{}/{}", qso.mode, qso.sub_mode)
-    };
-    let display = vec![
-        qso.callsign.clone(),
-        date.clone(),
-        time,
-        qso.band_wlen.clone(),
-        mode,
-        qso.rst_sent.clone(),
-        qso.rst_rcvd.clone(),
-        refs_text(&his),
-        my_text,
-        activator.to_string(),
+    let station = Station {
+        activator,
         operator,
-    ];
+    };
+    let fields = QsoFields::new(qso, &station, &date, &time);
+
+    let (park, my_state) = park_records(&fields, &my, &his, options);
+    // ファイルの並び: 山、公園、WWFF
+    let records = sota_records(&fields, &my, &his)
+        .into_iter()
+        .chain(park)
+        .chain(wwff_records(&fields, &my, &his))
+        .collect();
+
     Ok(AdifQso {
+        display: display_row(
+            qso,
+            &station,
+            &date,
+            &time,
+            (&my, &his, my_state.as_deref()),
+        ),
         date,
-        display,
         records,
     })
 }
