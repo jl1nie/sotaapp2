@@ -142,6 +142,15 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
     }}).addTo(map);
     // 複数のポップアップを同時に開いたままにする
     var popupOpts = {{ autoClose: false, closeOnClick: false }};
+    // 初期表示で開くポップアップが地図を動かして中心がずれないよう、開く間だけautoPanを止める
+    // (クリックで開くときは従来どおりautoPanする)
+    function openWithoutPan(layer) {{
+      var popup = layer.getPopup();
+      var orig = popup.options.autoPan;
+      popup.options.autoPan = false;
+      layer.openPopup();
+      popup.options.autoPan = orig;
+    }}
     // ポップアップはtextContent経由で組み立てる(labelをHTMLとして解釈させない)
     function buildPopup(extra) {{
       var box = document.createElement('div');
@@ -157,7 +166,8 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
       return box;
     }}
     var center = L.marker([lat, lon]).addTo(map);
-    center.bindPopup(buildPopup(), popupOpts);
+    // 住所取得後のsetPopupContentでも地図が動かないよう、中心のポップアップは常にautoPanしない
+    center.bindPopup(buildPopup(), {{ autoClose: false, closeOnClick: false, autoPan: false }});
     center.openPopup();
 
     // 現在地の住所(日本語)。国土地理院の逆ジオコーダで市区町村コードを引き、
@@ -222,7 +232,7 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
         radius: 8, color: color, fillColor: color, fillOpacity: 0.7, weight: 2
       }}).addTo(map).bindPopup(box, popupOpts);
       // 近い順に{open_popups}件は最初からポップアップを開く(重なりを避けるため残りはクリックで開く)
-      if (i < {open_popups}) {{ m.openPopup(); }}
+      if (i < {open_popups}) {{ openWithoutPan(m); }}
     }});
   }})();
 </script>
@@ -648,7 +658,18 @@ mod tests {
         assert!(html.contains("closePopupOnClick: false"));
         assert!(html.contains("autoClose: false, closeOnClick: false"));
         // 近い順に OPEN_POPUPS 件を開く
-        assert!(html.contains(&format!("if (i < {OPEN_POPUPS}) {{ m.openPopup(); }}")));
+        assert!(html.contains(&format!("if (i < {OPEN_POPUPS}) {{ openWithoutPan(m); }}")));
+    }
+
+    /// 初期表示のポップアップが地図を動かして中心をずらさないこと
+    #[test]
+    fn test_initial_popups_do_not_pan_map() {
+        let html = render_map_html(&param(None, None), &sample_nearby());
+        // 中心のポップアップは常にautoPanしない
+        assert!(html.contains("closeOnClick: false, autoPan: false"));
+        // 近傍のポップアップは開く間だけautoPanを止める
+        assert!(html.contains("popup.options.autoPan = false;"));
+        assert!(!html.contains("m.openPopup()"));
     }
 
     #[test]
