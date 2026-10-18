@@ -8,6 +8,9 @@ use domain::model::event::FindRefBuilder;
 use registry::{AppRegistry, AppState};
 use service::services::UserService;
 
+/// 最初からポップアップを開いておく近傍マーカーの数(近い順)
+const OPEN_POPUPS: usize = 5;
+
 /// 近傍検索で取得する件数の上限(円に絞り直す前)
 const NEARBY_QUERY_LIMIT: i32 = 500;
 
@@ -132,14 +135,16 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
     }}
     var lat = parseFloat(el.dataset.lat);
     var lon = parseFloat(el.dataset.lon);
-    var map = L.map(el).setView([lat, lon], parseInt(el.dataset.zoom, 10));
+    var map = L.map(el, {{ closePopupOnClick: false }}).setView([lat, lon], parseInt(el.dataset.zoom, 10));
     L.tileLayer(el.dataset.tileUrl, {{
       attribution: el.dataset.tileAttribution,
       maxZoom: parseInt(el.dataset.tileMaxZoom, 10)
     }}).addTo(map);
+    // 複数のポップアップを同時に開いたままにする
+    var popupOpts = {{ autoClose: false, closeOnClick: false }};
     var popup = (el.dataset.label ? el.dataset.label + '<br>' : '') +
       lat.toFixed(6) + ', ' + lon.toFixed(6) + '<br>GL: {grid}';
-    L.marker([lat, lon]).addTo(map).bindPopup(popup).openPopup();
+    L.marker([lat, lon]).addTo(map).bindPopup(popup, popupOpts).openPopup();
 
     // 近傍のSOTA山岳・POTA公園。ポップアップはtextContentで組み立てる
     if (el.dataset.refs === 'true') {{
@@ -150,7 +155,7 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
     }}
     var nearby = [];
     try {{ nearby = JSON.parse(el.dataset.nearby || '[]'); }} catch (e) {{}}
-    nearby.forEach(function (r) {{
+    nearby.forEach(function (r, i) {{
       var color = r.kind === 'sota' ? '#2563eb' : '#16a34a';
       var box = document.createElement('div');
       var head = document.createElement('strong');
@@ -167,9 +172,11 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
         box.appendChild(document.createElement('br'));
         box.appendChild(document.createTextNode(t));
       }});
-      L.circleMarker([r.latitude, r.longitude], {{
+      var m = L.circleMarker([r.latitude, r.longitude], {{
         radius: 8, color: color, fillColor: color, fillOpacity: 0.7, weight: 2
-      }}).addTo(map).bindPopup(box).bindTooltip(r.code);
+      }}).addTo(map).bindPopup(box, popupOpts);
+      // 近い順に{open_popups}件は最初からポップアップを開く(重なりを避けるため残りはクリックで開く)
+      if (i < {open_popups}) {{ m.openPopup(); }}
     }});
   }})();
 </script>
@@ -181,6 +188,7 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
         label = label,
         nearby_json = nearby_json,
         radius = radius,
+        open_popups = OPEN_POPUPS,
         refs = param.want_refs() && !nearby.is_empty(),
         coords = coords,
         grid = grid,
@@ -584,5 +592,15 @@ mod tests {
             assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
             assert!(body.contains("radius"), "{uri}");
         }
+    }
+
+    #[test]
+    fn test_render_opens_nearest_popups_and_keeps_them_open() {
+        let html = render_map_html(&param(None, None), &sample_nearby());
+        // 複数のポップアップを同時に開いたままにする設定
+        assert!(html.contains("closePopupOnClick: false"));
+        assert!(html.contains("autoClose: false, closeOnClick: false"));
+        // 近い順に OPEN_POPUPS 件を開く
+        assert!(html.contains(&format!("if (i < {OPEN_POPUPS}) {{ m.openPopup(); }}")));
     }
 }
