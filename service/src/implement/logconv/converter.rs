@@ -472,6 +472,33 @@ pub fn convert_to_sota_activator(
     files
 }
 
+/// Convert QSO records to SOTA chaser format
+///
+/// 相手局の SOTA 参照番号がある交信だけを、日付ごとの CSV(`sota-chaser-YYYYMMDD.csv`)にする。
+/// 読み取りに失敗した行は、エラーの行として、その日の CSV に入れる。
+pub fn convert_to_sota_chaser(
+    records: &[QsoRecord],
+    callsign: &str,
+    options: &ConversionOptions,
+) -> HashMap<String, String> {
+    let mut files: HashMap<String, String> = HashMap::new();
+
+    for qso in records {
+        let Some((date, is_sota, row)) = to_sota_chaser(qso, callsign, options) else {
+            continue;
+        };
+        if !is_sota && !qso.has_error {
+            continue;
+        }
+        files
+            .entry(format!("sota-chaser-{}.csv", date))
+            .or_default()
+            .push_str(&(row.join(",") + "\n"));
+    }
+
+    files
+}
+
 /// Create a ZIP file from a hashmap of filename -> content
 pub fn create_zip(files: &HashMap<String, String>) -> Result<Vec<u8>, std::io::Error> {
     let mut buffer = Vec::new();
@@ -538,6 +565,36 @@ mod tests {
         assert_eq!(row[0], "V2");
         assert_eq!(row[2], "JA/TK-001");
         assert_eq!(row[8], "JA/KN-001");
+    }
+
+    #[test]
+    fn test_convert_to_sota_chaser_keeps_only_sota_contacts() {
+        let options = ConversionOptions {
+            his_qth: "qth".to_string(),
+            ..Default::default()
+        };
+        let mut with_summit = make_qso();
+        with_summit.qth = "JA/KN-001".to_string();
+        let mut without = make_qso();
+        without.qth = "Tokyo".to_string();
+
+        let files = convert_to_sota_chaser(&[with_summit, without], "JA1ZZZ", &options);
+        assert_eq!(files.len(), 1);
+        let csv = files.values().next().unwrap();
+        assert_eq!(csv.lines().count(), 1);
+        assert!(csv.starts_with("V2,JA1ZZZ,,"));
+        assert!(csv.contains(",JL1NIE,JA/KN-001,"));
+    }
+
+    #[test]
+    fn test_convert_to_sota_chaser_without_sota_contacts_is_empty() {
+        let options = ConversionOptions {
+            his_qth: "qth".to_string(),
+            ..Default::default()
+        };
+        let mut qso = make_qso();
+        qso.qth = String::new();
+        assert!(convert_to_sota_chaser(&[qso], "JA1ZZZ", &options).is_empty());
     }
 
     #[test]
