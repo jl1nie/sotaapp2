@@ -33,7 +33,7 @@ def multipart(file_bytes, options):
 
 def post(base, path, file_bytes, options):
     body, ctype = multipart(file_bytes, json.dumps(options, ensure_ascii=False))
-    req = urllib.request.Request(base.rstrip('/') + path, data=body, headers={'Content-Type': ctype}, method='POST')
+    req = urllib.request.Request(base.rstrip('/') + path, data=body, headers={'Content-Type': ctype, 'User-Agent': 'logconv-verify/1.0'}, method='POST')  # 既定の Python の UA は、Cloudflare が 403 で拒否する
     try:
         with urllib.request.urlopen(req, timeout=60) as res:
             return res.status, res.read()
