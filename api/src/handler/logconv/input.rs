@@ -3,7 +3,7 @@
 use axum::extract::Multipart;
 use serde::de::DeserializeOwned;
 use service::implement::logconv::{
-    decode_adif, decode_auto, parse_adif, ConversionOptions, QsoRecord,
+    decode_adif, decode_auto, parse_adif, ConversionOptions, HisQth, QsoRecord,
 };
 use service::services::AdminService;
 
@@ -80,7 +80,7 @@ impl Upload {
         let mut options: ConversionOptions = request.into();
         if is_adif {
             // ADIF の入力には、HAMLOG の QTH の列がない。相手の参照は、ADIF のコメントなどから取る
-            options.his_qth = "qth".to_string();
+            options.his_qth = HisQth::Qth;
         }
         if let Some(admin) = admin {
             options.park_states = park_states(admin, &records, &options).await;

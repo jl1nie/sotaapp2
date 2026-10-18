@@ -2,7 +2,7 @@
 
 use common::error::AppError;
 use domain::model::event::FindRefBuilder;
-use service::implement::logconv::{get_ref, ConversionOptions, QsoRecord};
+use service::implement::logconv::{get_ref, ConversionOptions, MyQth, QsoRecord};
 use service::services::AdminService;
 use std::collections::HashMap;
 
@@ -39,10 +39,10 @@ pub async fn park_states(
 fn operated_parks(records: &[QsoRecord], options: &ConversionOptions) -> Vec<String> {
     let mut codes: Vec<String> = Vec::new();
     for qso in records {
-        let mine = match options.my_qth.as_str() {
-            "rmks1" => get_ref(&qso.remarks1).pota,
-            "rmks2" => get_ref(&qso.remarks2).pota,
-            _ => get_ref(&options.park.join(" ")).pota,
+        let mine = match options.my_qth {
+            MyQth::Rmks1 => get_ref(&qso.remarks1).pota,
+            MyQth::Rmks2 => get_ref(&qso.remarks2).pota,
+            MyQth::Form => get_ref(&options.park.join(" ")).pota,
         };
         for code in mine {
             if !codes.contains(&code) {
