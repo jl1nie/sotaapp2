@@ -9,7 +9,7 @@
 ブラウザのアドレスバーに、次のURLを入力します。
 
 ```
-https://sotaapp2.fly.dev/api/v2/map?lat=35.8574&lon=138.9442
+https://sotaapp2.sotalive.net/api/v2/map?lat=35.8574&lon=138.9442
 ```
 
 `lat`(緯度)と`lon`(経度)は必須です。どちらかが欠けると、エラー(400)になります。
@@ -72,7 +72,7 @@ https://sotaapp2.fly.dev/api/v2/map?lat=35.8574&lon=138.9442
 `embed=true` を付けると、ヘッダのない地図だけのページになります。
 
 ```html
-<iframe src="https://sotaapp2.fly.dev/api/v2/map?lat=35.8574&lon=138.9442&embed=true"
+<iframe src="https://sotaapp2.sotalive.net/api/v2/map?lat=35.8574&lon=138.9442&embed=true"
         width="600" height="400" style="border:0"></iframe>
 ```
 
