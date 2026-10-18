@@ -597,6 +597,48 @@ mod tests {
         assert!(convert_to_sota_chaser(&[qso], "JA1ZZZ", &options).is_empty());
     }
 
+    /// HAMLOG CSV の行から、チェイサー用の CSV を作る(相手の参照は QTH の列)
+    #[test]
+    fn test_convert_to_sota_chaser_from_hamlog_rows() {
+        use super::super::hamlog::decode_hamlog;
+        // コールサイン,日付,時刻,RST送,RST受,周波数,モード,コード,GL,QSL,名前,QTH,備考1,備考2,
+        let rows = [
+            "JA1AAA,25/10/18,01:00U,59,59,7.030,CW,,,N,,,,,",
+            "JA1BBB,25/10/18,01:05U,59,59,7.030,CW,,,N,,JA/KN-001,,,",
+            "JA1CCC,25/10/18,01:10U,59,59,14.285,SSB,,,N,,JA-0123,,,",
+            "JA1FFF,25/10/18,01:25U,59,59,21.300,SSB,,,N,,JA/KN-001 JA-0200,,,",
+            "JA1GGG,25/10/19,00:30U,59,59,21.300,SSB,,,N,,JA/TK-005,,,",
+        ];
+        let records: Vec<QsoRecord> = rows
+            .iter()
+            .map(|r| {
+                let cols: Vec<String> = r.split(',').map(String::from).collect();
+                decode_hamlog(&cols).unwrap()
+            })
+            .collect();
+        let options = ConversionOptions {
+            his_qth: "qth".to_string(),
+            ..Default::default()
+        };
+
+        let files = convert_to_sota_chaser(&records, "JA1ZZZ/1", &options);
+        let mut names: Vec<&String> = files.keys().collect();
+        names.sort();
+        assert_eq!(
+            names,
+            vec!["sota-chaser-20251018.csv", "sota-chaser-20251019.csv"]
+        );
+        assert_eq!(
+            files["sota-chaser-20251018.csv"],
+            "V2,JA1ZZZ/1,,18/10/2025,01:05,7MHz,CW,JA1BBB,JA/KN-001,\n\
+             V2,JA1ZZZ/1,,18/10/2025,01:25,21MHz,SSB,JA1FFF,JA/KN-001,\n"
+        );
+        assert_eq!(
+            files["sota-chaser-20251019.csv"],
+            "V2,JA1ZZZ/1,,19/10/2025,00:30,21MHz,SSB,JA1GGG,JA/TK-005,\n"
+        );
+    }
+
     #[test]
     fn test_to_airham_header() {
         let qso = QsoRecord::default();
