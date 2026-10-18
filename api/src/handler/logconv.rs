@@ -167,33 +167,7 @@ async fn hamlog_handler(mut multipart: Multipart) -> Response {
 
     // ファイル内容をUTF-8で読み込み (Shift-JISフォールバックなし、簡略化)
     let content_str = String::from_utf8_lossy(&content).to_string();
-
-    // CSVをパース
-    let mut records: Vec<QsoRecord> = Vec::new();
-    let mut reader = csv::ReaderBuilder::new()
-        .has_headers(false)
-        .flexible(true)
-        .from_reader(content_str.as_bytes());
-
-    let mut header_seen = false;
-    for record in reader.records().flatten() {
-        let cols: Vec<String> = record.iter().map(|s| s.to_string()).collect();
-        if cols.is_empty() {
-            continue;
-        }
-        match decode_auto(&cols, header_seen) {
-            Ok(qso) => {
-                records.push(qso);
-                header_seen = true;
-            }
-            Err(e) if e == "HEADER" => {
-                header_seen = true;
-            }
-            Err(_) => {
-                header_seen = true;
-            }
-        }
-    }
+    let (records, is_adif) = read_records(&content_str);
 
     if records.is_empty() {
         return (
@@ -209,7 +183,11 @@ async fn hamlog_handler(mut multipart: Multipart) -> Response {
             .into_response();
     }
 
-    let options: ConversionOptions = request.options.into();
+    let mut options: ConversionOptions = request.options.into();
+    if is_adif {
+        // ADIF の入力には、HAMLOG の QTH の列がない。相手の参照は、ADIF のコメントなどから取る
+        options.his_qth = "qth".to_string();
+    }
     let callsign = request
         .callsign
         .unwrap_or_else(|| options.sota_activator.clone());
@@ -357,6 +335,50 @@ async fn hamlog_handler(mut multipart: Multipart) -> Response {
     }
 }
 
+/// 入力のファイルを読む。1行目に `ADIF` か `<EOH>` があれば ADIF、なければ HAMLOG CSV(HamLog iOS を含む)
+fn read_records(content: &str) -> (Vec<QsoRecord>, bool) {
+    let first_line = content
+        .lines()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("")
+        .to_uppercase();
+    let is_adif = first_line.contains("ADIF") || first_line.contains("<EOH>");
+
+    let mut records: Vec<QsoRecord> = Vec::new();
+    if is_adif {
+        for fields in parse_adif(content) {
+            // ADIFレコードを文字列に再構築
+            let record_str: String = fields
+                .iter()
+                .map(|(k, v)| format!("<{}:{}>{}", k, v.len(), v))
+                .collect::<Vec<_>>()
+                .join("")
+                + "<EOR>";
+            if let Ok(qso) = decode_adif(&record_str) {
+                records.push(qso);
+            }
+        }
+    } else {
+        let mut reader = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(content.as_bytes());
+
+        let mut header_seen = false;
+        for record in reader.records().flatten() {
+            let cols: Vec<String> = record.iter().map(|s| s.to_string()).collect();
+            if cols.is_empty() {
+                continue;
+            }
+            if let Ok(qso) = decode_auto(&cols, header_seen) {
+                records.push(qso);
+            }
+            header_seen = true;
+        }
+    }
+    (records, is_adif)
+}
+
 /// POTA ADIF変換ハンドラー (JSON応答版)
 async fn pota_handler(mut multipart: Multipart) -> Response {
     let mut file_content: Option<Vec<u8>> = None;
@@ -402,57 +424,10 @@ async fn pota_handler(mut multipart: Multipart) -> Response {
 
     let content_str = String::from_utf8_lossy(&content).to_string();
 
-    // ADIFかCSVか判定
-    let is_adif =
-        content_str.to_uppercase().contains("<EOH>") || content_str.to_uppercase().contains("ADIF");
-
-    let mut records: Vec<QsoRecord> = Vec::new();
+    let (records, is_adif) = read_records(&content_str);
     let mut options: ConversionOptions = request.into();
-    options.his_qth = "qth".to_string(); // ADIFの場合はqthから取得
-
     if is_adif {
-        // ADIF形式
-        let adif_records = parse_adif(&content_str);
-        for fields in adif_records {
-            // ADIFレコードを文字列に再構築
-            let record_str: String = fields
-                .iter()
-                .map(|(k, v)| format!("<{}:{}>{}", k, v.len(), v))
-                .collect::<Vec<_>>()
-                .join("")
-                + "<EOR>";
-
-            match decode_adif(&record_str) {
-                Ok(qso) => records.push(qso),
-                Err(_) => continue,
-            }
-        }
-    } else {
-        // CSV形式
-        let mut reader = csv::ReaderBuilder::new()
-            .has_headers(false)
-            .flexible(true)
-            .from_reader(content_str.as_bytes());
-
-        let mut header_seen = false;
-        for record in reader.records().flatten() {
-            let cols: Vec<String> = record.iter().map(|s| s.to_string()).collect();
-            if cols.is_empty() {
-                continue;
-            }
-            match decode_auto(&cols, header_seen) {
-                Ok(qso) => {
-                    records.push(qso);
-                    header_seen = true;
-                }
-                Err(e) if e == "HEADER" => {
-                    header_seen = true;
-                }
-                Err(_) => {
-                    header_seen = true;
-                }
-            }
-        }
+        options.his_qth = "qth".to_string(); // ADIFの場合はqthから取得
     }
 
     if records.is_empty() {
@@ -493,12 +468,12 @@ mod tests {
         let _router = logconv_router();
     }
 
-    /// multipart/form-data のリクエストを作り、ハンドラーに渡す
-    async fn post_hamlog(csv: &str, options: &str) -> Response {
+    /// multipart/form-data のリクエストを作る
+    async fn multipart_of(file: &str, options: &str) -> Multipart {
         use axum::extract::FromRequest;
         let boundary = "XBOUNDARYX";
         let body = format!(
-            "--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"log.csv\"\r\n\r\n{csv}\r\n\
+            "--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"log.csv\"\r\n\r\n{file}\r\n\
              --{b}\r\nContent-Disposition: form-data; name=\"options\"\r\n\r\n{options}\r\n--{b}--\r\n",
             b = boundary
         );
@@ -510,8 +485,19 @@ mod tests {
             )
             .body(axum::body::Body::from(body))
             .unwrap();
-        let multipart = Multipart::from_request(request, &()).await.unwrap();
-        hamlog_handler(multipart).await
+        Multipart::from_request(request, &()).await.unwrap()
+    }
+
+    async fn post_hamlog(csv: &str, options: &str) -> Response {
+        hamlog_handler(multipart_of(csv, options).await).await
+    }
+
+    async fn post_pota_check(csv: &str, options: &str) -> serde_json::Value {
+        let res = pota_handler(multipart_of(csv, options).await).await;
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        serde_json::from_slice(&bytes).unwrap()
     }
 
     // HAMLOG CSV: コールサイン,日付,時刻,RST送,RST受,周波数,モード,コード,GL,QSL,名前,QTH,備考1,備考2,
@@ -533,5 +519,35 @@ mod tests {
     async fn test_hamlog_unknown_format_is_a_bad_request() {
         let res = post_hamlog(CSV, r#"{"format":"nope"}"#).await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    // 相手(JA1BBB)の SOTA 参照は QTH の列にある。「指定しない」なら、読まない
+    #[tokio::test]
+    async fn test_pota_check_respects_his_qth_none_for_csv() {
+        let opts = |qth: &str| {
+            format!(
+                r#"{{"command":"ADIFCSVCheck","myQTH":"rmks1","QTH":"{qth}","POTAActivator":"JA1ZZZ/1"}}"#
+            )
+        };
+        let csv = "JA1AAA,25/10/18,01:00U,59,59,7.030,CW,,,N,,JA/KN-001,JA-0001,,\n";
+        let none = post_pota_check(csv, &opts("none")).await;
+        assert_eq!(none["log_text"][0][7], "");
+        let qth = post_pota_check(csv, &opts("qth")).await;
+        assert_eq!(qth["log_text"][0][7], "JA/KN-001");
+    }
+
+    // ADIF ファイルを入力にして、POTA の ADIF を作れる
+    #[tokio::test]
+    async fn test_hamlog_pota_accepts_an_adif_file() {
+        let adif = "ADIF Export\n<EOH>\n\
+            <CALL:6>JA1AAA<QSO_DATE:8>20251018<TIME_ON:4>0100<BAND:3>40m<MODE:2>CW\
+            <MY_SIG_INFO:7>JA-0001<SIG_INFO:7>JA-0123<EOR>\n";
+        let res = post_hamlog(
+            adif,
+            r#"{"format":"pota","myQTH":"rmks1","POTAActivator":"JA1ZZZ/1","POTAOperator":"JA1ZZZ"}"#,
+        )
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()[header::CONTENT_TYPE], "application/zip");
     }
 }

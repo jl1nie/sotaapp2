@@ -131,7 +131,7 @@ pub fn to_sota_chaser(
         qso.mode_sota.clone(),
         qso.callsign.clone(),
         his_ref.sota.clone(),
-        String::new(),
+        format!("{} ", his_ref.loc),
     ];
 
     Some((date2, is_sota, row))
@@ -229,40 +229,69 @@ pub fn to_adif2(
         vec![his_ref.sota.clone()]
     };
 
-    for my in &my_sota {
-        let mut fields = qso_fields.clone();
-        fields.push(adif_field("mysotaref", my));
-        for his in &his_sota {
-            fields.push(adif_field("sotaref", his));
+    // 自局の参照ごとに、相手の参照の数だけ記録を作る(相手がなければ1件)。
+    // 相手が複数の公園(n-fer)のときは、組み合わせごとの別の記録になる(旧版と同じ)
+    let records = |base: &Vec<String>, my_fields: Vec<String>, his: Vec<Vec<String>>| {
+        let mut out: Vec<String> = Vec::new();
+        let mut push = |extra: Vec<String>| {
+            out.extend(base.iter().cloned());
+            out.extend(my_fields.iter().cloned());
+            out.extend(extra);
+            out.push("<EOR>\n".to_string());
+        };
+        if his.is_empty() {
+            push(Vec::new());
+        } else {
+            for h in his {
+                push(h);
+            }
         }
-        fields.push("<EOR>\n".to_string());
-        log.insert(my.clone(), fields);
+        out
+    };
+
+    for my in &my_sota {
+        let his = his_sota
+            .iter()
+            .map(|h| vec![adif_field("sotaref", h)])
+            .collect();
+        log.insert(
+            my.clone(),
+            records(&qso_fields, vec![adif_field("mysotaref", my)], his),
+        );
     }
 
     // POTA references
     for my in &my_ref.pota {
-        let mut fields = base_fields.clone();
-        fields.push(adif_field("mysig", "POTA"));
-        fields.push(adif_field("mysiginfo", my));
-        for his in &his_ref.pota {
-            fields.push(adif_field("sig", "POTA"));
-            fields.push(adif_field("siginfo", his));
-        }
-        fields.push("<EOR>\n".to_string());
-        log.insert(my.clone(), fields);
+        let his = his_ref
+            .pota
+            .iter()
+            .map(|h| vec![adif_field("sig", "POTA"), adif_field("siginfo", h)])
+            .collect();
+        log.insert(
+            my.clone(),
+            records(
+                &base_fields,
+                vec![adif_field("mysig", "POTA"), adif_field("mysiginfo", my)],
+                his,
+            ),
+        );
     }
 
     // WWFF references
     for my in &my_ref.wwff {
-        let mut fields = qso_fields.clone();
-        fields.push(adif_field("mysig", "WWFF"));
-        fields.push(adif_field("mysiginfo", my));
-        for his in &his_ref.wwff {
-            fields.push(adif_field("sig", "WWFF"));
-            fields.push(adif_field("siginfo", his));
-        }
-        fields.push("<EOR>\n".to_string());
-        log.insert(my.clone(), fields);
+        let his = his_ref
+            .wwff
+            .iter()
+            .map(|h| vec![adif_field("sig", "WWFF"), adif_field("siginfo", h)])
+            .collect();
+        log.insert(
+            my.clone(),
+            records(
+                &qso_fields,
+                vec![adif_field("mysig", "WWFF"), adif_field("mysiginfo", my)],
+                his,
+            ),
+        );
     }
 
     // Build display row
@@ -421,6 +450,60 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
     result
 }
 
+/// SOTA アクティベーターの ADIF の1行(`sotaYYYYMMDD.adi`)。自局の山がない行は None
+///
+/// 旧版と同じく、項目は空白で区切り、最後に `<EOR>`。読み取りに失敗した行は、そのメッセージを1行で出す。
+fn to_sota_adif(
+    qso: &QsoRecord,
+    callsign: &str,
+    options: &ConversionOptions,
+) -> Option<(String, String)> {
+    let date = format!("{:04}{:02}{:02}", qso.year, qso.month, qso.day);
+    if qso.has_error {
+        return Some((date, qso.error_message.clone()));
+    }
+
+    let ref_of = |source: &str, own: Option<RefInfo>| match source {
+        "rmks1" => get_ref(&qso.remarks1),
+        "rmks2" => get_ref(&qso.remarks2),
+        _ => own.unwrap_or_default(),
+    };
+    let my_ref = ref_of(
+        options.my_qth.as_str(),
+        Some(RefInfo {
+            sota: options.summit.clone(),
+            ..Default::default()
+        }),
+    );
+    if my_ref.sota.is_empty() {
+        return None;
+    }
+    // 旧版の ADIF は、相手の参照を備考1・備考2からだけ読む
+    let his_ref = match options.his_qth.as_str() {
+        "rmks1" | "rmks2" => ref_of(options.his_qth.as_str(), None),
+        _ => RefInfo::default(),
+    };
+
+    let (operator, _) = super::types::split_callsign(callsign);
+    let mut fields = vec![
+        adif_field("activator", callsign),
+        adif_field("operator", &operator),
+        adif_field("callsign", &qso.callsign),
+        adif_field("date", &date),
+        adif_field("time", &format!("{:02}{:02}", qso.hour, qso.minute)),
+        adif_field("band-wlen", &qso.band_wlen),
+        adif_field("mode", &qso.mode),
+        adif_field("rst_sent", &qso.rst_sent),
+        adif_field("rst_rcvd", &qso.rst_rcvd),
+        adif_field("mysotaref", &my_ref.sota),
+    ];
+    if !his_ref.sota.is_empty() {
+        fields.push(adif_field("sotaref", &his_ref.sota));
+    }
+    fields.push("<EOR>".to_string());
+    Some((date, fields.join(" ")))
+}
+
 /// Convert QSO records to SOTA activator format
 ///
 /// 日付ごとに `sotaYYYYMMDD.csv` を作り、相手にも SOTA 参照番号がある交信(S2S)は
@@ -454,13 +537,32 @@ pub fn convert_to_sota_activator(
         }
     }
 
+    // ADIF は、1つのファイルに全交信(ファイル名は、最初の交信の日付)
+    let mut adif_name: Option<String> = None;
+    let mut adif_body = String::new();
+    for qso in records {
+        if let Some((date, line)) = to_sota_adif(qso, callsign, options) {
+            adif_name.get_or_insert_with(|| format!("sota{}.adi", date));
+            adif_body.push_str(&line);
+            adif_body.push('\n');
+        }
+    }
+    if let Some(name) = adif_name {
+        let header = format!(
+            "ADIF Export from HAMLOG by JL1NIE\n{}\n{}\n<EOH>\n",
+            adif_field("programid", PROGRAM_ID),
+            adif_field("adifver", "3.0.6")
+        );
+        files.insert(name, header + &adif_body);
+    }
+
     files
 }
 
 /// Convert QSO records to SOTA chaser format
 ///
-/// 相手局の SOTA 参照番号がある交信だけを、日付ごとの CSV(`sota-chaser-YYYYMMDD.csv`)にする。
-/// 読み取りに失敗した行は、エラーの行として、その日の CSV に入れる。
+/// 相手局の SOTA 参照番号がある交信を日付ごとの CSV(`sotaYYYYMMDD.csv`)に、ない交信を
+/// `otherYYYYMMDD.csv` にする(旧版と同じ)。読み取りに失敗した行は、`other` の側に入れる。
 pub fn convert_to_sota_chaser(
     records: &[QsoRecord],
     callsign: &str,
@@ -472,11 +574,9 @@ pub fn convert_to_sota_chaser(
         let Some((date, is_sota, row)) = to_sota_chaser(qso, callsign, options) else {
             continue;
         };
-        if !is_sota && !qso.has_error {
-            continue;
-        }
+        let prefix = if is_sota { "sota" } else { "other" };
         files
-            .entry(format!("sota-chaser-{}.csv", date))
+            .entry(format!("{}{}.csv", prefix, date))
             .or_default()
             .push_str(&(row.join(",") + "\n"));
     }
@@ -591,7 +691,7 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_to_sota_chaser_keeps_only_sota_contacts() {
+    fn test_convert_to_sota_chaser_splits_sota_and_other_contacts() {
         let options = ConversionOptions {
             his_qth: "qth".to_string(),
             ..Default::default()
@@ -602,25 +702,27 @@ mod tests {
         without.qth = "Tokyo".to_string();
 
         let files = convert_to_sota_chaser(&[with_summit, without], "JA1ZZZ", &options);
-        assert_eq!(files.len(), 1);
-        let csv = files.values().next().unwrap();
-        assert_eq!(csv.lines().count(), 1);
-        assert!(csv.starts_with("V2,JA1ZZZ,,"));
-        assert!(csv.contains(",JL1NIE,JA/KN-001,"));
+        assert_eq!(files.len(), 2);
+        let sota = &files["sota20241228.csv"];
+        assert_eq!(sota.lines().count(), 1);
+        assert!(sota.starts_with("V2,JA1ZZZ,,"));
+        assert!(sota.contains(",JL1NIE,JA/KN-001,"));
+        // 山のない交信は、other のファイルに入る
+        assert_eq!(files["other20241228.csv"].lines().count(), 1);
     }
 
     #[test]
-    fn test_convert_to_sota_chaser_without_sota_contacts_is_empty() {
+    fn test_convert_to_sota_chaser_without_sota_contacts_has_only_other() {
         let options = ConversionOptions {
             his_qth: "qth".to_string(),
             ..Default::default()
         };
         let mut qso = make_qso();
         qso.qth = String::new();
-        assert!(convert_to_sota_chaser(&[qso], "JA1ZZZ", &options).is_empty());
+        let files = convert_to_sota_chaser(&[qso], "JA1ZZZ", &options);
+        assert_eq!(files.keys().collect::<Vec<_>>(), vec!["other20241228.csv"]);
     }
 
-    /// HAMLOG CSV の行から、チェイサー用の CSV を作る(相手の参照は QTH の列)
     #[test]
     fn test_convert_to_sota_chaser_from_hamlog_rows() {
         use super::super::hamlog::decode_hamlog;
@@ -649,17 +751,19 @@ mod tests {
         names.sort();
         assert_eq!(
             names,
-            vec!["sota-chaser-20251018.csv", "sota-chaser-20251019.csv"]
+            vec!["other20251018.csv", "sota20251018.csv", "sota20251019.csv"]
         );
         assert_eq!(
-            files["sota-chaser-20251018.csv"],
-            "V2,JA1ZZZ/1,,18/10/2025,01:05,7MHz,CW,JA1BBB,JA/KN-001,\n\
-             V2,JA1ZZZ/1,,18/10/2025,01:25,21MHz,SSB,JA1FFF,JA/KN-001,\n"
+            files["sota20251018.csv"],
+            "V2,JA1ZZZ/1,,18/10/2025,01:05,7MHz,CW,JA1BBB,JA/KN-001, \n\
+             V2,JA1ZZZ/1,,18/10/2025,01:25,21MHz,SSB,JA1FFF,JA/KN-001, \n"
         );
         assert_eq!(
-            files["sota-chaser-20251019.csv"],
-            "V2,JA1ZZZ/1,,19/10/2025,00:30,21MHz,SSB,JA1GGG,JA/TK-005,\n"
+            files["sota20251019.csv"],
+            "V2,JA1ZZZ/1,,19/10/2025,00:30,21MHz,SSB,JA1GGG,JA/TK-005, \n"
         );
+        // 山のない交信(JA1AAA と、公園だけの JA1CCC)は other に
+        assert_eq!(files["other20251018.csv"].lines().count(), 2);
     }
 
     /// フィクスチャ(test_data/logconv)の HAMLOG CSV を読む
@@ -712,12 +816,13 @@ mod tests {
     }
 
     #[test]
-    fn fixture_nfer_sota_chaser_keeps_only_summit_contacts() {
+    fn fixture_nfer_sota_chaser_splits_summit_contacts_from_the_others() {
         let files = convert_to_sota_chaser(&fixture(NFER), "JA1ZZZ", &rmks1_qth());
-        assert_eq!(files.len(), 1);
-        let csv = &files["sota-chaser-20251018.csv"];
+        assert_eq!(files.len(), 2);
+        let csv = &files["sota20251018.csv"];
         assert_eq!(csv.lines().count(), 2);
         assert!(csv.contains(",JA1BBB,JA/KN-001,") && csv.contains(",JA1FFF,JA/KN-001,"));
+        assert_eq!(files["other20251018.csv"].lines().count(), 8);
     }
 
     #[test]
@@ -735,27 +840,13 @@ mod tests {
                 "JA1ZZZ-1@JAFF-0001-20251018.adi",
             ]
         );
-        // 自局が1つの参照: 全10交信。2-fer・3-fer は、その公園の運用だけ
-        assert_eq!(
-            records_in(&result.files["JA1ZZZ-1@JA-0001-20251018.adi"]),
-            10
-        );
-        assert_eq!(
-            records_in(&result.files["JA1ZZZ-1@JA-TK-001-20251018.adi"]),
-            10
-        );
-        assert_eq!(
-            records_in(&result.files["JA1ZZZ-1@JA-0002-20251018.adi"]),
-            4
-        );
-        assert_eq!(
-            records_in(&result.files["JA1ZZZ-1@JA-0003-20251018.adi"]),
-            1
-        );
-        assert_eq!(
-            records_in(&result.files["JA1ZZZ-1@JAFF-0001-20251018.adi"]),
-            6
-        );
+        // 相手が複数の公園のときは、公園ごとに別の記録(JA-0001 は、10交信に、相手 2-fer ×2 と 3-fer の追加分)
+        let count = |name: &str| records_in(&result.files[name]);
+        assert_eq!(count("JA1ZZZ-1@JA-0001-20251018.adi"), 14);
+        assert_eq!(count("JA1ZZZ-1@JA-TK-001-20251018.adi"), 10);
+        assert_eq!(count("JA1ZZZ-1@JA-0002-20251018.adi"), 7);
+        assert_eq!(count("JA1ZZZ-1@JA-0003-20251018.adi"), 3);
+        assert_eq!(count("JA1ZZZ-1@JAFF-0001-20251018.adi"), 6);
     }
 
     #[test]
@@ -792,6 +883,93 @@ mod tests {
         assert_eq!(result.error_log.len(), 2);
         assert!(result.error_log[0].starts_with("3行:"));
         assert!(result.error_log[1].starts_with("4行:"));
+    }
+
+    // ---- 旧版(HamLogConv)の出力との一致(test_data/logconv/legacy) ----
+
+    macro_rules! legacy {
+        ($path:literal) => {
+            include_str!(concat!("../../../../test_data/logconv/legacy/", $path))
+        };
+    }
+
+    #[test]
+    fn legacy_parity_sota_activator() {
+        let options = ConversionOptions {
+            my_qth: "rmks1".to_string(),
+            his_qth: "rmks2".to_string(),
+            ..rmks1_qth()
+        };
+        let files = convert_to_sota_activator(&fixture(NFER_RMKS2), "JA1ZZZ/1", &options);
+        let mut names: Vec<&String> = files.keys().collect();
+        names.sort();
+        assert_eq!(
+            names,
+            vec![
+                "sota-s2s-20251018.csv",
+                "sota20251018.adi",
+                "sota20251018.csv"
+            ]
+        );
+        assert_eq!(
+            files["sota20251018.csv"],
+            legacy!("sota_a/sota20251018.csv")
+        );
+        assert_eq!(
+            files["sota-s2s-20251018.csv"],
+            legacy!("sota_a/sota-s2s-20251018.csv")
+        );
+        assert_eq!(
+            files["sota20251018.adi"],
+            legacy!("sota_a/sota20251018.adi")
+        );
+    }
+
+    #[test]
+    fn legacy_parity_sota_chaser() {
+        let files = convert_to_sota_chaser(&fixture(NFER), "JA1ZZZ", &rmks1_qth());
+        let mut names: Vec<&String> = files.keys().collect();
+        names.sort();
+        assert_eq!(names, vec!["other20251018.csv", "sota20251018.csv"]);
+        assert_eq!(
+            files["sota20251018.csv"],
+            legacy!("sota_c/sota20251018.csv")
+        );
+        assert_eq!(
+            files["other20251018.csv"],
+            legacy!("sota_c/other20251018.csv")
+        );
+    }
+
+    #[test]
+    fn legacy_parity_adif_one_record_per_pair_of_references() {
+        let result = convert_to_adif(&fixture(NFER), &rmks1_qth());
+        let expected = [
+            (
+                "JA1ZZZ-1@JA-0001-20251018.adi",
+                legacy!("pota/JA1ZZZ-1@JA-0001-20251018.adi"),
+            ),
+            (
+                "JA1ZZZ-1@JA-0002-20251018.adi",
+                legacy!("pota/JA1ZZZ-1@JA-0002-20251018.adi"),
+            ),
+            (
+                "JA1ZZZ-1@JA-0003-20251018.adi",
+                legacy!("pota/JA1ZZZ-1@JA-0003-20251018.adi"),
+            ),
+            (
+                "JA1ZZZ-1@JA-TK-001-20251018.adi",
+                legacy!("pota/JA1ZZZ-1@JA-TK-001-20251018.adi"),
+            ),
+            (
+                "JA1ZZZ-1@JAFF-0001-20251018.adi",
+                legacy!("pota/JA1ZZZ-1@JAFF-0001-20251018.adi"),
+            ),
+        ];
+        assert_eq!(result.files.len(), expected.len());
+        for (name, body) in expected {
+            assert_eq!(result.files[name], body, "{name}");
+        }
     }
 
     #[test]
