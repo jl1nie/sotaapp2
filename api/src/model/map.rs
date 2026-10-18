@@ -243,8 +243,39 @@ pub struct NearbyRef {
     pub alt_m: Option<i32>,
     /// ポイント。SOTAのみ
     pub points: Option<i32>,
-    /// 所在地。POTAのみ
+    /// 所在地。SOTAは市区町村(日本語優先)、POTAは地域
     pub location: Option<String>,
+}
+
+/// SOTAの市区町村表記から`<JCC#1307>`のようなタグを取り除き、「、」区切りにする
+///
+/// 例: `東京都西多摩郡奥多摩町<JCG#10002F>埼玉県秩父市<JCC#1307>` → `東京都西多摩郡奥多摩町、埼玉県秩父市`
+fn clean_city(city: &str) -> Option<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut in_tag = false;
+    for c in city.chars() {
+        match c {
+            '<' => {
+                in_tag = true;
+                parts.push(std::mem::take(&mut current));
+            }
+            '>' => in_tag = false,
+            _ if !in_tag => current.push(c),
+            _ => {}
+        }
+    }
+    parts.push(current);
+    let parts: Vec<_> = parts
+        .into_iter()
+        .map(|p| p.trim().to_string())
+        .filter(|p| !p.is_empty())
+        .collect();
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("、"))
+    }
 }
 
 impl NearbyRef {
@@ -265,7 +296,12 @@ impl NearbyRef {
                 distance_m: 0,
                 alt_m: Some(r.alt_m),
                 points: Some(r.points),
-                location: None,
+                // 日本語の市区町村を優先し、なければ英語表記を使う
+                location: r
+                    .city_j
+                    .as_deref()
+                    .and_then(clean_city)
+                    .or_else(|| r.city.as_deref().and_then(clean_city)),
             });
         }
 
@@ -612,5 +648,41 @@ mod tests {
         p.radius = Some(500);
         let url = p.to_url(false);
         assert!(url.contains("&refs=false") && url.contains("&radius=500"));
+    }
+
+    #[test]
+    fn test_clean_city_strips_tags_and_joins() {
+        assert_eq!(
+            clean_city("東京都西多摩郡奥多摩町<JCG#10002F>埼玉県秩父市<JCC#1307>山梨県北都留郡丹波山村<JCG#17002B>"),
+            Some("東京都西多摩郡奥多摩町、埼玉県秩父市、山梨県北都留郡丹波山村".to_string())
+        );
+        assert_eq!(clean_city("松本市"), Some("松本市".to_string()));
+        assert_eq!(clean_city(""), None);
+        assert_eq!(clean_city("<JCC#1307>"), None);
+    }
+
+    #[test]
+    fn test_collect_sota_location_prefers_japanese_city() {
+        let mut a = sota("A", 35.0, 139.0);
+        a.city = Some("Chichibu-city<JCC#1307>".to_string());
+        a.city_j = Some("埼玉県秩父市<JCC#1307>".to_string());
+        let mut b = sota("B", 35.0, 139.0);
+        b.city = Some("Chichibu-city<JCC#1307>".to_string());
+        let c = sota("C", 35.0, 139.0);
+        let result = FindResult {
+            sota: Some(vec![a, b, c]),
+            pota: None,
+        };
+        let refs = NearbyRef::collect(result, 35.0, 139.0, 1000);
+        let loc = |code: &str| {
+            refs.iter()
+                .find(|r| r.code == code)
+                .unwrap()
+                .location
+                .clone()
+        };
+        assert_eq!(loc("A"), Some("埼玉県秩父市".to_string()));
+        assert_eq!(loc("B"), Some("Chichibu-city".to_string()));
+        assert_eq!(loc("C"), None);
     }
 }
