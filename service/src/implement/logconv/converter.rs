@@ -455,15 +455,16 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
 
 /// SOTA アクティベーターの ADIF の1行(`sotaYYYYMMDD.adi`)。自局の山がない行は None
 ///
-/// 旧版と同じく、項目は空白で区切り、最後に `<EOR>`。読み取りに失敗した行は、そのメッセージを1行で出す。
+/// 旧版と同じく、項目は空白で区切り、最後に `<EOR>`。
 fn to_sota_adif(
     qso: &QsoRecord,
     callsign: &str,
     options: &ConversionOptions,
 ) -> Option<(String, String)> {
     let date = format!("{:04}{:02}{:02}", qso.year, qso.month, qso.day);
+    // 読み取りに失敗した行は、ADIF に入れない(sota000000.csv に集める)
     if qso.has_error {
-        return Some((date, qso.error_message.clone()));
+        return None;
     }
 
     let ref_of = |source: &str, own: Option<RefInfo>| match source {
@@ -964,6 +965,20 @@ mod tests {
     }
 
     /// HamLog iOS 形式(1行目が見出し)。旧版と同じ出力になる(誤りの行のファイル名を除く)
+    #[test]
+    fn sota_adif_has_no_lines_for_rows_with_errors() {
+        let records = fixture(JST_ERRORS);
+        let files = convert_to_sota_activator(&records, "JA1ZZZ/1", &rmks1_qth());
+        let adi = files
+            .iter()
+            .find(|(name, _)| name.ends_with(".adi"))
+            .map(|(_, body)| body)
+            .unwrap();
+        assert!(!adi.contains("日時不正") && !adi.contains("周波数不正"));
+        // 5行のうち、エラーでなく自局の山がある行(JA2AAA と JA2BBB)だけ
+        assert_eq!(adi.matches("<EOR>").count(), 2);
+    }
+
     #[test]
     fn legacy_parity_hamlog_ios() {
         use super::super::hamlog::decode_auto;

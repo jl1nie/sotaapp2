@@ -296,6 +296,22 @@ async fn hamlog_convert(admin: Option<&dyn AdminService>, mut multipart: Multipa
         "pota" => {
             let result = convert_to_adif(&records, &options);
 
+            // 読み取りに失敗した行があるログは、ADIF を生成しない(その交信が黙って抜けるのを防ぐ)。
+            // 画面は、確認(/logconv/pota)でエラーを見せ、直してから生成する
+            if result.status == "NG" {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(LogconvResponse {
+                        status: "NG".to_string(),
+                        error: Some("The log has errors".to_string()),
+                        error_log: result.error_log,
+                        log_text: vec![],
+                        file_list: vec![],
+                    }),
+                )
+                    .into_response();
+            }
+
             if result.files.is_empty() {
                 return (
                     StatusCode::OK,
@@ -642,6 +658,25 @@ mod tests {
         assert_eq!(single_state("JP-TK").as_deref(), Some("TK"));
         assert_eq!(single_state("JP-TK,JP-SI"), None);
         assert_eq!(single_state(""), None);
+    }
+
+    // 読み取りに失敗した行(存在しない時刻)があるログは、ADIF を生成しない。理由は error_log で返す
+    #[tokio::test]
+    async fn test_hamlog_pota_refuses_a_log_with_errors() {
+        let csv = "JA1AAA,25/10/18,01:00U,59,59,7.030,CW,,,N,,,JA-0001,,\n\
+                   JA1BBB,25/10/18,99:99U,59,59,7.030,CW,,,N,,,JA-0001,,\n";
+        let opts = r#"{"format":"pota","myQTH":"rmks1","POTAActivator":"JA1ZZZ/1","POTAOperator":"JA1ZZZ"}"#;
+        let res = post_hamlog(csv, opts).await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["status"], "NG");
+        assert!(body["error_log"][0].as_str().unwrap().starts_with("2行:"));
+        // エラーのない行だけのログは、生成できる
+        let ok = post_hamlog(csv.lines().next().unwrap(), opts).await;
+        assert_eq!(ok.status(), StatusCode::OK);
     }
 
     // ADIF ファイルを入力にして、POTA の ADIF を作れる
