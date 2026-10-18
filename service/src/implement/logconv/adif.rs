@@ -1,9 +1,68 @@
-//! ADIF (Amateur Data Interchange Format) parser
+//! ADIF (Amateur Data Interchange Format)
 //!
-//! Parses ADIF 3.x format files into QSO records
+//! 入力: ADIF 3.x のファイルを読んで、交信(`QsoRecord`)にする。
+//! 出力: ADIF の項目(`<CALL:6>JA1ABC`)の書式。
 
-use super::types::{freq_to_band, mode_to_adif_mode, QsoRecord};
+use super::bands::freq_to_band;
+use super::modes::mode_to_adif_mode;
+use super::record::{QsoRecord, RecordError};
 use std::collections::HashMap;
+
+/// ADIF の項目
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdifField {
+    /// 運用局のコールサイン
+    StationCallsign,
+    Operator,
+    /// 相手局のコールサイン
+    Call,
+    QsoDate,
+    TimeOn,
+    Band,
+    Mode,
+    RstSent,
+    RstRcvd,
+    MySig,
+    MySigInfo,
+    MyState,
+    Sig,
+    SigInfo,
+    SotaRef,
+    MySotaRef,
+    ProgramId,
+    AdifVer,
+}
+
+impl AdifField {
+    /// ADIF のタグ名
+    pub fn tag(self) -> &'static str {
+        match self {
+            Self::StationCallsign => "STATION_CALLSIGN",
+            Self::Operator => "OPERATOR",
+            Self::Call => "CALL",
+            Self::QsoDate => "QSO_DATE",
+            Self::TimeOn => "TIME_ON",
+            Self::Band => "BAND",
+            Self::Mode => "MODE",
+            Self::RstSent => "RST_SENT",
+            Self::RstRcvd => "RST_RCVD",
+            Self::MySig => "MY_SIG",
+            Self::MySigInfo => "MY_SIG_INFO",
+            Self::MyState => "MY_STATE",
+            Self::Sig => "SIG",
+            Self::SigInfo => "SIG_INFO",
+            Self::SotaRef => "SOTA_REF",
+            Self::MySotaRef => "MY_SOTA_REF",
+            Self::ProgramId => "PROGRAMID",
+            Self::AdifVer => "ADIF_VER",
+        }
+    }
+}
+
+/// ADIF の1項目(`<CALL:6>JA1ABC`)。値が空でも項目は出す(旧版と同じ。RST のない交信は `<RST_SENT:0>`)
+pub fn adif_field(field: AdifField, value: &str) -> String {
+    format!("<{}:{}>{}", field.tag(), value.len(), value)
+}
 
 /// Parse a single ADIF record into a HashMap of fields
 pub fn parse_adif_record(record: &str) -> HashMap<String, String> {
@@ -116,108 +175,71 @@ pub fn parse_adif(content: &str) -> Vec<HashMap<String, String>> {
     records
 }
 
-/// Decode ADIF record into QsoRecord
-pub fn decode_adif(record: &str) -> Result<QsoRecord, String> {
+/// ADIF の記録(1交信)を、交信にする
+///
+/// 自局の参照(`MY_SIG_INFO` か `MY_SOTA_REF`)は備考1に、相手の参照(`SIG_INFO` か `SOTA_REF`)は
+/// QTH に、`COMMENT` は備考2に入れる。
+pub fn decode_adif(record: &str) -> Result<QsoRecord, RecordError> {
+    let bad = |reason: String| RecordError::BadAdif(reason);
     let fields = parse_adif_record(record);
-
     if fields.is_empty() {
-        return Err("Empty ADIF record".to_string());
+        return Err(bad("Empty ADIF record".to_string()));
     }
-
-    let call = fields
-        .get("CALL")
-        .ok_or_else(|| "Missing CALL field".to_string())?
-        .clone();
-
-    let qso_date = fields
-        .get("QSO_DATE")
-        .ok_or_else(|| "Missing QSO_DATE field".to_string())?;
-
-    let time_on = fields
-        .get("TIME_ON")
-        .ok_or_else(|| "Missing TIME_ON field".to_string())?;
-
-    // Parse date (YYYYMMDD)
-    if qso_date.len() < 8 {
-        return Err(format!("Invalid QSO_DATE: {}", qso_date));
-    }
-    let year: i32 = qso_date[0..4].parse().unwrap_or(1900);
-    let month: u32 = qso_date[4..6].parse().unwrap_or(1);
-    let day: u32 = qso_date[6..8].parse().unwrap_or(1);
-
-    // Parse time (HHMM or HHMMSS)
-    if time_on.len() < 4 {
-        return Err(format!("Invalid TIME_ON: {}", time_on));
-    }
-    let hour: u32 = time_on[0..2].parse().unwrap_or(0);
-    let minute: u32 = time_on[2..4].parse().unwrap_or(0);
-
-    // Get band/wavelength
-    let wlen = if let Some(freq) = fields.get("FREQ") {
-        match freq_to_band(freq) {
-            Ok((_, _, wl)) => wl.to_string(),
-            Err(_) => freq.clone(),
-        }
-    } else if let Some(band) = fields.get("BAND") {
-        band.clone()
-    } else {
-        String::new()
+    let field = |name: &str| fields.get(name).cloned().unwrap_or_default();
+    let required = |name: &str| {
+        fields
+            .get(name)
+            .ok_or_else(|| bad(format!("Missing {name} field")))
     };
 
-    // Get mode
-    let mode_raw = fields.get("MODE").cloned().unwrap_or_default();
-    let (mode, sub_mode) = mode_to_adif_mode(&mode_raw);
+    let callsign = required("CALL")?.clone();
+    let qso_date = required("QSO_DATE")?;
+    let time_on = required("TIME_ON")?;
+    // 日付(YYYYMMDD)と時刻(HHMM か HHMMSS)
+    if qso_date.len() < 8 {
+        return Err(bad(format!("Invalid QSO_DATE: {qso_date}")));
+    }
+    if time_on.len() < 4 {
+        return Err(bad(format!("Invalid TIME_ON: {time_on}")));
+    }
 
-    // Get references
-    let my_sig = fields
-        .get("MY_SIG_INFO")
-        .or_else(|| fields.get("MY_SOTA_REF"))
-        .cloned()
-        .unwrap_or_else(|| "unknown".to_string());
+    // バンドは、周波数があればそこから、なければ BAND をそのまま
+    let band_wlen = match (fields.get("FREQ"), fields.get("BAND")) {
+        (Some(freq), _) => freq_to_band(freq).map_or_else(
+            |_| freq.clone(),
+            |(_, _, wavelength)| wavelength.to_string(),
+        ),
+        (None, Some(band)) => band.clone(),
+        (None, None) => String::new(),
+    };
+    let (mode, sub_mode) = mode_to_adif_mode(&field("MODE"));
 
-    let his_sig = fields
-        .get("SIG_INFO")
-        .or_else(|| fields.get("SOTA_REF"))
-        .cloned()
-        .unwrap_or_default();
-
+    let first_of = |names: [&str; 2]| {
+        names
+            .iter()
+            .find_map(|n| fields.get(*n))
+            .cloned()
+            .unwrap_or_default()
+    };
     Ok(QsoRecord {
         source_line: 0,
-        has_error: false,
-        error_message: String::new(),
-        date_error: String::new(),
-        time_error: String::new(),
-        band_error: String::new(),
-
-        callsign: call,
-        operator: String::new(),
-        portable: String::new(),
-        iso_time: String::new(),
-        year,
-        month,
-        day,
-        hour,
-        minute,
-        timezone: "+0000".to_string(),
-        rst_sent: fields.get("RST_SENT").cloned().unwrap_or_default(),
-        rst_rcvd: fields.get("RST_RCVD").cloned().unwrap_or_default(),
-        freq: fields.get("FREQ").cloned().unwrap_or_default(),
-        band: String::new(),
+        errors: Vec::new(),
+        callsign,
+        year: qso_date[0..4].parse().unwrap_or(1900),
+        month: qso_date[4..6].parse().unwrap_or(1),
+        day: qso_date[6..8].parse().unwrap_or(1),
+        hour: time_on[0..2].parse().unwrap_or(0),
+        minute: time_on[2..4].parse().unwrap_or(0),
+        rst_sent: field("RST_SENT"),
+        rst_rcvd: field("RST_RCVD"),
         band_sota: String::new(),
-        band_wlen: wlen,
+        band_wlen,
         mode,
         sub_mode,
-        mode_airham: String::new(),
         mode_sota: String::new(),
-        code: String::new(),
-        gridsquare: fields.get("GRIDSQUARE").cloned().unwrap_or_default(),
-        qsl: String::new(),
-        qsl_sent: 0,
-        qsl_rcvd: 0,
-        name: fields.get("NAME").cloned().unwrap_or_default(),
-        qth: his_sig,
-        remarks1: my_sig,
-        remarks2: fields.get("COMMENT").cloned().unwrap_or_default(),
+        qth: first_of(["SIG_INFO", "SOTA_REF"]),
+        remarks1: first_of(["MY_SIG_INFO", "MY_SOTA_REF"]),
+        remarks2: field("COMMENT"),
     })
 }
 

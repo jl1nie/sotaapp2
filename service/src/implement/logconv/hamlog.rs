@@ -1,480 +1,461 @@
-//! HAMLOG CSV format parser
-//!
-//! Parses HAMLOG CSV format (Japanese logging software) and HamLog iOS format
+//! HAMLOG CSV(日本語版の HAMLOG)と、HamLog iOS の CSV の、1行の読み取り
 
-use super::types::{
-    freq_to_band, mode_to_adif_mode, mode_to_airham_mode, mode_to_sota_mode, split_callsign,
-    QsoRecord,
-};
-use chrono::{FixedOffset, Offset, TimeZone, Utc};
+use super::bands::freq_to_band;
+use super::modes::{mode_to_adif_mode, mode_to_sota_mode};
+use super::record::{QsoRecord, RecordError};
+use chrono::{Datelike, FixedOffset, TimeZone, Timelike, Utc};
+use once_cell::sync::Lazy;
 use regex::Regex;
 
-/// Decode HAMLOG CSV row into QsoRecord
+/// HAMLOG CSV の列
 ///
-/// HAMLOG CSV format columns:
-/// 0: callsign, 1: date, 2: time, 3: rst_sent, 4: rst_rcvd, 5: freq,
-/// 6: mode, 7: code, 8: gl, 9: qsl, 10: name, 11: qth, 12: rmks1, 13: rmks2, ...
-pub fn decode_hamlog(cols: &[String]) -> Result<QsoRecord, String> {
-    if cols.len() < 15 {
-        return Err("HAMLOG CSV形式ではありません".to_string());
-    }
-
-    let mut record = QsoRecord::default();
-    let (operator, portable) = split_callsign(&cols[0]);
-    record.callsign = cols[0].clone();
-    record.operator = operator;
-    record.portable = portable;
-
-    // Parse date (YY/MM/DD or YYYY/MM/DD)
-    let date_re = Regex::new(r"(\d+)/(\d+)/(\d+)").unwrap();
-    let (year, month, day, date_error) = if let Some(caps) = date_re.captures(&cols[1]) {
-        let y_str = &caps[1];
-        let year = if y_str.len() > 2 {
-            y_str.parse::<i32>().unwrap_or(1900)
-        } else {
-            let y = y_str.parse::<i32>().unwrap_or(0);
-            if y >= 65 {
-                1900 + y
-            } else {
-                2000 + y
-            }
-        };
-        let month = caps[2].parse::<u32>().unwrap_or(1);
-        let day = caps[3].parse::<u32>().unwrap_or(1);
-        (year, month, day, String::new())
-    } else {
-        record.has_error = true;
-        record.error_message = format!("日付フォーマット不正:{}", cols[1]);
-        (
-            1900,
-            1,
-            1,
-            format!("<font color=\"red\"><b>{}</b></font>", cols[1]),
-        )
-    };
-    record.date_error = date_error;
-
-    // Parse time (HH:MMU or HH:MMJ)
-    let time_re = Regex::new(r"(\d{2}):(\d{2})(\w)?").unwrap();
-    let (hour, minute, tz_offset, time_error) = if let Some(caps) = time_re.captures(&cols[2]) {
-        let hour = caps[1].parse::<u32>().unwrap_or(0);
-        let minute = caps[2].parse::<u32>().unwrap_or(0);
-        let flag = caps
-            .get(3)
-            .map(|m| m.as_str().to_uppercase())
-            .unwrap_or_default();
-        let offset = if flag == "U" || flag == "Z" { 0 } else { 9 };
-        (hour, minute, offset, String::new())
-    } else {
-        record.has_error = true;
-        if !record.error_message.is_empty() {
-            record.error_message.push_str(", ");
-        }
-        record
-            .error_message
-            .push_str(&format!("時刻フォーマット不正:{}", cols[2]));
-        (
-            0,
-            0,
-            9,
-            format!("<font color=\"red\"><b>{}</b></font>", cols[2]),
-        )
-    };
-    record.time_error = time_error;
-    record.timezone = if tz_offset == 0 {
-        "+0000".to_string()
-    } else {
-        "+0900".to_string()
-    };
-
-    // Convert to UTC
-    let offset = FixedOffset::east_opt(tz_offset * 3600).unwrap_or(Utc.fix());
-    if let Some(dt) = offset
-        .with_ymd_and_hms(year, month, day, hour, minute, 0)
-        .single()
-    {
-        let utc_dt = dt.with_timezone(&Utc);
-        record.year = utc_dt.year();
-        record.month = utc_dt.month();
-        record.day = utc_dt.day();
-        record.hour = utc_dt.hour();
-        record.minute = utc_dt.minute();
-        record.iso_time = dt.to_rfc3339();
-    } else {
-        // 書式は合っているが、存在しない日時(99:99 や 13月など)
-        record.has_error = true;
-        if !record.error_message.is_empty() {
-            record.error_message.push_str(", ");
-        }
-        record
-            .error_message
-            .push_str(&format!("日時不正:{} {}", cols[1], cols[2]));
-        if record.time_error.is_empty() {
-            record.time_error = format!("<font color=\"red\"><b>{}</b></font>", cols[2]);
-        }
-        record.year = 1900;
-        record.month = 1;
-        record.day = 1;
-        record.hour = 0;
-        record.minute = 0;
-        record.iso_time = String::new();
-    }
-
-    // Parse frequency/band
-    match freq_to_band(&cols[5]) {
-        Ok((band_air, band_sota, wlen)) => {
-            record.band = band_air.to_string();
-            record.band_sota = band_sota.to_string();
-            record.band_wlen = wlen.to_string();
-        }
-        Err(e) => {
-            record.has_error = true;
-            record.band_error = format!("<font color=\"red\"><b>{}</b></font>", e);
-            if !record.error_message.is_empty() {
-                record.error_message.push_str(", ");
-            }
-            record.error_message.push_str(&format!("周波数不正:{}", e));
-        }
-    }
-
-    // Parse QSL flag
-    let qsl_flag = format!("{}   ", cols[9].to_uppercase());
-    let qsl_chars: Vec<char> = qsl_flag.chars().take(3).collect();
-
-    record.qsl = match qsl_chars.first() {
-        Some('N') => "No Card".to_string(),
-        Some('J') => "JARL (Bureau)".to_string(),
-        _ => qsl_flag[..3].to_string(),
-    };
-    record.qsl_sent = if qsl_chars.get(1).map(|c| *c != ' ').unwrap_or(false) {
-        1
-    } else {
-        0
-    };
-    record.qsl_rcvd = if qsl_chars.get(2).map(|c| *c != ' ').unwrap_or(false) {
-        1
-    } else {
-        0
-    };
-
-    // Mode conversion
-    let (mode, sub_mode) = mode_to_adif_mode(&cols[6]);
-    record.mode = mode;
-    record.sub_mode = sub_mode;
-    record.mode_airham = mode_to_airham_mode(&cols[6], &cols[5]);
-    record.mode_sota = mode_to_sota_mode(&cols[6]).to_string();
-
-    // Other fields
-    record.rst_sent = cols[3].clone();
-    record.rst_rcvd = cols[4].clone();
-    record.freq = cols[5].clone();
-    record.code = cols[7].clone();
-    record.gridsquare = cols[8].clone();
-    record.name = cols[10].clone();
-    record.qth = cols[11].clone();
-    record.remarks1 = cols[12].clone();
-    record.remarks2 = cols.get(13).cloned().unwrap_or_default();
-
-    Ok(record)
+/// `コールサイン,日付,時刻,RST送,RST受,周波数,モード,コード,GL,QSL,名前,QTH,備考1,備考2,…`
+mod hamlog_col {
+    pub const MIN_COLUMNS: usize = 15;
+    pub const CALLSIGN: usize = 0;
+    pub const DATE: usize = 1;
+    pub const TIME: usize = 2;
+    pub const RST_SENT: usize = 3;
+    pub const RST_RCVD: usize = 4;
+    pub const FREQ: usize = 5;
+    pub const MODE: usize = 6;
+    pub const QTH: usize = 11;
+    pub const REMARKS1: usize = 12;
+    pub const REMARKS2: usize = 13;
 }
 
-/// Decode HamLog iOS CSV row into QsoRecord
+/// HamLog iOS の CSV の列
+mod ios_col {
+    pub const MIN_COLUMNS: usize = 19;
+    pub const DATETIME: usize = 0;
+    pub const FREQ: usize = 2;
+    pub const CALLSIGN: usize = 3;
+    pub const RST_RCVD: usize = 4;
+    pub const RST_SENT: usize = 5;
+    /// QTH(備考1としても使う。iOS 版には、備考1の列がない)
+    pub const QTH: usize = 8;
+    pub const MODE: usize = 11;
+    pub const REMARKS2: usize = 13;
+}
+
+static DATE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)/(\d+)/(\d+)").unwrap());
+static TIME_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d{2}):(\d{2})(\w)?").unwrap());
+static IOS_DATETIME_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})").unwrap()
+});
+static IOS_LOOKS_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}").unwrap());
+
+/// 交信の日時(UTC)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Moment {
+    year: i32,
+    month: u32,
+    day: u32,
+    hour: u32,
+    minute: u32,
+}
+
+impl Moment {
+    /// 読み取れなかった日時の代わり(日付の誤りは、別に知らせる)
+    const UNKNOWN: Moment = Moment {
+        year: 1900,
+        month: 1,
+        day: 1,
+        hour: 0,
+        minute: 0,
+    };
+
+    /// 現地の日時と、UTC からの時差(時間)から、UTC の日時にする。存在しない日時なら None
+    fn from_local(
+        (year, month, day): (i32, u32, u32),
+        (hour, minute): (u32, u32),
+        utc_offset_secs: i32,
+    ) -> Option<Self> {
+        let offset = FixedOffset::east_opt(utc_offset_secs)?;
+        let local = offset
+            .with_ymd_and_hms(year, month, day, hour, minute, 0)
+            .single()?;
+        let utc = local.with_timezone(&Utc);
+        Some(Self {
+            year: utc.year(),
+            month: utc.month(),
+            day: utc.day(),
+            hour: utc.hour(),
+            minute: utc.minute(),
+        })
+    }
+}
+
+/// 日付。`YY/MM/DD` か `YYYY/MM/DD`。2桁の年は、65 以上なら 19xx、未満なら 20xx
+fn parse_date(text: &str) -> Result<(i32, u32, u32), RecordError> {
+    let caps = DATE_RE
+        .captures(text)
+        .ok_or_else(|| RecordError::BadDate(text.to_string()))?;
+    let year_text = &caps[1];
+    let year = if year_text.len() > 2 {
+        year_text.parse().unwrap_or(1900)
+    } else {
+        match year_text.parse::<i32>().unwrap_or(0) {
+            y if y >= 65 => 1900 + y,
+            y => 2000 + y,
+        }
+    };
+    Ok((
+        year,
+        caps[2].parse().unwrap_or(1),
+        caps[3].parse().unwrap_or(1),
+    ))
+}
+
+/// 時刻と、UTC からの時差(秒)。`HH:MM` に、`U`(UTC)か `Z` が付けば UTC、それ以外(`J` や、付かないとき)は JST
+fn parse_time(text: &str) -> Result<((u32, u32), i32), RecordError> {
+    let caps = TIME_RE
+        .captures(text)
+        .ok_or_else(|| RecordError::BadTime(text.to_string()))?;
+    let flag = caps
+        .get(3)
+        .map_or(String::new(), |m| m.as_str().to_uppercase());
+    let hours = if flag == "U" || flag == "Z" { 0 } else { 9 };
+    Ok((
+        (caps[1].parse().unwrap_or(0), caps[2].parse().unwrap_or(0)),
+        hours * 3600,
+    ))
+}
+
+/// 日付と時刻の文字列から、UTC の日時を作る。読み取れない所は `errors` に足す
+fn parse_moment(date: &str, time: &str, errors: &mut Vec<RecordError>) -> Moment {
+    match (parse_date(date), parse_time(time)) {
+        (Ok(ymd), Ok((hm, offset))) => Moment::from_local(ymd, hm, offset).unwrap_or_else(|| {
+            errors.push(RecordError::NonexistentDateTime {
+                date: date.to_string(),
+                time: time.to_string(),
+            });
+            Moment::UNKNOWN
+        }),
+        (date_result, time_result) => {
+            errors.extend(date_result.err());
+            errors.extend(time_result.err());
+            Moment::UNKNOWN
+        }
+    }
+}
+
+/// 周波数から、バンドの名前(SOTA での名前・波長での名前)を引く。どのバンドにもなければ `errors` に足す
+fn parse_band(freq: &str, errors: &mut Vec<RecordError>) -> (String, String) {
+    match freq_to_band(freq) {
+        Ok((_, sota, wavelength)) => (sota.to_string(), wavelength.to_string()),
+        Err(reason) => {
+            errors.push(RecordError::BadFrequency(reason));
+            (String::new(), String::new())
+        }
+    }
+}
+
+/// 交信を作る(日時・バンド以外の項目は、読み取り元の列から)
+struct Columns<'a> {
+    callsign: &'a str,
+    rst_sent: &'a str,
+    rst_rcvd: &'a str,
+    mode: &'a str,
+    qth: &'a str,
+    remarks1: &'a str,
+    remarks2: &'a str,
+}
+
+fn build(
+    columns: Columns,
+    moment: Moment,
+    band: (String, String),
+    errors: Vec<RecordError>,
+) -> QsoRecord {
+    let (mode, sub_mode) = mode_to_adif_mode(columns.mode);
+    QsoRecord {
+        source_line: 0,
+        errors,
+        callsign: columns.callsign.to_string(),
+        year: moment.year,
+        month: moment.month,
+        day: moment.day,
+        hour: moment.hour,
+        minute: moment.minute,
+        rst_sent: columns.rst_sent.to_string(),
+        rst_rcvd: columns.rst_rcvd.to_string(),
+        band_sota: band.0,
+        band_wlen: band.1,
+        mode,
+        sub_mode,
+        mode_sota: mode_to_sota_mode(columns.mode).to_string(),
+        qth: columns.qth.to_string(),
+        remarks1: columns.remarks1.to_string(),
+        remarks2: columns.remarks2.to_string(),
+    }
+}
+
+/// HAMLOG CSV の1行を読む
+pub fn decode_hamlog(cols: &[String]) -> Result<QsoRecord, RecordError> {
+    use hamlog_col as c;
+    if cols.len() < c::MIN_COLUMNS {
+        return Err(RecordError::NotHamlogCsv);
+    }
+
+    let mut errors = Vec::new();
+    let moment = parse_moment(&cols[c::DATE], &cols[c::TIME], &mut errors);
+    let band = parse_band(&cols[c::FREQ], &mut errors);
+    Ok(build(
+        Columns {
+            callsign: &cols[c::CALLSIGN],
+            rst_sent: &cols[c::RST_SENT],
+            rst_rcvd: &cols[c::RST_RCVD],
+            mode: &cols[c::MODE],
+            qth: &cols[c::QTH],
+            remarks1: &cols[c::REMARKS1],
+            remarks2: &cols[c::REMARKS2],
+        },
+        moment,
+        band,
+        errors,
+    ))
+}
+
+/// HamLog iOS の CSV の1行を読む
+pub fn decode_hamlog_ios(cols: &[String]) -> Result<QsoRecord, RecordError> {
+    use ios_col as c;
+    if cols.len() < c::MIN_COLUMNS {
+        return Err(RecordError::TooFewColumns(cols.len()));
+    }
+
+    let mut errors = Vec::new();
+    let moment = parse_ios_datetime(&cols[c::DATETIME], &mut errors);
+    let band = parse_band(&cols[c::FREQ], &mut errors);
+    Ok(build(
+        Columns {
+            callsign: &cols[c::CALLSIGN],
+            rst_sent: &cols[c::RST_SENT],
+            rst_rcvd: &cols[c::RST_RCVD],
+            mode: &cols[c::MODE],
+            qth: &cols[c::QTH],
+            remarks1: &cols[c::QTH],
+            remarks2: &cols[c::REMARKS2],
+        },
+        moment,
+        band,
+        errors,
+    ))
+}
+
+/// iOS の日時(`2024-12-28 12:34:56 +0900`)。時差が付いているので、UTC にする
+fn parse_ios_datetime(text: &str, errors: &mut Vec<RecordError>) -> Moment {
+    let Some(caps) = IOS_DATETIME_RE.captures(text) else {
+        errors.push(RecordError::BadTime(text.to_string()));
+        return Moment::UNKNOWN;
+    };
+    let number = |i: usize| -> u32 { caps[i].parse().unwrap_or(0) };
+    // `+0900` → 9時間0分(`-0530` は、マイナス5時間30分)
+    let offset = &caps[7];
+    let sign = if offset.starts_with('-') { -1 } else { 1 };
+    let hours: i32 = offset[1..3].parse().unwrap_or(0);
+    let minutes: i32 = offset[3..5].parse().unwrap_or(0);
+    let offset_secs = sign * (hours * 3600 + minutes * 60);
+
+    Moment::from_local(
+        (caps[1].parse().unwrap_or(1900), number(2), number(3)),
+        (number(4), number(5)),
+        offset_secs,
+    )
+    .unwrap_or_else(|| {
+        errors.push(RecordError::BadTime(text.to_string()));
+        Moment::UNKNOWN
+    })
+}
+
+/// 見出しの行かを調べ、形式(HAMLOG か iOS)を見分けて、1行を読む
 ///
-/// HamLog iOS format columns:
-/// 0: datetime, 1: ?, 2: freq, 3: callsign, 4: rst_rcvd, 5: rst_sent,
-/// 6: gl, 7: name, 8: qth, ...11: mode, ...13: rmks2, 14: qsl, 15: qsl_sent, 16: qsl_rcvd, ...
-pub fn decode_hamlog_ios(cols: &[String]) -> Result<QsoRecord, String> {
-    if cols.len() < 19 {
-        return Err(format!("Too short columns: {} < 19", cols.len()));
+/// 見出しの行(iOS の `TimeOn` を含む1行目)は `Ok(None)`。
+pub fn decode_auto(cols: &[String], header_seen: bool) -> Result<Option<QsoRecord>, RecordError> {
+    if !header_seen && cols.first().is_some_and(|s| s.contains("TimeOn")) {
+        return Ok(None);
     }
-
-    let mut record = QsoRecord::default();
-    let (operator, portable) = split_callsign(&cols[3]);
-    record.callsign = cols[3].clone();
-    record.operator = operator;
-    record.portable = portable;
-
-    // Parse datetime (YYYY-MM-DD HH:MM:SS +ZZZZ)
-    let dt_re = Regex::new(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})").unwrap();
-    if let Some(caps) = dt_re.captures(&cols[0]) {
-        let year: i32 = caps[1].parse().unwrap_or(1900);
-        let month: u32 = caps[2].parse().unwrap_or(1);
-        let day: u32 = caps[3].parse().unwrap_or(1);
-        let hour: u32 = caps[4].parse().unwrap_or(0);
-        let minute: u32 = caps[5].parse().unwrap_or(0);
-        let _second: u32 = caps[6].parse().unwrap_or(0);
-        let tz_str = &caps[7];
-
-        let tz_hours: i32 = tz_str[0..3].parse().unwrap_or(0);
-        let tz_mins: i32 = tz_str[3..5].parse().unwrap_or(0);
-        let tz_secs = tz_hours * 3600 + tz_mins * 60;
-
-        if let Some(offset) = FixedOffset::east_opt(tz_secs) {
-            if let Some(dt) = offset
-                .with_ymd_and_hms(year, month, day, hour, minute, 0)
-                .single()
-            {
-                let utc_dt = dt.with_timezone(&Utc);
-                record.year = utc_dt.year();
-                record.month = utc_dt.month();
-                record.day = utc_dt.day();
-                record.hour = utc_dt.hour();
-                record.minute = utc_dt.minute();
-                record.iso_time = dt.to_rfc3339();
-                record.timezone = "+0000".to_string();
-            }
-        }
-    } else {
-        record.has_error = true;
-        record.error_message = format!("時刻フォーマット不正:{}", cols[0]);
-        record.date_error = format!(
-            "<font color=\"red\"><b>{}</b></font>",
-            cols[0].split(' ').next().unwrap_or("")
-        );
-        record.time_error = format!(
-            "<font color=\"red\"><b>{}</b></font>",
-            cols[0].split(' ').nth(1).unwrap_or("")
-        );
+    // 列が多く、1列目が iOS の日時の形なら、iOS
+    if cols.len() >= ios_col::MIN_COLUMNS && IOS_LOOKS_RE.is_match(&cols[0]) {
+        return decode_hamlog_ios(cols).map(Some);
     }
-
-    // Parse frequency/band
-    match freq_to_band(&cols[2]) {
-        Ok((band_air, band_sota, wlen)) => {
-            record.band = band_air.to_string();
-            record.band_sota = band_sota.to_string();
-            record.band_wlen = wlen.to_string();
-        }
-        Err(e) => {
-            record.has_error = true;
-            record.band_error = format!("<font color=\"red\"><b>{}</b></font>", e);
-            if !record.error_message.is_empty() {
-                record.error_message.push_str(", ");
-            }
-            record
-                .error_message
-                .push_str(&format!("Frequency out of range:{}", e));
-        }
-    }
-
-    // Mode conversion
-    let (mode, sub_mode) = mode_to_adif_mode(&cols[11]);
-    record.mode = mode;
-    record.sub_mode = sub_mode;
-    record.mode_airham = mode_to_airham_mode(&cols[11], &cols[2]);
-    record.mode_sota = mode_to_sota_mode(&cols[11]).to_string();
-
-    // Other fields
-    record.rst_sent = cols[5].clone();
-    record.rst_rcvd = cols[4].clone();
-    record.freq = cols[2].clone();
-    record.gridsquare = cols[6].clone();
-    record.name = cols[7].clone();
-    record.qth = cols[8].clone();
-    record.remarks1 = cols[8].clone();
-    record.remarks2 = cols[13].clone();
-    record.qsl = cols[14].clone();
-    record.qsl_sent = cols[15].parse().unwrap_or(0);
-    record.qsl_rcvd = cols[16].parse().unwrap_or(0);
-
-    Ok(record)
+    decode_hamlog(cols).map(Some)
 }
-
-/// Detect format and decode row
-pub fn decode_auto(cols: &[String], header_seen: bool) -> Result<QsoRecord, String> {
-    // Check for HamLog iOS header
-    if !header_seen && cols.first().map(|s| s.contains("TimeOn")).unwrap_or(false) {
-        return Err("HEADER".to_string());
-    }
-
-    // Try HamLog iOS format if enough columns and datetime pattern matches
-    if cols.len() >= 19 {
-        let dt_re = Regex::new(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}").unwrap();
-        if dt_re.is_match(&cols[0]) {
-            return decode_hamlog_ios(cols);
-        }
-    }
-
-    // Default to HAMLOG format
-    decode_hamlog(cols)
-}
-
-use chrono::Datelike;
-use chrono::Timelike;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn make_cols(data: &[&str]) -> Vec<String> {
+    fn cols(data: &[&str]) -> Vec<String> {
         data.iter().map(|s| s.to_string()).collect()
     }
 
-    #[test]
-    fn test_decode_hamlog_nonexistent_time_has_a_message() {
-        let cols = make_cols(&[
-            "JA2CCC", "25/10/19", "99:99J", "59", "59", "14.285", "SSB", "", "", "N", "", "", "",
-            "", "",
-        ]);
-        let qso = decode_hamlog(&cols).unwrap();
-        assert!(qso.has_error);
-        assert!(qso.error_message.contains("日時不正"));
-        assert!(qso.error_message.contains("99:99J"));
+    /// 日付・時刻・周波数・モード以外は空の HAMLOG の行
+    fn row(date: &str, time: &str, freq: &str, mode: &str) -> Vec<String> {
+        let mut c = cols(&["JL1NIE", date, time, "599", "559", freq, mode]);
+        c.resize(hamlog_col::MIN_COLUMNS, String::new());
+        c
     }
 
     #[test]
     fn test_decode_hamlog_basic() {
-        let cols = make_cols(&[
-            "JL1NIE",    // 0: callsign
-            "24/12/28",  // 1: date
-            "12:34U",    // 2: time
-            "599",       // 3: rst_sent
-            "559",       // 4: rst_rcvd
-            "7.025",     // 5: freq
-            "CW",        // 6: mode
-            "",          // 7: code
-            "PM95",      // 8: gl
-            "J S",       // 9: qsl
-            "Taro",      // 10: name
-            "Tokyo",     // 11: qth
-            "JA/TK-001", // 12: rmks1
-            "",          // 13: rmks2
-            "",          // 14
-        ]);
+        let mut c = row("24/12/28", "12:34U", "7.025", "CW");
+        c[hamlog_col::QTH] = "Tokyo".to_string();
+        c[hamlog_col::REMARKS1] = "JA/TK-001".to_string();
 
-        let qso = decode_hamlog(&cols).unwrap();
+        let qso = decode_hamlog(&c).unwrap();
+        assert!(!qso.has_error());
         assert_eq!(qso.callsign, "JL1NIE");
-        assert_eq!(qso.operator, "JL1NIE");
-        assert_eq!(qso.year, 2024);
-        assert_eq!(qso.month, 12);
-        assert_eq!(qso.day, 28);
-        assert_eq!(qso.hour, 12);
-        assert_eq!(qso.minute, 34);
-        assert_eq!(qso.band, "7MHz");
-        assert_eq!(qso.mode, "CW");
-        assert_eq!(qso.rst_sent, "599");
-        assert_eq!(qso.qsl, "JARL (Bureau)"); // J -> JARL Bureau
-        assert_eq!(qso.qsl_sent, 0); // ' ' = not sent (2nd char)
-        assert_eq!(qso.qsl_rcvd, 1); // 'S' = received (3rd char)
+        assert_eq!(
+            (qso.year, qso.month, qso.day, qso.hour, qso.minute),
+            (2024, 12, 28, 12, 34)
+        );
+        assert_eq!(
+            (qso.band_sota.as_str(), qso.band_wlen.as_str()),
+            ("7MHz", "40m")
+        );
+        assert_eq!((qso.mode.as_str(), qso.mode_sota.as_str()), ("CW", "CW"));
+        assert_eq!(
+            (qso.rst_sent.as_str(), qso.rst_rcvd.as_str()),
+            ("599", "559")
+        );
+        assert_eq!(
+            (qso.qth.as_str(), qso.remarks1.as_str()),
+            ("Tokyo", "JA/TK-001")
+        );
     }
 
     #[test]
-    fn test_decode_hamlog_jst_time() {
-        let cols = make_cols(&[
-            "JL1NIE", "24/12/28", "21:34J", // JST
-            "599", "559", "7.025", "CW", "", "", "", "", "", "", "", "",
-        ]);
-
-        let qso = decode_hamlog(&cols).unwrap();
-        // 21:34 JST = 12:34 UTC
-        assert_eq!(qso.hour, 12);
-        assert_eq!(qso.minute, 34);
+    fn jst_times_are_converted_to_utc() {
+        // 21:34 JST = 12:34 UTC。フラグがなければ JST
+        for time in ["21:34J", "21:34"] {
+            let qso = decode_hamlog(&row("24/12/28", time, "7.025", "CW")).unwrap();
+            assert_eq!((qso.hour, qso.minute), (12, 34), "{time}");
+        }
+        // UTC の日付をまたぐ(JST 00:30 は前日)
+        let qso = decode_hamlog(&row("25/10/19", "00:30J", "7.025", "CW")).unwrap();
+        assert_eq!((qso.month, qso.day, qso.hour, qso.minute), (10, 18, 15, 30));
     }
 
     #[test]
-    fn test_decode_hamlog_portable() {
-        let cols = make_cols(&[
-            "JA/JL1NIE/P",
-            "24/12/28",
-            "12:34U",
-            "599",
-            "559",
-            "7.025",
-            "CW",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-        ]);
+    fn two_digit_years_pivot_at_65() {
+        let year = |d: &str| {
+            decode_hamlog(&row(d, "12:00U", "7.025", "CW"))
+                .unwrap()
+                .year
+        };
+        assert_eq!(year("24/01/01"), 2024);
+        assert_eq!(year("99/12/31"), 1999);
+        assert_eq!(year("65/01/01"), 1965);
+        assert_eq!(year("2025/10/18"), 2025);
+    }
 
-        let qso = decode_hamlog(&cols).unwrap();
-        assert_eq!(qso.callsign, "JA/JL1NIE/P");
-        assert_eq!(qso.operator, "JL1NIE");
-        assert_eq!(qso.portable, "JA");
+    #[test]
+    fn a_nonexistent_time_is_an_error_with_a_message() {
+        let qso = decode_hamlog(&row("25/10/19", "99:99J", "14.285", "SSB")).unwrap();
+        assert!(qso.has_error());
+        assert_eq!(qso.error_message(), "日時不正:25/10/19 99:99J");
+    }
+
+    #[test]
+    fn malformed_fields_are_reported_each() {
+        let qso = decode_hamlog(&row("25-10-18", "ab:cd", "9.999", "CW")).unwrap();
+        assert_eq!(
+            qso.errors,
+            vec![
+                RecordError::BadDate("25-10-18".to_string()),
+                RecordError::BadTime("ab:cd".to_string()),
+                RecordError::BadFrequency("Unknown frequency: 9.999".to_string()),
+            ]
+        );
+        assert_eq!(
+            qso.error_message(),
+            "日付フォーマット不正:25-10-18, 時刻フォーマット不正:ab:cd, 周波数不正:Unknown frequency: 9.999"
+        );
     }
 
     #[test]
     fn test_decode_hamlog_too_short() {
-        let cols = make_cols(&["JL1NIE", "24/12/28"]);
-        let result = decode_hamlog(&cols);
-        assert!(result.is_err());
+        let result = decode_hamlog(&cols(&["JL1NIE", "24/12/28"]));
+        assert_eq!(result.unwrap_err(), RecordError::NotHamlogCsv);
+    }
+
+    fn ios_row(datetime: &str) -> Vec<String> {
+        let mut c = vec![String::new(); ios_col::MIN_COLUMNS];
+        c[ios_col::DATETIME] = datetime.to_string();
+        c[ios_col::FREQ] = "7.025".to_string();
+        c[ios_col::CALLSIGN] = "JL1NIE".to_string();
+        c[ios_col::RST_RCVD] = "559".to_string();
+        c[ios_col::RST_SENT] = "599".to_string();
+        c[ios_col::QTH] = "JA/TK-001".to_string();
+        c[ios_col::MODE] = "CW".to_string();
+        c[ios_col::REMARKS2] = "Comment".to_string();
+        c
     }
 
     #[test]
     fn test_decode_hamlog_ios() {
-        let cols = make_cols(&[
-            "2024-12-28 12:34:56 +0000", // 0
-            "",                          // 1
-            "7.025",                     // 2
-            "JL1NIE",                    // 3
-            "559",                       // 4 rst_rcvd
-            "599",                       // 5 rst_sent
-            "PM95",                      // 6 gl
-            "Taro",                      // 7 name
-            "Tokyo",                     // 8 qth
-            "",                          // 9
-            "",                          // 10
-            "CW",                        // 11 mode
-            "",                          // 12
-            "Comment",                   // 13 rmks2
-            "J",                         // 14 qsl
-            "1",                         // 15 qsl_sent
-            "0",                         // 16 qsl_rcvd
-            "",                          // 17
-            "",                          // 18
-        ]);
-
-        let qso = decode_hamlog_ios(&cols).unwrap();
+        let qso = decode_hamlog_ios(&ios_row("2024-12-28 12:34:56 +0000")).unwrap();
         assert_eq!(qso.callsign, "JL1NIE");
-        assert_eq!(qso.year, 2024);
-        assert_eq!(qso.month, 12);
-        assert_eq!(qso.day, 28);
-        assert_eq!(qso.hour, 12);
-        assert_eq!(qso.minute, 34);
-        assert_eq!(qso.mode, "CW");
-        assert_eq!(qso.rst_sent, "599");
-        assert_eq!(qso.rst_rcvd, "559");
+        assert_eq!(
+            (qso.year, qso.month, qso.day, qso.hour, qso.minute),
+            (2024, 12, 28, 12, 34)
+        );
+        assert_eq!(
+            (qso.rst_sent.as_str(), qso.rst_rcvd.as_str()),
+            ("599", "559")
+        );
+        // iOS 版には備考1の列がない。QTH を、備考1としても使う
+        assert_eq!(
+            (qso.qth.as_str(), qso.remarks1.as_str()),
+            ("JA/TK-001", "JA/TK-001")
+        );
+        assert_eq!(qso.remarks2, "Comment");
     }
 
     #[test]
-    fn test_decode_auto_hamlog() {
-        let cols = make_cols(&[
-            "JL1NIE", "24/12/28", "12:34U", "599", "559", "7.025", "CW", "", "", "", "", "", "",
-            "", "",
-        ]);
-
-        let qso = decode_auto(&cols, true).unwrap();
-        assert_eq!(qso.callsign, "JL1NIE");
+    fn ios_time_zones_are_converted_to_utc() {
+        let qso = decode_hamlog_ios(&ios_row("2025-10-19 08:30:00 +0900")).unwrap();
+        assert_eq!((qso.month, qso.day, qso.hour, qso.minute), (10, 18, 23, 30));
+        let qso = decode_hamlog_ios(&ios_row("2025-10-18 20:00:00 -0500")).unwrap();
+        assert_eq!((qso.month, qso.day, qso.hour, qso.minute), (10, 19, 1, 0));
+        let qso = decode_hamlog_ios(&ios_row("2025-10-18 12:00:00 +0530")).unwrap();
+        assert_eq!((qso.hour, qso.minute), (6, 30));
     }
 
     #[test]
-    fn test_decode_auto_ios() {
-        let cols = make_cols(&[
-            "2024-12-28 12:34:56 +0000",
-            "",
-            "7.025",
-            "JL1NIE",
-            "559",
-            "599",
-            "PM95",
-            "Taro",
-            "Tokyo",
-            "",
-            "",
-            "CW",
-            "",
-            "",
-            "J",
-            "1",
-            "0",
-            "",
-            "",
-        ]);
+    fn a_malformed_ios_datetime_is_an_error() {
+        let qso = decode_hamlog_ios(&ios_row("yesterday")).unwrap();
+        assert_eq!(
+            qso.errors,
+            vec![RecordError::BadTime("yesterday".to_string())]
+        );
+        assert_eq!(
+            decode_hamlog_ios(&cols(&["x"])).unwrap_err(),
+            RecordError::TooFewColumns(1)
+        );
+    }
 
-        let qso = decode_auto(&cols, true).unwrap();
-        assert_eq!(qso.callsign, "JL1NIE");
+    #[test]
+    fn decode_auto_tells_the_formats_apart() {
+        let hamlog = decode_auto(&row("24/12/28", "12:34U", "7.025", "CW"), true);
+        assert_eq!(hamlog.unwrap().unwrap().callsign, "JL1NIE");
+
+        let ios = decode_auto(&ios_row("2024-12-28 12:34:56 +0000"), true);
+        assert_eq!(ios.unwrap().unwrap().callsign, "JL1NIE");
+
+        // 列が足りない行は、誤り
+        assert_eq!(
+            decode_auto(&cols(&["JA1SHT", "25/10/18"]), true).unwrap_err(),
+            RecordError::NotHamlogCsv
+        );
+    }
+
+    #[test]
+    fn the_ios_header_row_is_skipped_only_at_the_start() {
+        let header = cols(&["TimeOn", "x", "Freq"]);
+        assert!(decode_auto(&header, false).unwrap().is_none());
+        assert!(decode_auto(&header, true).is_err());
     }
 }
