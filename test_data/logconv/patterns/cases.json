@@ -1,0 +1,395 @@
+[
+ {
+  "name": "sota_a/refs_rmks1_rmks2",
+  "file": "references.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "rmks2",
+   "SOTAActivator": "JA1ZZZ/1"
+  }
+ },
+ {
+  "name": "sota_a/refs_summit_form",
+  "file": "references.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "form",
+   "Summit": "JA/KN-006",
+   "QTH": "none",
+   "SOTAActivator": "JA1ZZZ/1"
+  }
+ },
+ {
+  "name": "sota_a/refs_my_rmks2",
+  "file": "references_my_rmks2.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks2",
+   "QTH": "rmks1",
+   "SOTAActivator": "JA1ZZZ/1"
+  }
+ },
+ {
+  "name": "sota_a/refs_his_none",
+  "file": "references.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "none",
+   "SOTAActivator": "JA1ZZZ/1"
+  }
+ },
+ {
+  "name": "sota_a/bands_modes",
+  "file": "bands_modes.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "none",
+   "SOTAActivator": "JA1ZZZ/1"
+  }
+ },
+ {
+  "name": "sota_a/multiday_tz",
+  "file": "multiday_tz.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "rmks2",
+   "SOTAActivator": "JA1ZZZ/1"
+  }
+ },
+ {
+  "name": "sota_a/sjis",
+  "file": "sjis.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "rmks2",
+   "SOTAActivator": "JA1ZZZ/1"
+  }
+ },
+ {
+  "name": "sota_c/refs_qth",
+  "file": "references.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "sota_c/refs_rmks2",
+  "file": "references.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "rmks2",
+   "callsign": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "sota_c/refs_rmks1",
+  "file": "references_my_rmks2.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "rmks1",
+   "callsign": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "sota_c/multiday_tz",
+  "file": "multiday_tz.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "sota_c/sjis",
+  "file": "sjis.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/refs_rmks1_qth",
+  "file": "references.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/refs_his_none",
+  "file": "references.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "none",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/refs_my_rmks2",
+  "file": "references_my_rmks2.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks2",
+   "QTH": "rmks1",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/refs_park_form",
+  "file": "references.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "form",
+   "Park": "JA-0005 JAFF-0005",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/refs_park_form_single",
+  "file": "references.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "form",
+   "Park": "JA-0005",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/bands_modes",
+  "file": "bands_modes.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "none",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/multiday_tz",
+  "file": "multiday_tz.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/sjis",
+  "file": "sjis.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/ios",
+  "file": "ios.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "rmks2",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "pota/input_adi",
+  "file": "input.adi",
+  "format": "pota",
+  "options": {
+   "myQTH": "form",
+   "Park": "JA-0001",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  }
+ },
+ {
+  "name": "errors/pota_check",
+  "file": "errors.csv",
+  "format": "pota",
+  "endpoint": "check",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "status": "NG",
+   "error_lines": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ]
+  }
+ },
+ {
+  "name": "errors/pota_generate",
+  "file": "errors.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "http": 400,
+   "error_lines": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ]
+  }
+ },
+ {
+  "name": "errors/sota_a",
+  "file": "errors.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "SOTAActivator": "JA1ZZZ/1"
+  },
+  "expect": {
+   "files": [
+    "sota-s2s-20251018.csv",
+    "sota000000.csv",
+    "sota20251018.adi",
+    "sota20251018.csv"
+   ],
+   "lines": {
+    "sota20251018.csv": 2,
+    "sota-s2s-20251018.csv": 2,
+    "sota000000.csv": 7,
+    "sota20251018.adi": 6
+   }
+  }
+ },
+ {
+  "name": "errors/sota_c",
+  "file": "errors.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "sota000000.csv",
+    "sota20251018.csv"
+   ],
+   "lines": {
+    "sota20251018.csv": 2,
+    "sota000000.csv": 7
+   }
+  }
+ },
+ {
+  "name": "unordered/sota_a",
+  "file": "unordered.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "rmks2",
+   "SOTAActivator": "JA1ZZZ/1"
+  },
+  "expect": {
+   "files": [
+    "sota-s2s-20251018.csv",
+    "sota-s2s-20251019.csv",
+    "sota20251018.adi",
+    "sota20251018.csv",
+    "sota20251019.csv",
+    "sota20251020.csv"
+   ],
+   "lines": {
+    "sota20251018.csv": 3,
+    "sota20251019.csv": 2,
+    "sota20251020.csv": 1,
+    "sota-s2s-20251018.csv": 2,
+    "sota-s2s-20251019.csv": 1,
+    "sota20251018.adi": 10
+   }
+  }
+ },
+ {
+  "name": "unordered/pota",
+  "file": "unordered.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "JA1ZZZ-1@JA-0001-20251018.adi",
+    "JA1ZZZ-1@JA-TK-001-20251018.adi",
+    "JA1ZZZ-1@JA-TK-001-20251019.adi",
+    "JA1ZZZ-1@JA-TK-001-20251020.adi"
+   ],
+   "records": {
+    "JA1ZZZ-1@JA-0001-20251018.adi": 6,
+    "JA1ZZZ-1@JA-TK-001-20251018.adi": 3,
+    "JA1ZZZ-1@JA-TK-001-20251019.adi": 2,
+    "JA1ZZZ-1@JA-TK-001-20251020.adi": 1
+   }
+  }
+ },
+ {
+  "name": "live/pota_my_state",
+  "live_only": true,
+  "file": "references.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "form",
+   "Park": "JP-0117",
+   "QTH": "none",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "JA1ZZZ-1@JP-0117-20251018.adi"
+   ],
+   "contains": {
+    "JA1ZZZ-1@JP-0117-20251018.adi": "<MY_SIG_INFO:7>JP-0117<MY_STATE:2>TK"
+   }
+  }
+ }
+]

@@ -11,3 +11,12 @@ HAMLOG CSV(`コールサイン,日付,時刻,RST送,RST受,周波数,モード,�
 | `wsprnet_spots_20261018.txt` | WSPRnet の画面からそのままコピーした50スポット。見出し・件数・フッターなどの余計な行を含む(13項目の行だけが読まれる) |
 
 テストは `service/src/implement/logconv/converter.rs` と `service/src/implement/wspr_service.rs`。
+
+## legacy/ — 旧版(HamLogConv の Python)の出力
+`hamlog_nfer.csv` を旧版の `convutil.py` に通して得た出力(改行は LF にそろえてある)。新版の出力が旧版と同じになることのテストの正解。
+- `legacy/sota_a/`: SOTA Activator(`hamlog_nfer_rmks2.csv`、`JA1ZZZ/1`、自局=備考1、相手=備考2)。CSV・S2S・ADIF
+- `legacy/sota_c/`: SOTA Chaser(`JA1ZZZ`、相手=QTH)。`sota…`(山のある交信)と `other…`(ない交信)
+- `legacy/pota/`: POTA/WWFF/SOTA の ADIF(`JA1ZZZ/1`、運用者 `JA1ZZZ`)。MY_STATE は、公園の所在地の取得(ネットワーク)を外してある
+
+## patterns/ — パターンを網羅したフィクスチャ
+デプロイ後の確認(`patterns/verify.py`)と、変換のテストに使う。詳しくは `patterns/README.md`。

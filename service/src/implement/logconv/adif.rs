@@ -182,6 +182,7 @@ pub fn decode_adif(record: &str) -> Result<QsoRecord, String> {
         .unwrap_or_default();
 
     Ok(QsoRecord {
+        source_line: 0,
         has_error: false,
         error_message: String::new(),
         date_error: String::new(),
