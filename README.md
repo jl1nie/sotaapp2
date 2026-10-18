@@ -230,7 +230,7 @@ makers build && makers migrate run && makers run
 | `lon` | - | 経度（-180〜180） |
 | `zoom` | `15` | ズームレベル（1〜19。タイルの最大ズームに丸められる） |
 | `label` | - | マーカーに表示する名称（100文字以内） |
-| `tile` | `osm` | タイル種別。`osm` = OpenStreetMap、`gsi` = 地理院タイル |
+| `tile` | `gsi` | タイル種別。`gsi` = 地理院タイル（日本国内のみ）、`osm` = OpenStreetMap（日本国外はこちら） |
 | `embed` | `false` | `true`でヘッダを省略（iframe埋め込み用） |
 | `refs` | `true` | `false`で近傍のSOTA山岳・POTA公園の表示を止める |
 | `radius` | `1000` | 近傍を探す半径。単位はメートル（1〜10000） |
@@ -277,13 +277,13 @@ const view = await getMapView({ lat, lon, tile: 'gsi' });
   "maidenhead": "PM95ii76",
   "label": "富士山",
   "tile": {
-    "kind": "osm",
-    "urlTemplate": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
-    "maxZoom": 19
+    "kind": "gsi",
+    "urlTemplate": "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+    "attribution": "<a href=\"https://maps.gsi.go.jp/development/ichiran.html\">地理院タイル</a>",
+    "maxZoom": 18
   },
-  "mapUrl": "/api/v2/map?lat=35.360556&lon=138.727778&zoom=15&tile=osm&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1",
-  "embedUrl": "/api/v2/map?lat=35.360556&lon=138.727778&zoom=15&tile=osm&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1&embed=true",
+  "mapUrl": "/api/v2/map?lat=35.360556&lon=138.727778&zoom=15&tile=gsi&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1",
+  "embedUrl": "/api/v2/map?lat=35.360556&lon=138.727778&zoom=15&tile=gsi&label=%E5%AF%8C%E5%A3%AB%E5%B1%B1&embed=true",
   "externalLinks": {
     "googleMaps": "https://www.google.com/maps?q=35.360556,138.727778",
     "openStreetMap": "https://www.openstreetmap.org/?mlat=35.360556&mlon=138.727778#map=15/35.360556/138.727778",

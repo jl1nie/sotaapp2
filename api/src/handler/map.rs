@@ -365,16 +365,17 @@ mod tests {
     }
 
     #[test]
-    fn test_render_uses_osm_tile_by_default() {
+    fn test_render_uses_gsi_tile_by_default() {
         let html = render_map_html(&param(None, None), &[]);
-        assert!(html.contains("tile.openstreetmap.org"));
-        assert!(!html.contains("cyberjapandata.gsi.go.jp/xyz"));
+        assert!(html.contains("cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"));
+        assert!(!html.contains("tile.openstreetmap.org/{z}"));
     }
 
     #[test]
-    fn test_render_uses_gsi_tile_when_requested() {
-        let html = render_map_html(&param(None, Some(TileLayer::Gsi)), &[]);
-        assert!(html.contains("cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"));
+    fn test_render_uses_osm_tile_when_requested() {
+        let html = render_map_html(&param(None, Some(TileLayer::Osm)), &[]);
+        assert!(html.contains("tile.openstreetmap.org/{z}/{x}/{y}.png"));
+        assert!(!html.contains("cyberjapandata.gsi.go.jp/xyz"));
     }
 
     #[test]
