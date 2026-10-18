@@ -164,7 +164,8 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
       var lines = [r.nameJ ? r.name + ' / ' + r.nameJ : r.name];
       if (r.kind === 'sota') {{
         lines.push(r.altM + ' m / ' + r.points + ' pt');
-      }} else if (r.location) {{
+      }}
+      if (r.location) {{
         lines.push(r.location);
       }}
       lines.push('距離 ' + r.distanceM + ' m');

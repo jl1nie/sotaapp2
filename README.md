@@ -300,7 +300,7 @@ const view = await getMapView({ lat, lon, tile: 'gsi' });
       "distanceM": 0,
       "altM": 3776,
       "points": 10,
-      "location": null
+      "location": "静岡県富士宮市"
     }
   ]
 }
