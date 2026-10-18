@@ -4,6 +4,7 @@ use common::config::OpenApiLevel;
 use utoipa::openapi::OpenApi;
 
 use crate::handler::health::HealthApi;
+use crate::handler::map::MapApi;
 use crate::handler::search::SearchApi;
 
 /// SOTAApp2 API ドキュメントを生成（レベル別）
@@ -25,6 +26,7 @@ fn create_public_api_doc() -> OpenApi {
 
     let mut doc = HealthApi::openapi();
     doc.merge(SearchApi::openapi());
+    doc.merge(MapApi::openapi());
 
     set_api_info(&mut doc, "SOTAApp2 Public API");
     doc
@@ -36,6 +38,7 @@ fn create_full_api_doc() -> OpenApi {
 
     let mut doc = HealthApi::openapi();
     doc.merge(SearchApi::openapi());
+    doc.merge(MapApi::openapi());
     // TODO: 将来的にAdminApiを追加
 
     set_api_info(&mut doc, "SOTAApp2 API");
@@ -100,5 +103,13 @@ mod tests {
         assert!(paths.contains_key("/api/v2/search"));
         assert!(paths.contains_key("/api/v2/search/full"));
         assert!(paths.contains_key("/api/v2/search/brief"));
+    }
+
+    #[test]
+    fn test_public_doc_contains_map_path() {
+        let doc = create_api_doc(OpenApiLevel::Public).unwrap();
+        let paths = doc.paths.paths;
+
+        assert!(paths.contains_key("/api/v2/map"));
     }
 }
