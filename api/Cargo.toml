@@ -32,5 +32,6 @@ csv.workspace = true
 
 [dev-dependencies]
 axum-test.workspace = true
+zip.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
 tower.workspace = true

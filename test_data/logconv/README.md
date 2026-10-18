@@ -17,3 +17,6 @@ HAMLOG CSV(`コールサイン,日付,時刻,RST送,RST受,周波数,モード,�
 - `legacy/sota_a/`: SOTA Activator(`hamlog_nfer_rmks2.csv`、`JA1ZZZ/1`、自局=備考1、相手=備考2)。CSV・S2S・ADIF
 - `legacy/sota_c/`: SOTA Chaser(`JA1ZZZ`、相手=QTH)。`sota…`(山のある交信)と `other…`(ない交信)
 - `legacy/pota/`: POTA/WWFF/SOTA の ADIF(`JA1ZZZ/1`、運用者 `JA1ZZZ`)。MY_STATE は、公園の所在地の取得(ネットワーク)を外してある
+
+## patterns/ — パターンを網羅したフィクスチャ
+デプロイ後の確認(`patterns/verify.py`)と、変換のテストに使う。詳しくは `patterns/README.md`。
