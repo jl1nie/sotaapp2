@@ -93,6 +93,8 @@ pub struct GetParam {
     pub lon: Option<f64>,
     #[validate(range(min = -90.0, max = 90.0, message = "緯度は-90〜90の範囲で指定してください"))]
     pub lat: Option<f64>,
+    /// 中心(`lat` `lon`)からの検索半径。単位はメートル(0〜500000)。
+    /// `min_lat` `max_lat` `min_lon` `max_lon` を指定した場合は無視される。
     #[validate(range(
         min = 0.0,
         max = 500000.0,
