@@ -101,7 +101,17 @@ pub fn decode_hamlog(cols: &[String]) -> Result<QsoRecord, String> {
         record.minute = utc_dt.minute();
         record.iso_time = dt.to_rfc3339();
     } else {
+        // 書式は合っているが、存在しない日時(99:99 や 13月など)
         record.has_error = true;
+        if !record.error_message.is_empty() {
+            record.error_message.push_str(", ");
+        }
+        record
+            .error_message
+            .push_str(&format!("日時不正:{} {}", cols[1], cols[2]));
+        if record.time_error.is_empty() {
+            record.time_error = format!("<font color=\"red\"><b>{}</b></font>", cols[2]);
+        }
         record.year = 1900;
         record.month = 1;
         record.day = 1;
@@ -297,6 +307,18 @@ mod tests {
 
     fn make_cols(data: &[&str]) -> Vec<String> {
         data.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn test_decode_hamlog_nonexistent_time_has_a_message() {
+        let cols = make_cols(&[
+            "JA2CCC", "25/10/19", "99:99J", "59", "59", "14.285", "SSB", "", "", "N", "", "", "",
+            "", "",
+        ]);
+        let qso = decode_hamlog(&cols).unwrap();
+        assert!(qso.has_error);
+        assert!(qso.error_message.contains("日時不正"));
+        assert!(qso.error_message.contains("99:99J"));
     }
 
     #[test]
