@@ -1,7 +1,7 @@
 //! リクエストのオプション(`options` の JSON)
 
 use serde::Deserialize;
-use service::implement::logconv::ConversionOptions;
+use service::implement::logconv::{ConversionOptions, HisQth, MyQth};
 
 /// 出力形式
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -18,15 +18,12 @@ pub enum OutputFormat {
 /// 変換のオプション。画面が送る名前(`myQTH` など)のまま受け取る
 #[derive(Debug, Deserialize, Default)]
 pub struct ConversionOptionsRequest {
-    /// 自局の参照を読む場所 (rmks1, rmks2, form)
+    /// 自局の参照を読む場所。指定がなければ備考1
     #[serde(rename = "myQTH")]
-    pub my_qth: Option<String>,
-    /// 相手局の参照を読む場所 (rmks1, rmks2, qth, none)
+    pub my_qth: Option<MyQth>,
+    /// 相手局の参照を読む場所。指定がなければ QTH の列
     #[serde(rename = "QTH")]
-    pub his_qth: Option<String>,
-    /// ユーザー定義ロケーション
-    #[serde(rename = "Location")]
-    pub location: Option<String>,
+    pub his_qth: Option<HisQth>,
     /// SOTAサミットリファレンス(自局の参照を `form` で入力したとき)
     #[serde(rename = "Summit")]
     pub summit: Option<String>,
@@ -47,9 +44,8 @@ pub struct ConversionOptionsRequest {
 impl From<ConversionOptionsRequest> for ConversionOptions {
     fn from(req: ConversionOptionsRequest) -> Self {
         ConversionOptions {
-            my_qth: req.my_qth.unwrap_or_else(|| "rmks1".to_string()),
-            his_qth: req.his_qth.unwrap_or_else(|| "qth".to_string()),
-            location: req.location.unwrap_or_default(),
+            my_qth: req.my_qth.unwrap_or(MyQth::Rmks1),
+            his_qth: req.his_qth.unwrap_or(HisQth::Qth),
             summit: req.summit.unwrap_or_default(),
             park: req.park.map(|p| vec![p]).unwrap_or_default(),
             sota_activator: req.sota_activator.unwrap_or_default(),

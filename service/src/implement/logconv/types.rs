@@ -361,18 +361,50 @@ pub struct RefInfo {
     pub org: String,
 }
 
+/// 自局の参照を読む場所
+///
+/// 画面の「運用先」の指定(`myQTH`)。API では `rmks1` / `rmks2` / `form`。未知の値は `form` として扱う(旧版と同じ)。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MyQth {
+    /// 備考1の列
+    Rmks1,
+    /// 備考2の列
+    Rmks2,
+    /// 画面で入力した参照(`Summit` / `Park`)
+    #[default]
+    #[serde(other)]
+    Form,
+}
+
+/// 相手局の参照を読む場所
+///
+/// 画面の「相手局」の指定(`QTH`)。API では `none` / `rmks1` / `rmks2` / `qth`。未知の値は `none` として扱う(旧版と同じ)。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum HisQth {
+    /// 備考1の列
+    Rmks1,
+    /// 備考2の列
+    Rmks2,
+    /// QTH の列
+    Qth,
+    /// 指定しない
+    #[default]
+    #[serde(other)]
+    None,
+}
+
 /// Conversion options
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ConversionOptions {
-    /// Source of my QTH (rmks1, rmks2, user_defined)
-    pub my_qth: String,
-    /// Source of his QTH (rmks1, rmks2, qth, none)
-    pub his_qth: String,
-    /// User-defined location
-    pub location: String,
-    /// Summit reference for SOTA
+    /// 自局の参照を読む場所
+    pub my_qth: MyQth,
+    /// 相手局の参照を読む場所
+    pub his_qth: HisQth,
+    /// 自局の山の参照(`my_qth` が `Form` のとき。SOTA アクティベーター)
     pub summit: String,
-    /// Park references for POTA
+    /// 自局の公園の参照(`my_qth` が `Form` のとき。ADIF)。`JAFF-0005 JP-0014` のように複数を書ける
     pub park: Vec<String>,
     /// SOTA activator callsign
     pub sota_activator: String,
@@ -380,12 +412,6 @@ pub struct ConversionOptions {
     pub pota_activator: String,
     /// POTA operator callsign
     pub pota_operator: String,
-    /// WWFF activator callsign
-    pub wwff_activator: String,
-    /// WWFF operator callsign
-    pub wwff_operator: String,
-    /// WWFF reference
-    pub wwff_ref: String,
     /// 公園(POTA)の所在地。ADIF の MY_STATE になる(例: `JP-0117` → `TK`)。引けなかった公園は入っていない
     #[serde(default)]
     pub park_states: std::collections::HashMap<String, String>,
@@ -621,32 +647,60 @@ pub fn get_ref(s: &str) -> RefInfo {
     info
 }
 
-/// Format ADIF field
-pub fn adif_field(key: &str, value: &str) -> String {
-    let field_name = match key {
-        "activator" => "STATION_CALLSIGN",
-        "callsign" => "CALL",
-        "date" => "QSO_DATE",
-        "time" => "TIME_ON",
-        "band-wlen" => "BAND",
-        "mode" => "MODE",
-        "sub_mode" => "SUBMODE",
-        "rst_sent" => "RST_SENT",
-        "rst_rcvd" => "RST_RCVD",
-        "mysig" => "MY_SIG",
-        "mysiginfo" => "MY_SIG_INFO",
-        "mystate" => "MY_STATE",
-        "sig" => "SIG",
-        "siginfo" => "SIG_INFO",
-        "sotaref" => "SOTA_REF",
-        "mysotaref" => "MY_SOTA_REF",
-        "operator" => "OPERATOR",
-        "programid" => "PROGRAMID",
-        "adifver" => "ADIF_VER",
-        _ => "COMMENT",
-    };
+/// ADIF の項目
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdifField {
+    /// 運用局のコールサイン
+    StationCallsign,
+    Operator,
+    /// 相手局のコールサイン
+    Call,
+    QsoDate,
+    TimeOn,
+    Band,
+    Mode,
+    RstSent,
+    RstRcvd,
+    MySig,
+    MySigInfo,
+    MyState,
+    Sig,
+    SigInfo,
+    SotaRef,
+    MySotaRef,
+    ProgramId,
+    AdifVer,
+}
 
-    format!("<{}:{}>{}", field_name, value.len(), value)
+impl AdifField {
+    /// ADIF のタグ名
+    pub fn tag(self) -> &'static str {
+        match self {
+            Self::StationCallsign => "STATION_CALLSIGN",
+            Self::Operator => "OPERATOR",
+            Self::Call => "CALL",
+            Self::QsoDate => "QSO_DATE",
+            Self::TimeOn => "TIME_ON",
+            Self::Band => "BAND",
+            Self::Mode => "MODE",
+            Self::RstSent => "RST_SENT",
+            Self::RstRcvd => "RST_RCVD",
+            Self::MySig => "MY_SIG",
+            Self::MySigInfo => "MY_SIG_INFO",
+            Self::MyState => "MY_STATE",
+            Self::Sig => "SIG",
+            Self::SigInfo => "SIG_INFO",
+            Self::SotaRef => "SOTA_REF",
+            Self::MySotaRef => "MY_SOTA_REF",
+            Self::ProgramId => "PROGRAMID",
+            Self::AdifVer => "ADIF_VER",
+        }
+    }
+}
+
+/// ADIF の1項目(`<CALL:6>JA1ABC`)。値が空でも項目は出す(旧版と同じ。RST のない交信は `<RST_SENT:0>`)
+pub fn adif_field(field: AdifField, value: &str) -> String {
+    format!("<{}:{}>{}", field.tag(), value.len(), value)
 }
 
 #[cfg(test)]
@@ -739,9 +793,12 @@ mod tests {
 
     #[test]
     fn test_adif_field() {
-        assert_eq!(adif_field("callsign", "JL1NIE"), "<CALL:6>JL1NIE");
-        assert_eq!(adif_field("date", "20241228"), "<QSO_DATE:8>20241228");
+        assert_eq!(adif_field(AdifField::Call, "JL1NIE"), "<CALL:6>JL1NIE");
+        assert_eq!(
+            adif_field(AdifField::QsoDate, "20241228"),
+            "<QSO_DATE:8>20241228"
+        );
         // 空の値も、項目は出す(旧版と同じ。RST のない交信は <RST_SENT:0>)
-        assert_eq!(adif_field("rst_sent", ""), "<RST_SENT:0>");
+        assert_eq!(adif_field(AdifField::RstSent, ""), "<RST_SENT:0>");
     }
 }
