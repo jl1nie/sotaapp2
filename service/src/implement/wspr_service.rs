@@ -408,6 +408,52 @@ pub fn generate_wspr_svg(request: &WsprRequest) -> Result<String, String> {
 mod tests {
     use super::*;
 
+    /// WSPRnet の画面からコピーしたまま(見出し・件数・フッターを含む)。13項目の行だけが読まれる
+    const WSPRNET_SPOTS: &str =
+        include_str!("../../../test_data/logconv/wsprnet_spots_20261018.txt");
+
+    fn request(spots: &str, from: &str, to: &str) -> WsprRequest {
+        WsprRequest {
+            title: "real".to_string(),
+            plots: vec![PlotConfig {
+                label: "JA1ZZZ 20m".to_string(),
+                color: "blue".to_string(),
+                from: from.to_string(),
+                to: to.to_string(),
+            }],
+            spots: spots.to_string(),
+            min: 0,
+            max: 20000,
+            label: true,
+            width: 800,
+        }
+    }
+
+    #[test]
+    fn test_wsprnet_copy_with_extra_lines_is_read() {
+        let svg = generate_wspr_svg(&request(
+            WSPRNET_SPOTS,
+            "2026-10-18 00:00",
+            "2026-10-18 23:59",
+        ))
+        .unwrap();
+        // 見出し・件数・フッターは読み飛ばし、50スポットが凡例に出る
+        assert!(svg.starts_with("<svg"));
+        assert!(svg.contains("50spots"), "50 spots expected");
+    }
+
+    #[test]
+    fn test_wsprnet_copy_outside_the_period_has_no_spots() {
+        let svg = generate_wspr_svg(&request(
+            WSPRNET_SPOTS,
+            "2026-10-17 00:00",
+            "2026-10-17 23:59",
+        ))
+        .unwrap();
+        assert!(svg.contains("0spots"));
+        assert!(!svg.contains("50spots"));
+    }
+
     #[test]
     fn test_parse_datetime() {
         let ts1 = parse_datetime("2024-01-15 12:30").unwrap();
