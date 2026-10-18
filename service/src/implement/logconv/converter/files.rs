@@ -1,6 +1,6 @@
 //! 出力ファイルの集まり、CSV の書式、ZIP
 
-use super::super::types::{adif_field, AdifField};
+use super::super::adif::{adif_field, AdifField};
 use std::collections::HashMap;
 use std::io::Write;
 use zip::write::SimpleFileOptions;

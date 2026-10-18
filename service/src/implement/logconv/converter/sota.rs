@@ -1,8 +1,10 @@
 //! SOTA アクティベーター(CSV・S2S の CSV・ADIF)と、SOTA チェイサー(CSV)
 
-use super::super::types::{
-    adif_field, get_ref, split_callsign, AdifField, ConversionOptions, HisQth, QsoRecord, RefInfo,
-};
+use super::super::adif::{adif_field, AdifField};
+use super::super::callsign::split_callsign;
+use super::super::options::{ConversionOptions, HisQth};
+use super::super::record::QsoRecord;
+use super::super::reference::{get_ref, RefInfo};
 use super::files::{adif_header, csv_line, FileSet};
 use super::refs::{date_key, his_ref, line_of, my_ref_for_sota};
 use std::collections::HashMap;
@@ -56,7 +58,7 @@ fn error_line(qso: &QsoRecord, index: usize) -> String {
     let message = format!(
         "HamLog format error at Line {}. : {}",
         line_of(qso, index),
-        qso.error_message
+        qso.error_message()
     );
     let mut fields = vec![message];
     fields.extend(std::iter::repeat_n(String::new(), 9));
@@ -99,7 +101,7 @@ fn adif_line(
     callsign: &str,
     options: &ConversionOptions,
 ) -> Option<(String, String)> {
-    if qso.has_error {
+    if qso.has_error() {
         return None;
     }
     let my = my_ref_for_sota(qso, options);
@@ -168,7 +170,7 @@ pub fn convert_to_sota_activator(
     let mut files = FileSet::default();
 
     for (index, qso) in records.iter().enumerate() {
-        if qso.has_error {
+        if qso.has_error() {
             files.append(ERROR_FILE, &error_line(qso, index));
             continue;
         }
@@ -200,7 +202,7 @@ pub fn convert_to_sota_chaser(
     let mut files = FileSet::default();
 
     for (index, qso) in records.iter().enumerate() {
-        if qso.has_error {
+        if qso.has_error() {
             files.append(ERROR_FILE, &error_line(qso, index));
             continue;
         }

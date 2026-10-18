@@ -100,16 +100,6 @@ pub fn decode_text(bytes: &[u8]) -> String {
     }
 }
 
-/// 読み取れなかった行の記録(誤りの行として、変換の結果に残す)
-fn unreadable(source_line: usize, reason: impl std::fmt::Display) -> QsoRecord {
-    QsoRecord {
-        source_line,
-        has_error: true,
-        error_message: format!("エラー:{reason}"),
-        ..Default::default()
-    }
-}
-
 /// 入力のファイルを読む。1行目に `ADIF` か `<EOH>` があれば ADIF、なければ HAMLOG CSV(HamLog iOS を含む)
 pub fn read_records(content: &str) -> (Vec<QsoRecord>, bool) {
     let first_line = content
@@ -136,7 +126,7 @@ fn read_adif(content: &str) -> Vec<QsoRecord> {
                 .map(|(k, v)| format!("<{}:{}>{}", k, v.len(), v))
                 .collect::<String>()
                 + "<EOR>";
-            decode_adif(&record).unwrap_or_else(|e| unreadable(0, e))
+            decode_adif(&record).unwrap_or_else(|e| QsoRecord::unreadable(0, e))
         })
         .collect()
 }
@@ -156,14 +146,14 @@ fn read_hamlog_csv(content: &str) -> Vec<QsoRecord> {
         }
         let line = row.position().map_or(0, |p| p.line() as usize);
         match decode_auto(&cols, header_seen) {
-            Ok(mut qso) => {
+            Ok(Some(mut qso)) => {
                 qso.source_line = line;
                 records.push(qso);
             }
             // 見出しの行は、読み飛ばす
-            Err(e) if e == "HEADER" => {}
+            Ok(None) => {}
             // 列が足りないなど、読み取れない行は、誤りの行として残す(黙って捨てない)
-            Err(e) => records.push(unreadable(line, e)),
+            Err(e) => records.push(QsoRecord::unreadable(line, e)),
         }
         header_seen = true;
     }

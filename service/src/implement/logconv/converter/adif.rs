@@ -1,8 +1,10 @@
 //! 自局の参照ごとの ADIF(POTA・WWFF・SOTA)と、確認画面に出す表
 
-use super::super::types::{
-    adif_field, split_callsign, AdifField, ConversionOptions, ConversionResult, QsoRecord, RefInfo,
-};
+use super::super::adif::{adif_field, AdifField};
+use super::super::callsign::split_callsign;
+use super::super::options::{ConversionOptions, ConversionResult};
+use super::super::record::QsoRecord;
+use super::super::reference::RefInfo;
 use super::files::{adif_header, FileSet};
 use super::refs::{date_key, his_ref, line_of, my_ref_for_adif};
 
@@ -60,8 +62,8 @@ fn refs_text(r: &RefInfo) -> String {
 
 /// 1交信の ADIF を作る。読み取りに失敗した交信は、その理由
 fn adif_qso(qso: &QsoRecord, options: &ConversionOptions) -> Result<AdifQso, String> {
-    if qso.has_error || !qso.band_error.is_empty() {
-        return Err(qso.error_message.clone());
+    if qso.has_error() {
+        return Err(qso.error_message());
     }
 
     let my = my_ref_for_adif(qso, options);
@@ -202,7 +204,7 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
     // 最初の日付は、読み取りに成功した最初の交信のもの
     let first_date = records
         .iter()
-        .find(|r| !r.has_error)
+        .find(|r| !r.has_error())
         .map(date_key)
         .unwrap_or_default();
 
