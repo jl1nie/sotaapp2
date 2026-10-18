@@ -20,6 +20,7 @@ shaku_axum.workspace = true
 shaku.workspace = true
 tokio-cron-scheduler.workspace = true
 tracing.workspace = true
+encoding_rs = "0.8"
 maidenhead.workspace = true
 fastrand.workspace = true
 aprs-message.workspace = true
@@ -31,5 +32,6 @@ csv.workspace = true
 
 [dev-dependencies]
 axum-test.workspace = true
+zip.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
 tower.workspace = true

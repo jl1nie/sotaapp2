@@ -305,6 +305,9 @@ pub static ADIF_MODE_TABLE: Lazy<Vec<(&'static str, Vec<&'static str>)>> = Lazy:
 /// Parsed QSO record (common format for all input types)
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct QsoRecord {
+    /// 入力ファイルでの行番号(1から。分からなければ 0)。誤りの知らせに使う
+    #[serde(default)]
+    pub source_line: usize,
     pub has_error: bool,
     pub error_message: String,
     pub date_error: String,
@@ -383,6 +386,9 @@ pub struct ConversionOptions {
     pub wwff_operator: String,
     /// WWFF reference
     pub wwff_ref: String,
+    /// 公園(POTA)の所在地。ADIF の MY_STATE になる(例: `JP-0117` → `TK`)。引けなかった公園は入っていない
+    #[serde(default)]
+    pub park_states: std::collections::HashMap<String, String>,
 }
 
 /// Conversion result
@@ -617,10 +623,6 @@ pub fn get_ref(s: &str) -> RefInfo {
 
 /// Format ADIF field
 pub fn adif_field(key: &str, value: &str) -> String {
-    if value.is_empty() {
-        return String::new();
-    }
-
     let field_name = match key {
         "activator" => "STATION_CALLSIGN",
         "callsign" => "CALL",
@@ -739,6 +741,7 @@ mod tests {
     fn test_adif_field() {
         assert_eq!(adif_field("callsign", "JL1NIE"), "<CALL:6>JL1NIE");
         assert_eq!(adif_field("date", "20241228"), "<QSO_DATE:8>20241228");
-        assert_eq!(adif_field("callsign", ""), "");
+        // 空の値も、項目は出す(旧版と同じ。RST のない交信は <RST_SENT:0>)
+        assert_eq!(adif_field("rst_sent", ""), "<RST_SENT:0>");
     }
 }
