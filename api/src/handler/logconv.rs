@@ -12,8 +12,8 @@ use axum::{
 use registry::AppState;
 use serde::{Deserialize, Serialize};
 use service::implement::logconv::{
-    convert_to_adif, convert_to_sota_activator, create_zip, decode_adif, decode_auto, parse_adif,
-    ConversionOptions, ConversionResult, QsoRecord,
+    convert_to_adif, convert_to_sota_activator, convert_to_sota_chaser, create_zip, decode_adif,
+    decode_auto, parse_adif, ConversionOptions, ConversionResult, QsoRecord,
 };
 
 /// Logconvルーターを作成
@@ -258,6 +258,48 @@ async fn hamlog_handler(mut multipart: Multipart) -> Response {
                     .into_response(),
             }
         }
+        "sota_c" => {
+            let files = convert_to_sota_chaser(&records, &callsign, &options);
+            if files.is_empty() {
+                return (
+                    StatusCode::OK,
+                    Json(LogconvResponse {
+                        status: "OK".to_string(),
+                        error: Some("No SOTA references found".to_string()),
+                        error_log: vec![],
+                        log_text: vec![],
+                        file_list: vec![],
+                    }),
+                )
+                    .into_response();
+            }
+
+            match create_zip(&files) {
+                Ok(zip_data) => (
+                    StatusCode::OK,
+                    [
+                        (header::CONTENT_TYPE, "application/zip"),
+                        (
+                            header::CONTENT_DISPOSITION,
+                            "attachment; filename=\"sota-chaser.zip\"",
+                        ),
+                    ],
+                    zip_data,
+                )
+                    .into_response(),
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(LogconvResponse {
+                        status: "NG".to_string(),
+                        error: Some(format!("ZIP creation failed: {}", e)),
+                        error_log: vec![],
+                        log_text: vec![],
+                        file_list: vec![],
+                    }),
+                )
+                    .into_response(),
+            }
+        }
         "pota" => {
             let result = convert_to_adif(&records, &options);
 
@@ -449,5 +491,47 @@ mod tests {
     #[tokio::test]
     async fn test_logconv_router_exists() {
         let _router = logconv_router();
+    }
+
+    /// multipart/form-data のリクエストを作り、ハンドラーに渡す
+    async fn post_hamlog(csv: &str, options: &str) -> Response {
+        use axum::extract::FromRequest;
+        let boundary = "XBOUNDARYX";
+        let body = format!(
+            "--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"log.csv\"\r\n\r\n{csv}\r\n\
+             --{b}\r\nContent-Disposition: form-data; name=\"options\"\r\n\r\n{options}\r\n--{b}--\r\n",
+            b = boundary
+        );
+        let request = axum::http::Request::builder()
+            .method("POST")
+            .header(
+                header::CONTENT_TYPE,
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .body(axum::body::Body::from(body))
+            .unwrap();
+        let multipart = Multipart::from_request(request, &()).await.unwrap();
+        hamlog_handler(multipart).await
+    }
+
+    // HAMLOG CSV: コールサイン,日付,時刻,RST送,RST受,周波数,モード,コード,GL,QSL,名前,QTH,備考1,備考2,
+    const CSV: &str = "JA1AAA,25/10/18,01:00U,59,59,7.030,CW,,,N,,JA/KN-001,,,\n\
+                       JA1BBB,25/10/18,01:05U,59,59,7.030,CW,,,N,,Tokyo,,,\n";
+
+    #[tokio::test]
+    async fn test_hamlog_sota_chaser_returns_a_zip() {
+        let res = post_hamlog(
+            CSV,
+            r#"{"format":"sota_c","QTH":"qth","callsign":"JA1ZZZ"}"#,
+        )
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()[header::CONTENT_TYPE], "application/zip");
+    }
+
+    #[tokio::test]
+    async fn test_hamlog_unknown_format_is_a_bad_request() {
+        let res = post_hamlog(CSV, r#"{"format":"nope"}"#).await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     }
 }
