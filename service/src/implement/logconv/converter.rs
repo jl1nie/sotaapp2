@@ -261,20 +261,20 @@ pub fn to_adif2(
     }
 
     // POTA references
+    let mut my_state = String::new();
     for my in &my_ref.pota {
         let his = his_ref
             .pota
             .iter()
             .map(|h| vec![adif_field("sig", "POTA"), adif_field("siginfo", h)])
             .collect();
-        log.insert(
-            my.clone(),
-            records(
-                &base_fields,
-                vec![adif_field("mysig", "POTA"), adif_field("mysiginfo", my)],
-                his,
-            ),
-        );
+        let mut my_fields = vec![adif_field("mysig", "POTA"), adif_field("mysiginfo", my)];
+        // 所在地が分かる公園は、MY_STATE を入れる
+        if let Some(state) = options.park_states.get(my) {
+            my_fields.push(adif_field("mystate", state));
+            my_state = state.clone();
+        }
+        log.insert(my.clone(), records(&base_fields, my_fields, his));
     }
 
     // WWFF references
@@ -306,7 +306,10 @@ pub fn to_adif2(
     };
 
     let his_str = make_str(&his_ref);
-    let my_str = make_str(&my_ref);
+    let mut my_str = make_str(&my_ref);
+    if !my_state.is_empty() {
+        my_str.push_str(&format!("({})", my_state));
+    }
 
     let disp = vec![
         qso.callsign.clone(),
@@ -923,6 +926,23 @@ mod tests {
             files["sota20251018.adi"],
             legacy!("sota_a/sota20251018.adi")
         );
+    }
+
+    #[test]
+    fn adif_has_my_state_for_parks_with_a_known_location() {
+        let mut options = rmks1_qth();
+        options
+            .park_states
+            .insert("JA-0001".to_string(), "TK".to_string());
+        let result = convert_to_adif(&fixture(NFER), &options);
+        let park = &result.files["JA1ZZZ-1@JA-0001-20251018.adi"];
+        // MY_SIG_INFO の直後。相手の SIG の前
+        assert!(park.contains("<MY_SIG_INFO:7>JA-0001<MY_STATE:2>TK<SIG:4>POTA<SIG_INFO:7>JA-0123"));
+        assert_eq!(records_in(park), park.matches("<MY_STATE:2>TK").count());
+        // 所在地が分からない公園(JA-0002)には、入れない
+        assert!(!result.files["JA1ZZZ-1@JA-0002-20251018.adi"].contains("MY_STATE"));
+        // 表示の行にも所在地
+        assert!(result.log_text[0][8].contains("JA-0001(TK)"));
     }
 
     #[test]

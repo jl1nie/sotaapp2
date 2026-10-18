@@ -383,6 +383,9 @@ pub struct ConversionOptions {
     pub wwff_operator: String,
     /// WWFF reference
     pub wwff_ref: String,
+    /// 公園(POTA)の所在地。ADIF の MY_STATE になる(例: `JP-0117` → `TK`)。引けなかった公園は入っていない
+    #[serde(default)]
+    pub park_states: std::collections::HashMap<String, String>,
 }
 
 /// Conversion result

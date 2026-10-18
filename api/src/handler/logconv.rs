@@ -9,12 +9,17 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use registry::AppState;
+use common::error::AppError;
+use domain::model::event::FindRefBuilder;
+use registry::{AppRegistry, AppState};
 use serde::{Deserialize, Serialize};
 use service::implement::logconv::{
     convert_to_adif, convert_to_sota_activator, convert_to_sota_chaser, create_zip, decode_adif,
-    decode_auto, parse_adif, ConversionOptions, ConversionResult, QsoRecord,
+    decode_auto, get_ref, parse_adif, ConversionOptions, ConversionResult, QsoRecord,
 };
+use service::services::AdminService;
+use shaku_axum::Inject;
+use std::collections::HashMap;
 
 /// Logconvルーターを作成
 pub fn logconv_router() -> Router<AppState> {
@@ -94,7 +99,15 @@ struct LogconvResponse {
 }
 
 /// HAMLOGフォーマット変換ハンドラー
-async fn hamlog_handler(mut multipart: Multipart) -> Response {
+async fn hamlog_handler(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    multipart: Multipart,
+) -> Response {
+    hamlog_convert(Some(&*admin_service), multipart).await
+}
+
+/// `admin` は公園の所在地(MY_STATE)を引くのに使う。なければ(テストなど)入れない
+async fn hamlog_convert(admin: Option<&dyn AdminService>, mut multipart: Multipart) -> Response {
     let mut file_content: Option<Vec<u8>> = None;
     let mut options_json: Option<String> = None;
 
@@ -187,6 +200,9 @@ async fn hamlog_handler(mut multipart: Multipart) -> Response {
     if is_adif {
         // ADIF の入力には、HAMLOG の QTH の列がない。相手の参照は、ADIF のコメントなどから取る
         options.his_qth = "qth".to_string();
+    }
+    if let Some(admin) = admin {
+        options.park_states = park_states(admin, &records, &options).await;
     }
     let callsign = request
         .callsign
@@ -379,8 +395,68 @@ fn read_records(content: &str) -> (Vec<QsoRecord>, bool) {
     (records, is_adif)
 }
 
+/// 運用した公園(POTA)の所在地を、サーバーの公園データから引く。例: `JA-0001` → `TK`
+///
+/// 旧版と同じく、所在地が1つに決まる公園だけ(複数の都道府県にまたがる公園は、入れない)。
+async fn park_states(
+    admin: &dyn AdminService,
+    records: &[QsoRecord],
+    options: &ConversionOptions,
+) -> HashMap<String, String> {
+    let mut codes: Vec<String> = Vec::new();
+    for qso in records {
+        let mine = match options.my_qth.as_str() {
+            "rmks1" => get_ref(&qso.remarks1).pota,
+            "rmks2" => get_ref(&qso.remarks2).pota,
+            _ => options.park.clone(),
+        };
+        for code in mine {
+            if !codes.contains(&code) {
+                codes.push(code);
+            }
+        }
+    }
+
+    let mut states = HashMap::new();
+    for code in codes {
+        let query = FindRefBuilder::default()
+            .pota()
+            .pota_code(code.clone())
+            .build();
+        let park = match admin.show_pota_reference(query).await {
+            Ok(park) => park,
+            Err(AppError::RowNotFound { .. }) => continue,
+            Err(e) => {
+                tracing::warn!("park location lookup failed for {code}: {e}");
+                continue;
+            }
+        };
+        if let Some(state) = single_state(&park.park_locid) {
+            states.insert(code, state);
+        }
+    }
+    states
+}
+
+/// `JP-TK` → `TK`。カンマで区切った複数の所在地(`JP-TK,JP-SI`)は None
+fn single_state(locid: &str) -> Option<String> {
+    let mut parts = locid.split(',').map(str::trim).filter(|p| !p.is_empty());
+    let first = parts.next()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    Some(first.trim_start_matches("JP-").to_string())
+}
+
 /// POTA ADIF変換ハンドラー (JSON応答版)
-async fn pota_handler(mut multipart: Multipart) -> Response {
+async fn pota_handler(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    multipart: Multipart,
+) -> Response {
+    pota_check(Some(&*admin_service), multipart).await
+}
+
+async fn pota_check(admin: Option<&dyn AdminService>, mut multipart: Multipart) -> Response {
     let mut file_content: Option<Vec<u8>> = None;
     let mut options_json: Option<String> = None;
 
@@ -428,6 +504,9 @@ async fn pota_handler(mut multipart: Multipart) -> Response {
     let mut options: ConversionOptions = request.into();
     if is_adif {
         options.his_qth = "qth".to_string(); // ADIFの場合はqthから取得
+    }
+    if let Some(admin) = admin {
+        options.park_states = park_states(admin, &records, &options).await;
     }
 
     if records.is_empty() {
@@ -489,11 +568,11 @@ mod tests {
     }
 
     async fn post_hamlog(csv: &str, options: &str) -> Response {
-        hamlog_handler(multipart_of(csv, options).await).await
+        hamlog_convert(None, multipart_of(csv, options).await).await
     }
 
     async fn post_pota_check(csv: &str, options: &str) -> serde_json::Value {
-        let res = pota_handler(multipart_of(csv, options).await).await;
+        let res = pota_check(None, multipart_of(csv, options).await).await;
         let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -534,6 +613,13 @@ mod tests {
         assert_eq!(none["log_text"][0][7], "");
         let qth = post_pota_check(csv, &opts("qth")).await;
         assert_eq!(qth["log_text"][0][7], "JA/KN-001");
+    }
+
+    #[test]
+    fn test_single_state_from_a_location_id() {
+        assert_eq!(single_state("JP-TK").as_deref(), Some("TK"));
+        assert_eq!(single_state("JP-TK,JP-SI"), None);
+        assert_eq!(single_state(""), None);
     }
 
     // ADIF ファイルを入力にして、POTA の ADIF を作れる
