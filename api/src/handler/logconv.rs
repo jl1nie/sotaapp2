@@ -178,8 +178,7 @@ async fn hamlog_convert(admin: Option<&dyn AdminService>, mut multipart: Multipa
         }
     };
 
-    // ファイル内容をUTF-8で読み込み (Shift-JISフォールバックなし、簡略化)
-    let content_str = String::from_utf8_lossy(&content).to_string();
+    let content_str = decode_text(&content);
     let (records, is_adif) = read_records(&content_str);
 
     if records.is_empty() {
@@ -351,6 +350,17 @@ async fn hamlog_convert(admin: Option<&dyn AdminService>, mut multipart: Multipa
     }
 }
 
+/// 入力ファイルの文字コードを判定して読む。UTF-8 として正しければ UTF-8、そうでなければ Shift-JIS(cp932)
+///
+/// 日本語版の HAMLOG が出す CSV は Shift-JIS(旧版は常に cp932 で読んでいた)。
+fn decode_text(bytes: &[u8]) -> String {
+    let bytes = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes);
+    match std::str::from_utf8(bytes) {
+        Ok(text) => text.to_string(),
+        Err(_) => encoding_rs::SHIFT_JIS.decode(bytes).0.into_owned(),
+    }
+}
+
 /// 入力のファイルを読む。1行目に `ADIF` か `<EOH>` があれば ADIF、なければ HAMLOG CSV(HamLog iOS を含む)
 fn read_records(content: &str) -> (Vec<QsoRecord>, bool) {
     let first_line = content
@@ -498,7 +508,7 @@ async fn pota_check(admin: Option<&dyn AdminService>, mut multipart: Multipart) 
         None => ConversionOptionsRequest::default(),
     };
 
-    let content_str = String::from_utf8_lossy(&content).to_string();
+    let content_str = decode_text(&content);
 
     let (records, is_adif) = read_records(&content_str);
     let mut options: ConversionOptions = request.into();
@@ -613,6 +623,18 @@ mod tests {
         assert_eq!(none["log_text"][0][7], "");
         let qth = post_pota_check(csv, &opts("qth")).await;
         assert_eq!(qth["log_text"][0][7], "JA/KN-001");
+    }
+
+    #[test]
+    fn test_decode_text_reads_shift_jis_and_utf8() {
+        // HAMLOG(Shift-JIS)の行: 名前と QTH に日本語、備考1に参照と日本語
+        let (sjis, _, _) = encoding_rs::SHIFT_JIS
+            .encode("JA1AAA,25/10/18,01:00U,59,59,7.030,CW,,,N,太郎,東京,JA/TK-001 高尾山,,\n");
+        let text = decode_text(&sjis);
+        assert!(text.contains("太郎") && text.contains("JA/TK-001 高尾山"));
+        // UTF-8 は、そのまま(BOM は外す)
+        assert_eq!(decode_text("高尾山".as_bytes()), "高尾山");
+        assert_eq!(decode_text(b"\xEF\xBB\xBFabc"), "abc");
     }
 
     #[test]

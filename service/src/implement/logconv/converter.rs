@@ -519,7 +519,24 @@ pub fn convert_to_sota_activator(
 ) -> HashMap<String, String> {
     let mut files: HashMap<String, String> = HashMap::new();
 
-    for qso in records {
+    for (index, qso) in records.iter().enumerate() {
+        // 読み取りに失敗した行は、日付のファイルに混ぜず、別のファイル(sota000000.csv)に集める
+        // (日付のファイルは、そのまま SOTA にアップロードするため)
+        if qso.has_error {
+            let message = format!(
+                "HamLog format error at Line {}. : {}",
+                index + 1,
+                qso.error_message
+            );
+            let row = std::iter::once(message.as_str())
+                .chain(std::iter::repeat_n("", 9))
+                .collect::<Vec<_>>();
+            files
+                .entry("sota000000.csv".to_string())
+                .or_default()
+                .push_str(&(row.join(",") + "\n"));
+            continue;
+        }
         let Some((date, is_s2s, row)) = to_sota_activator(qso, callsign, options) else {
             continue;
         };
@@ -687,9 +704,10 @@ mod tests {
         assert!(day18.contains(",JA2AAA,") && day18.contains(",JA2FFF,"));
         let day19 = &files["sota20251019.csv"];
         assert!(day19.contains(",JA2BBB,") && day19.contains(",JA2EEE,"));
-        // 誤りの行は、消えずに、それぞれのファイルに残る
-        assert!(day19.contains("周波数不正"));
-        assert!(files.values().any(|v| v.contains("HamLog format error")));
+        // 誤りの行は、消えずに、日付のファイルとは別の sota000000.csv に集まる
+        let errors = &files["sota000000.csv"];
+        assert!(errors.contains("周波数不正") && errors.contains("日時不正"));
+        assert!(!day19.contains("HamLog format error"));
         assert_eq!(files["sota-s2s-20251018.csv"].lines().count(), 1);
     }
 
@@ -943,6 +961,58 @@ mod tests {
         assert!(!result.files["JA1ZZZ-1@JA-0002-20251018.adi"].contains("MY_STATE"));
         // 表示の行にも所在地
         assert!(result.log_text[0][8].contains("JA-0001(TK)"));
+    }
+
+    /// HamLog iOS 形式(1行目が見出し)。旧版と同じ出力になる(誤りの行のファイル名を除く)
+    #[test]
+    fn legacy_parity_hamlog_ios() {
+        use super::super::hamlog::decode_auto;
+        let csv = include_str!("../../../../test_data/logconv/hamlog_ios.csv");
+        let mut records = Vec::new();
+        let mut header_seen = false;
+        for line in csv.lines() {
+            let cols: Vec<String> = line.split(',').map(String::from).collect();
+            if let Ok(qso) = decode_auto(&cols, header_seen) {
+                records.push(qso);
+            }
+            header_seen = true;
+        }
+        assert_eq!(records.len(), 5);
+
+        let options = ConversionOptions {
+            my_qth: "rmks1".to_string(),
+            his_qth: "rmks2".to_string(),
+            ..rmks1_qth()
+        };
+        let sota = convert_to_sota_activator(&records, "JA1ZZZ/1", &options);
+        assert_eq!(
+            sota["sota20251018.csv"],
+            legacy!("ios_sota_a/sota20251018.csv")
+        );
+        assert_eq!(
+            sota["sota-s2s-20251018.csv"],
+            legacy!("ios_sota_a/sota-s2s-20251018.csv")
+        );
+
+        let adif = convert_to_adif(&records, &options);
+        assert_eq!(adif.status, "NG"); // 5行目の周波数が範囲外
+        assert_eq!(adif.files.len(), 2);
+        // 旧版は、読み取りに失敗した行を、エラー文つきの記録として ADIF の中に残す。
+        // 新版は、その記録を ADIF に入れない(エラーは、確認の画面と error_log で知らせる)。
+        // それ以外の記録は、旧版と同じ
+        for name in ["JA1ZZZ-1@JA-0001-20251018.adi"] {
+            let legacy_adif = legacy!("ios_pota/JA1ZZZ-1@JA-0001-20251018.adi");
+            assert!(legacy_adif.starts_with(adif.files[name].as_str()), "{name}");
+        }
+        assert_eq!(
+            adif.files["JA1ZZZ-1@JA-TK-001-20251018.adi"],
+            legacy!("ios_pota/JA1ZZZ-1@JA-TK-001-20251018.adi")
+                .split("Err:")
+                .next()
+                .unwrap()
+        );
+        assert_eq!(adif.error_log.len(), 1);
+        assert!(adif.error_log[0].starts_with("5行:"));
     }
 
     #[test]
