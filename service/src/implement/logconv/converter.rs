@@ -422,51 +422,36 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
 }
 
 /// Convert QSO records to SOTA activator format
+///
+/// 日付ごとに `sotaYYYYMMDD.csv` を作り、相手にも SOTA 参照番号がある交信(S2S)は
+/// `sota-s2s-YYYYMMDD.csv` にも入れる。日付の順に並んでいないログや、読み取りに失敗した行
+/// (日付が不正)が間に入っていても、交信が消えないよう、ファイル名ごとに足していく。
 pub fn convert_to_sota_activator(
     records: &[QsoRecord],
     callsign: &str,
     options: &ConversionOptions,
 ) -> HashMap<String, String> {
     let mut files: HashMap<String, String> = HashMap::new();
-    let mut current_date = String::new();
-    let mut current_csv = String::new();
-    let mut s2s_csv = String::new();
 
     for qso in records {
-        if let Some((date, is_s2s, row)) = to_sota_activator(qso, callsign, options) {
-            if row.is_empty() {
-                continue;
-            }
-
-            if current_date.is_empty() {
-                current_date = date.clone();
-            }
-
-            if date != current_date {
-                // Save current files
-                files.insert(format!("sota{}.csv", current_date), current_csv.clone());
-                if !s2s_csv.is_empty() {
-                    files.insert(format!("sota-s2s-{}.csv", current_date), s2s_csv.clone());
-                }
-                current_csv.clear();
-                s2s_csv.clear();
-                current_date = date;
-            }
-
-            let line = row.join(",") + "\n";
-            current_csv.push_str(&line);
-            if is_s2s {
-                s2s_csv.push_str(&line);
-            }
+        let Some((date, is_s2s, row)) = to_sota_activator(qso, callsign, options) else {
+            continue;
+        };
+        if row.is_empty() {
+            continue;
         }
-    }
 
-    // Save final files
-    if !current_csv.is_empty() {
-        files.insert(format!("sota{}.csv", current_date), current_csv);
-    }
-    if !s2s_csv.is_empty() {
-        files.insert(format!("sota-s2s-{}.csv", current_date), s2s_csv);
+        let line = row.join(",") + "\n";
+        files
+            .entry(format!("sota{}.csv", date))
+            .or_default()
+            .push_str(&line);
+        if is_s2s {
+            files
+                .entry(format!("sota-s2s-{}.csv", date))
+                .or_default()
+                .push_str(&line);
+        }
     }
 
     files
@@ -565,6 +550,44 @@ mod tests {
         assert_eq!(row[0], "V2");
         assert_eq!(row[2], "JA/TK-001");
         assert_eq!(row[8], "JA/KN-001");
+    }
+
+    /// 日付が行き来するログや、誤りの行が間にあるログでも、交信が消えない
+    #[test]
+    fn test_convert_to_sota_activator_keeps_every_contact() {
+        use super::super::hamlog::decode_hamlog;
+        // コールサイン,日付,時刻,RST送,RST受,周波数,モード,コード,GL,QSL,名前,QTH,備考1,備考2,
+        let rows = [
+            "JA2AAA,25/10/19,00:30J,59,59,7.030,CW,,,N,,JA/KN-001,JA/TK-001,,", // 前日(UTC)・S2S
+            "JA2BBB,25/10/19,09:15J,59,59,14.285,SSB,,,N,,,JA/TK-001,,",        // 翌日(UTC)
+            "JA2CCC,25/10/19,99:99J,59,59,14.285,SSB,,,N,,,JA/TK-001,,",        // 時刻の誤り
+            "JA2DDD,25/10/19,10:00J,59,59,9.999,SSB,,,N,,,JA/TK-001,,",         // 周波数の誤り
+            "JA2EEE,25/10/19,10:10J,59,59,7.030,CW,,,N,,,JA/TK-001,,",          // 翌日(UTC)
+            "JA2FFF,25/10/19,00:40J,59,59,7.030,CW,,,N,,,JA/TK-001,,",          // 前日に戻る
+        ];
+        let records: Vec<QsoRecord> = rows
+            .iter()
+            .map(|r| {
+                let cols: Vec<String> = r.split(',').map(String::from).collect();
+                decode_hamlog(&cols).unwrap()
+            })
+            .collect();
+        let options = ConversionOptions {
+            my_qth: "rmks1".to_string(),
+            his_qth: "qth".to_string(),
+            ..Default::default()
+        };
+
+        let files = convert_to_sota_activator(&records, "JA1ZZZ/1", &options);
+
+        let day18 = &files["sota20251018.csv"];
+        assert!(day18.contains(",JA2AAA,") && day18.contains(",JA2FFF,"));
+        let day19 = &files["sota20251019.csv"];
+        assert!(day19.contains(",JA2BBB,") && day19.contains(",JA2EEE,"));
+        // 誤りの行は、消えずに、それぞれのファイルに残る
+        assert!(day19.contains("周波数不正"));
+        assert!(files.values().any(|v| v.contains("HamLog format error")));
+        assert_eq!(files["sota-s2s-20251018.csv"].lines().count(), 1);
     }
 
     #[test]
