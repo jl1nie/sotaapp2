@@ -662,6 +662,138 @@ mod tests {
         );
     }
 
+    /// フィクスチャ(test_data/logconv)の HAMLOG CSV を読む
+    fn fixture(csv: &str) -> Vec<QsoRecord> {
+        use super::super::hamlog::decode_hamlog;
+        csv.lines()
+            .map(|line| {
+                let cols: Vec<String> = line.split(',').map(String::from).collect();
+                decode_hamlog(&cols).unwrap()
+            })
+            .collect()
+    }
+
+    const NFER: &str = include_str!("../../../../test_data/logconv/hamlog_nfer.csv");
+    const NFER_RMKS2: &str = include_str!("../../../../test_data/logconv/hamlog_nfer_rmks2.csv");
+    const JST_ERRORS: &str = include_str!("../../../../test_data/logconv/hamlog_jst_errors.csv");
+
+    fn rmks1_qth() -> ConversionOptions {
+        ConversionOptions {
+            my_qth: "rmks1".to_string(),
+            his_qth: "qth".to_string(),
+            pota_activator: "JA1ZZZ/1".to_string(),
+            pota_operator: "JA1ZZZ".to_string(),
+            ..Default::default()
+        }
+    }
+
+    fn records_in(adif: &str) -> usize {
+        adif.matches("<EOR>").count()
+    }
+
+    #[test]
+    fn fixture_nfer_sota_activator_splits_s2s() {
+        let files = convert_to_sota_activator(&fixture(NFER), "JA1ZZZ/1", &rmks1_qth());
+        assert_eq!(files["sota20251018.csv"].lines().count(), 10);
+        let s2s = &files["sota-s2s-20251018.csv"];
+        assert_eq!(s2s.lines().count(), 2);
+        assert!(s2s.contains(",JA1BBB,JA/KN-001,") && s2s.contains(",JA1FFF,JA/KN-001,"));
+    }
+
+    #[test]
+    fn fixture_nfer_sota_activator_reads_his_ref_from_remarks2() {
+        let options = ConversionOptions {
+            his_qth: "rmks2".to_string(),
+            ..rmks1_qth()
+        };
+        let files = convert_to_sota_activator(&fixture(NFER_RMKS2), "JA1ZZZ/1", &options);
+        assert_eq!(files["sota20251018.csv"].lines().count(), 10);
+        assert_eq!(files["sota-s2s-20251018.csv"].lines().count(), 2);
+    }
+
+    #[test]
+    fn fixture_nfer_sota_chaser_keeps_only_summit_contacts() {
+        let files = convert_to_sota_chaser(&fixture(NFER), "JA1ZZZ", &rmks1_qth());
+        assert_eq!(files.len(), 1);
+        let csv = &files["sota-chaser-20251018.csv"];
+        assert_eq!(csv.lines().count(), 2);
+        assert!(csv.contains(",JA1BBB,JA/KN-001,") && csv.contains(",JA1FFF,JA/KN-001,"));
+    }
+
+    #[test]
+    fn fixture_nfer_adif_has_one_file_per_own_reference() {
+        let result = convert_to_adif(&fixture(NFER), &rmks1_qth());
+        let mut names: Vec<&String> = result.files.keys().collect();
+        names.sort();
+        assert_eq!(
+            names,
+            vec![
+                "JA1ZZZ-1@JA-0001-20251018.adi",
+                "JA1ZZZ-1@JA-0002-20251018.adi",
+                "JA1ZZZ-1@JA-0003-20251018.adi",
+                "JA1ZZZ-1@JA-TK-001-20251018.adi",
+                "JA1ZZZ-1@JAFF-0001-20251018.adi",
+            ]
+        );
+        // 自局が1つの参照: 全10交信。2-fer・3-fer は、その公園の運用だけ
+        assert_eq!(
+            records_in(&result.files["JA1ZZZ-1@JA-0001-20251018.adi"]),
+            10
+        );
+        assert_eq!(
+            records_in(&result.files["JA1ZZZ-1@JA-TK-001-20251018.adi"]),
+            10
+        );
+        assert_eq!(
+            records_in(&result.files["JA1ZZZ-1@JA-0002-20251018.adi"]),
+            4
+        );
+        assert_eq!(
+            records_in(&result.files["JA1ZZZ-1@JA-0003-20251018.adi"]),
+            1
+        );
+        assert_eq!(
+            records_in(&result.files["JA1ZZZ-1@JAFF-0001-20251018.adi"]),
+            6
+        );
+    }
+
+    #[test]
+    fn fixture_nfer_adif_has_the_his_references() {
+        let result = convert_to_adif(&fixture(NFER), &rmks1_qth());
+        let park = &result.files["JA1ZZZ-1@JA-0001-20251018.adi"];
+        // P2P(相手 JA-0123)・相手2-fer・W2W(WWFF のファイルに入る)
+        assert!(park.contains("<SIG_INFO:7>JA-0123"));
+        assert!(park.contains("<SIG_INFO:7>JA-0124"));
+        let wwff = &result.files["JA1ZZZ-1@JAFF-0001-20251018.adi"];
+        assert!(wwff.contains("<SIG:4>WWFF<SIG_INFO:9>JAFF-0456"));
+        // S2S は SOTA のファイルに SOTA_REF で入る
+        let sota = &result.files["JA1ZZZ-1@JA-TK-001-20251018.adi"];
+        assert!(sota.contains("<MY_SOTA_REF:9>JA/TK-001<SOTA_REF:9>JA/KN-001"));
+    }
+
+    #[test]
+    fn fixture_jst_errors_keep_every_contact_and_report_errors() {
+        let records = fixture(JST_ERRORS);
+        let files = convert_to_sota_activator(&records, "JA1ZZZ/1", &rmks1_qth());
+        // JST 00:30 は前日(UTC)、09:15 は当日。日付が行き来しても、消えない
+        assert!(files["sota20251018.csv"].contains(",JA2AAA,"));
+        assert!(files["sota20251019.csv"].contains(",JA2BBB,"));
+        // 参照のない行は出ない
+        assert!(!files.values().any(|v| v.contains("JA2EEE")));
+        // 誤りの行は、理由つきで残る
+        let all: String = files.values().cloned().collect();
+        assert!(all.contains("日時不正:25/10/19 99:99J"));
+        assert!(all.contains("周波数不正"));
+
+        // ADIF は、誤りがあるとエラーを返す(何行目かが分かる)
+        let result = convert_to_adif(&records, &rmks1_qth());
+        assert_eq!(result.status, "NG");
+        assert_eq!(result.error_log.len(), 2);
+        assert!(result.error_log[0].starts_with("3行:"));
+        assert!(result.error_log[1].starts_with("4行:"));
+    }
+
     #[test]
     fn test_to_airham_header() {
         let qso = QsoRecord::default();
