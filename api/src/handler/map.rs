@@ -142,9 +142,54 @@ fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
     }}).addTo(map);
     // 複数のポップアップを同時に開いたままにする
     var popupOpts = {{ autoClose: false, closeOnClick: false }};
-    var popup = (el.dataset.label ? el.dataset.label + '<br>' : '') +
-      lat.toFixed(6) + ', ' + lon.toFixed(6) + '<br>GL: {grid}';
-    L.marker([lat, lon]).addTo(map).bindPopup(popup, popupOpts).openPopup();
+    // ポップアップはtextContent経由で組み立てる(labelをHTMLとして解釈させない)
+    function buildPopup(extra) {{
+      var box = document.createElement('div');
+      var lines = [];
+      if (el.dataset.label) {{ lines.push(el.dataset.label); }}
+      lines.push(lat.toFixed(6) + ', ' + lon.toFixed(6));
+      lines.push('GL: {grid}');
+      (extra || []).forEach(function (t) {{ lines.push(t); }});
+      lines.forEach(function (t, i) {{
+        if (i) {{ box.appendChild(document.createElement('br')); }}
+        box.appendChild(document.createTextNode(t));
+      }});
+      return box;
+    }}
+    var center = L.marker([lat, lon]).addTo(map);
+    center.bindPopup(buildPopup(), popupOpts);
+    center.openPopup();
+
+    // 現在地の住所(日本語)。国土地理院の逆ジオコーダで市区町村コードを引き、
+    // このAPIの jcc-jcg で都道府県・市区町村とJCC/JCGを得る。失敗しても地図は表示したまま
+    function showAddress() {{
+      if (typeof fetch !== 'function') {{ return; }}
+      fetch('https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=' + lat + '&lon=' + lon)
+        .then(function (r) {{ return r.ok ? r.json() : null; }})
+        .then(function (a) {{
+          var res = a && a.results;
+          if (!res || !res.muniCd) {{ return; }}
+          var town = res.lv01Nm || '';
+          return fetch('/api/v2/locator/jcc-jcg?muni_code=' + parseInt(res.muniCd, 10) + '&lon=' + lon + '&lat=' + lat)
+            .then(function (r) {{ return r.ok ? r.json() : null; }})
+            .catch(function () {{ return null; }})
+            .then(function (m) {{
+              var extra = [];
+              if (m && m.municipality) {{
+                extra.push((m.prefecture || '') + m.municipality + ' ' + town);
+                var codes = [];
+                if (m.jccCode) {{ codes.push('JCC#' + m.jccCode); }}
+                if (m.jcgCode) {{ codes.push('JCG#' + m.jcgCode); }}
+                if (codes.length) {{ extra.push(codes.join(' / ')); }}
+              }} else if (town) {{
+                extra.push(town);
+              }}
+              if (extra.length) {{ center.setPopupContent(buildPopup(extra)); }}
+            }});
+        }})
+        .catch(function () {{}});
+    }}
+    showAddress();
 
     // 近傍のSOTA山岳・POTA公園。ポップアップはtextContentで組み立てる
     if (el.dataset.refs === 'true') {{
@@ -604,5 +649,21 @@ mod tests {
         assert!(html.contains("autoClose: false, closeOnClick: false"));
         // 近い順に OPEN_POPUPS 件を開く
         assert!(html.contains(&format!("if (i < {OPEN_POPUPS}) {{ m.openPopup(); }}")));
+    }
+
+    #[test]
+    fn test_popup_does_not_interpret_label_as_html() {
+        let html = render_map_html(&param(Some("<img src=x onerror=alert(1)>"), None), &[]);
+        // ラベルを文字列連結でHTMLとしてポップアップに渡さない(DOMのテキストとして追加する)
+        assert!(!html.contains("el.dataset.label + '<br>'"));
+        assert!(html.contains("document.createTextNode(t)"));
+    }
+
+    #[test]
+    fn test_render_looks_up_japanese_address_of_center() {
+        let html = render_map_html(&param(None, None), &[]);
+        assert!(html.contains("mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress"));
+        assert!(html.contains("/api/v2/locator/jcc-jcg?muni_code="));
+        assert!(html.contains("center.setPopupContent("));
     }
 }
