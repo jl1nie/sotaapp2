@@ -232,6 +232,12 @@ makers build && makers migrate run && makers run
 | `label` | - | マーカーに表示する名称（100文字以内） |
 | `tile` | `osm` | タイル種別。`osm` = OpenStreetMap、`gsi` = 地理院タイル |
 | `embed` | `false` | `true`でヘッダを省略（iframe埋め込み用） |
+| `refs` | `true` | `false`で近傍のSOTA山岳・POTA公園の表示を止める |
+| `radius` | `1000` | 近傍を探す半径。単位はメートル（1〜10000） |
+
+中心の近く（`radius`以内）にあるSOTA山岳・POTA公園を、近い順に最大20件マーカーで表示します
+（青 = SOTA、緑 = POTA。ポップアップにコード・名称・標高/所在地・距離）。
+`/api/v2/map/view` では `nearby` 配列として返します。
 
 **パラメータ例:**
 ```
@@ -282,7 +288,21 @@ const view = await getMapView({ lat, lon, tile: 'gsi' });
     "googleMaps": "https://www.google.com/maps?q=35.360556,138.727778",
     "openStreetMap": "https://www.openstreetmap.org/?mlat=35.360556&mlon=138.727778#map=15/35.360556/138.727778",
     "gsiMaps": "https://maps.gsi.go.jp/#15/35.360556/138.727778/"
-  }
+  },
+  "nearby": [
+    {
+      "kind": "sota",
+      "code": "JA/YN-001",
+      "name": "Mt.Fuji",
+      "nameJ": "富士山",
+      "latitude": 35.360556,
+      "longitude": 138.727778,
+      "distanceM": 0,
+      "altM": 3776,
+      "points": 10,
+      "location": null
+    }
+  ]
 }
 ```
 
