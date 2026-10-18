@@ -141,6 +141,7 @@ dependencies = [
  "common",
  "csv",
  "domain",
+ "encoding_rs",
  "fastrand",
  "fireauth",
  "futures-util",
@@ -159,6 +160,7 @@ dependencies = [
  "typeshare",
  "utoipa",
  "validator",
+ "zip 2.4.2",
 ]
 
 [[package]]
