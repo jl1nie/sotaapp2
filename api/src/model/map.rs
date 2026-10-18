@@ -243,8 +243,85 @@ pub struct NearbyRef {
     pub alt_m: Option<i32>,
     /// ポイント。SOTAのみ
     pub points: Option<i32>,
-    /// 所在地。SOTAは市区町村(日本語優先)、POTAは地域
+    /// 所在地。SOTAは市区町村(日本語優先)、POTAは都道府県(日本語)
     pub location: Option<String>,
+}
+
+/// 都道府県の英語名(POTAのデータの表記)と日本語名の対応
+///
+/// POTAのデータには`Gumma`や`Yamagushi`のような表記ゆれがあるため、別名も含める。
+const PREFECTURES: &[(&str, &str)] = &[
+    ("Hokkaido", "北海道"),
+    ("Aomori", "青森県"),
+    ("Iwate", "岩手県"),
+    ("Miyagi", "宮城県"),
+    ("Akita", "秋田県"),
+    ("Yamagata", "山形県"),
+    ("Fukushima", "福島県"),
+    ("Ibaraki", "茨城県"),
+    ("Tochigi", "栃木県"),
+    ("Gumma", "群馬県"),
+    ("Gunma", "群馬県"),
+    ("Saitama", "埼玉県"),
+    ("Chiba", "千葉県"),
+    ("Tokyo", "東京都"),
+    ("Kanagawa", "神奈川県"),
+    ("Niigata", "新潟県"),
+    ("Toyama", "富山県"),
+    ("Ishikawa", "石川県"),
+    ("Fukui", "福井県"),
+    ("Yamanashi", "山梨県"),
+    ("Nagano", "長野県"),
+    ("Gifu", "岐阜県"),
+    ("Shizuoka", "静岡県"),
+    ("Aichi", "愛知県"),
+    ("Mie", "三重県"),
+    ("Shiga", "滋賀県"),
+    ("Kyoto", "京都府"),
+    ("Osaka", "大阪府"),
+    ("Hyogo", "兵庫県"),
+    ("Nara", "奈良県"),
+    ("Wakayama", "和歌山県"),
+    ("Tottori", "鳥取県"),
+    ("Shimane", "島根県"),
+    ("Okayama", "岡山県"),
+    ("Hiroshima", "広島県"),
+    ("Yamaguchi", "山口県"),
+    ("Yamagushi", "山口県"),
+    ("Tokushima", "徳島県"),
+    ("Kagawa", "香川県"),
+    ("Ehime", "愛媛県"),
+    ("Kochi", "高知県"),
+    ("Fukuoka", "福岡県"),
+    ("Saga", "佐賀県"),
+    ("Nagasaki", "長崎県"),
+    ("Kumamoto", "熊本県"),
+    ("Oita", "大分県"),
+    ("Miyazaki", "宮崎県"),
+    ("Kagoshima", "鹿児島県"),
+    ("Okinawa", "沖縄県"),
+];
+
+/// POTAの所在地(英語の都道府県名。複数の場合はカンマ区切り)を日本語にする
+///
+/// 重複は除き、「、」区切りにする。対応表にない値はそのまま残す。
+fn prefectures_ja(location: &str) -> Option<String> {
+    let mut names: Vec<String> = Vec::new();
+    for part in location.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+        let name = PREFECTURES
+            .iter()
+            .find(|(en, _)| en.eq_ignore_ascii_case(part))
+            .map_or(part, |(_, ja)| ja)
+            .to_string();
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    if names.is_empty() {
+        None
+    } else {
+        Some(names.join("、"))
+    }
 }
 
 /// SOTAの市区町村表記から`<JCC#1307>`のようなタグを取り除き、「、」区切りにする
@@ -321,7 +398,7 @@ impl NearbyRef {
                 distance_m: 0,
                 alt_m: None,
                 points: None,
-                location: Some(r.park_location).filter(|l| !l.is_empty()),
+                location: prefectures_ja(&r.park_location),
             });
         }
 
@@ -684,5 +761,41 @@ mod tests {
         assert_eq!(loc("A"), Some("埼玉県秩父市".to_string()));
         assert_eq!(loc("B"), Some("Chichibu-city".to_string()));
         assert_eq!(loc("C"), None);
+    }
+
+    #[test]
+    fn test_prefectures_ja_single_and_multiple() {
+        assert_eq!(prefectures_ja("Tokyo"), Some("東京都".to_string()));
+        assert_eq!(prefectures_ja("Hokkaido"), Some("北海道".to_string()));
+        assert_eq!(prefectures_ja("Osaka"), Some("大阪府".to_string()));
+        assert_eq!(
+            prefectures_ja("Nagano,Saitama,Tokyo,Yamanashi"),
+            Some("長野県、埼玉県、東京都、山梨県".to_string())
+        );
+        assert_eq!(
+            prefectures_ja(" Aichi , Gifu "),
+            Some("愛知県、岐阜県".to_string())
+        );
+    }
+
+    #[test]
+    fn test_prefectures_ja_handles_data_quirks() {
+        // 表記ゆれ(Gumma, Yamagushi)と重複(Hiroshima, Shimane)
+        assert_eq!(
+            prefectures_ja("Shimane,Yamagushi,Hiroshima,Shimane,Hiroshima"),
+            Some("島根県、山口県、広島県".to_string())
+        );
+        assert_eq!(prefectures_ja("Gumma"), Some("群馬県".to_string()));
+        // 対応表にない値はそのまま残す
+        assert_eq!(prefectures_ja("Atlantis"), Some("Atlantis".to_string()));
+        assert_eq!(prefectures_ja(""), None);
+    }
+
+    #[test]
+    fn test_prefecture_table_covers_all_47() {
+        let mut jas: Vec<_> = PREFECTURES.iter().map(|(_, ja)| *ja).collect();
+        jas.sort();
+        jas.dedup();
+        assert_eq!(jas.len(), 47);
     }
 }
