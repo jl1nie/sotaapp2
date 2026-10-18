@@ -15,6 +15,29 @@ const ADIF_HEADER: &str = "ADIF Export from HAMLOG by JL1NIE\n";
 const ADIF_VERSION: &str = "3.1.4";
 const PROGRAM_ID: &str = "FCTH";
 
+/// 誤りの知らせに出す行番号。入力ファイルの行番号が分かればそれ、なければ交信の順番
+fn line_of(qso: &QsoRecord, index: usize) -> usize {
+    if qso.source_line > 0 {
+        qso.source_line
+    } else {
+        index + 1
+    }
+}
+
+/// CSV の1行。コンマ・引用符・改行を含む項目だけを `"` で囲む(旧版の csv.writer の QUOTE_MINIMAL と同じ)
+fn csv_line(row: &[String]) -> String {
+    row.iter()
+        .map(|f| {
+            if f.contains([',', '"', '\n', '\r']) {
+                format!("\"{}\"", f.replace('"', "\"\""))
+            } else {
+                f.clone()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// Generate SOTA CSV row for activator log
 pub fn to_sota_activator(
     qso: &QsoRecord,
@@ -54,10 +77,10 @@ pub fn to_sota_activator(
         _ => RefInfo::default(),
     };
 
-    let comment = match options.his_qth.as_str() {
-        "rmks1" => get_ref(&qso.remarks2),
-        "rmks2" => get_ref(&qso.remarks1),
-        _ => his_ref.clone(),
+    // 最後の列は、相手の参照に付いた場所(座標)の注記。相手を指定しないときは、空白1つ(旧版と同じ)
+    let loc = match options.his_qth.as_str() {
+        "rmks1" | "rmks2" | "qth" => his_ref.loc.clone(),
+        _ => " ".to_string(),
     };
 
     let date = format!("{:02}/{:02}/{:02}", qso.day, qso.month, qso.year);
@@ -80,7 +103,7 @@ pub fn to_sota_activator(
         qso.mode_sota.clone(),
         qso.callsign.clone(),
         his_ref.sota.clone(),
-        format!("{} ", comment.loc),
+        format!("{} ", loc),
     ];
 
     Some((date2, is_s2s, row))
@@ -116,6 +139,14 @@ pub fn to_sota_chaser(
         _ => RefInfo::default(),
     };
 
+    // 最後の列は、場所(座標)の注記。旧版は、相手の参照を置いていない側の備考から取る
+    // (相手を QTH に置いたときは備考1。指定しないときは、空白1つ)
+    let note_loc = match options.his_qth.as_str() {
+        "rmks1" => get_ref(&qso.remarks2).loc,
+        "rmks2" | "qth" => get_ref(&qso.remarks1).loc,
+        _ => " ".to_string(),
+    };
+
     let date = format!("{:02}/{:02}/{:02}", qso.day, qso.month, qso.year);
     let date2 = format!("{:04}{:02}{:02}", qso.year, qso.month, qso.day);
 
@@ -131,7 +162,7 @@ pub fn to_sota_chaser(
         qso.mode_sota.clone(),
         qso.callsign.clone(),
         his_ref.sota.clone(),
-        format!("{} ", his_ref.loc),
+        format!("{} ", note_loc),
     ];
 
     Some((date2, is_sota, row))
@@ -159,10 +190,8 @@ pub fn to_adif2(
     let my_ref = match options.my_qth.as_str() {
         "rmks1" => get_ref(&qso.remarks1),
         "rmks2" => get_ref(&qso.remarks2),
-        _ => RefInfo {
-            pota: options.park.clone(),
-            ..Default::default()
-        },
+        // 画面の「リファレンス/公園番号を入力」。`JAFF-0005 JP-0014` のように、複数を書ける
+        _ => get_ref(&options.park.join(" ")),
     };
 
     let his_ref = match options.his_qth.as_str() {
@@ -404,7 +433,8 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
     );
 
     let act_call = &options.pota_activator;
-    let first_date = if let Some(first) = records.first() {
+    // 最初の日付は、読み取りに成功した最初の交信のもの
+    let first_date = if let Some(first) = records.iter().find(|r| !r.has_error) {
         format!("{:04}{:02}{:02}", first.year, first.month, first.day)
     } else {
         String::new()
@@ -415,7 +445,9 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
 
         if let Some(err) = error {
             result.status = "NG".to_string();
-            result.error_log.push(format!("{}行:{}", idx + 1, err));
+            result
+                .error_log
+                .push(format!("{}行:{}", line_of(qso, idx), err));
         }
 
         if !disp.is_empty() {
@@ -423,11 +455,12 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
         }
 
         for (ref_key, fields) in log {
-            let is_pota = ref_key.starts_with("JA-") || ref_key.starts_with("JP-");
-            let use_date = if is_pota || ref_key.contains('/') {
-                &first_date
-            } else {
+            let is_pota = ref_key.contains("JA-") || ref_key.contains("JP-");
+            // 山(/ を含む)は、その交信の日付のファイル。公園と WWFF は、最初の日付の1つのファイル
+            let use_date = if !is_pota && ref_key.contains('/') {
                 &date
+            } else {
+                &first_date
             };
 
             let filename = format!(
@@ -526,16 +559,15 @@ pub fn convert_to_sota_activator(
         if qso.has_error {
             let message = format!(
                 "HamLog format error at Line {}. : {}",
-                index + 1,
+                line_of(qso, index),
                 qso.error_message
             );
-            let row = std::iter::once(message.as_str())
-                .chain(std::iter::repeat_n("", 9))
-                .collect::<Vec<_>>();
+            let mut row = vec![message];
+            row.extend(std::iter::repeat_n(String::new(), 9));
             files
                 .entry("sota000000.csv".to_string())
                 .or_default()
-                .push_str(&(row.join(",") + "\n"));
+                .push_str(&(csv_line(&row) + "\n"));
             continue;
         }
         let Some((date, is_s2s, row)) = to_sota_activator(qso, callsign, options) else {
@@ -545,7 +577,7 @@ pub fn convert_to_sota_activator(
             continue;
         }
 
-        let line = row.join(",") + "\n";
+        let line = csv_line(&row) + "\n";
         files
             .entry(format!("sota{}.csv", date))
             .or_default()
@@ -583,7 +615,7 @@ pub fn convert_to_sota_activator(
 /// Convert QSO records to SOTA chaser format
 ///
 /// 相手局の SOTA 参照番号がある交信を日付ごとの CSV(`sotaYYYYMMDD.csv`)に、ない交信を
-/// `otherYYYYMMDD.csv` にする(旧版と同じ)。読み取りに失敗した行は、`other` の側に入れる。
+/// `otherYYYYMMDD.csv` にする(旧版と同じ)。読み取りに失敗した行は、`sota000000.csv` に集める。
 pub fn convert_to_sota_chaser(
     records: &[QsoRecord],
     callsign: &str,
@@ -591,7 +623,21 @@ pub fn convert_to_sota_chaser(
 ) -> HashMap<String, String> {
     let mut files: HashMap<String, String> = HashMap::new();
 
-    for qso in records {
+    for (index, qso) in records.iter().enumerate() {
+        // 読み取りに失敗した行は、日付のファイルに混ぜず、sota000000.csv に集める
+        if qso.has_error {
+            let mut row = vec![format!(
+                "HamLog format error at Line {}. : {}",
+                line_of(qso, index),
+                qso.error_message
+            )];
+            row.extend(std::iter::repeat_n(String::new(), 9));
+            files
+                .entry("sota000000.csv".to_string())
+                .or_default()
+                .push_str(&(csv_line(&row) + "\n"));
+            continue;
+        }
         let Some((date, is_sota, row)) = to_sota_chaser(qso, callsign, options) else {
             continue;
         };
@@ -599,7 +645,7 @@ pub fn convert_to_sota_chaser(
         files
             .entry(format!("{}{}.csv", prefix, date))
             .or_default()
-            .push_str(&(row.join(",") + "\n"));
+            .push_str(&(csv_line(&row) + "\n"));
     }
 
     files

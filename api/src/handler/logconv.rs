@@ -396,8 +396,13 @@ fn read_records(content: &str) -> (Vec<QsoRecord>, bool) {
                 .collect::<Vec<_>>()
                 .join("")
                 + "<EOR>";
-            if let Ok(qso) = decode_adif(&record_str) {
-                records.push(qso);
+            match decode_adif(&record_str) {
+                Ok(qso) => records.push(qso),
+                Err(e) => records.push(QsoRecord {
+                    has_error: true,
+                    error_message: format!("エラー:{e}"),
+                    ..Default::default()
+                }),
             }
         }
     } else {
@@ -412,8 +417,21 @@ fn read_records(content: &str) -> (Vec<QsoRecord>, bool) {
             if cols.is_empty() {
                 continue;
             }
-            if let Ok(qso) = decode_auto(&cols, header_seen) {
-                records.push(qso);
+            let line = record.position().map_or(0, |p| p.line() as usize);
+            match decode_auto(&cols, header_seen) {
+                Ok(mut qso) => {
+                    qso.source_line = line;
+                    records.push(qso);
+                }
+                // 見出しの行は、読み飛ばす
+                Err(e) if e == "HEADER" => {}
+                // 列が足りないなど、読み取れない行は、誤りの行として残す(黙って捨てない)
+                Err(e) => records.push(QsoRecord {
+                    source_line: line,
+                    has_error: true,
+                    error_message: format!("エラー:{e}"),
+                    ..Default::default()
+                }),
             }
             header_seen = true;
         }
@@ -434,7 +452,7 @@ async fn park_states(
         let mine = match options.my_qth.as_str() {
             "rmks1" => get_ref(&qso.remarks1).pota,
             "rmks2" => get_ref(&qso.remarks2).pota,
-            _ => options.park.clone(),
+            _ => get_ref(&options.park.join(" ")).pota,
         };
         for code in mine {
             if !codes.contains(&code) {
@@ -575,12 +593,24 @@ mod tests {
 
     /// multipart/form-data のリクエストを作る
     async fn multipart_of(file: &str, options: &str) -> Multipart {
+        multipart_of_bytes(file.as_bytes(), options).await
+    }
+
+    async fn multipart_of_bytes(file: &[u8], options: &str) -> Multipart {
         use axum::extract::FromRequest;
         let boundary = "XBOUNDARYX";
-        let body = format!(
-            "--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"log.csv\"\r\n\r\n{file}\r\n\
-             --{b}\r\nContent-Disposition: form-data; name=\"options\"\r\n\r\n{options}\r\n--{b}--\r\n",
+        let mut body: Vec<u8> = format!(
+            "--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"log.csv\"\r\n\r\n",
             b = boundary
+        )
+        .into_bytes();
+        body.extend_from_slice(file);
+        body.extend_from_slice(
+            format!(
+                "\r\n--{b}\r\nContent-Disposition: form-data; name=\"options\"\r\n\r\n{options}\r\n--{b}--\r\n",
+                b = boundary
+            )
+            .as_bytes(),
         );
         let request = axum::http::Request::builder()
             .method("POST")
@@ -692,5 +722,263 @@ mod tests {
         .await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.headers()[header::CONTENT_TYPE], "application/zip");
+    }
+
+    // ---- パターンを網羅したフィクスチャ(test_data/logconv/patterns)と、旧版の出力(expected/)との一致 ----
+
+    fn patterns_dir() -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../test_data/logconv/patterns")
+    }
+
+    fn unzip(bytes: &[u8]) -> std::collections::BTreeMap<String, String> {
+        use std::io::Read;
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+        let mut files = std::collections::BTreeMap::new();
+        for i in 0..zip.len() {
+            let mut f = zip.by_index(i).unwrap();
+            let mut body = String::new();
+            f.read_to_string(&mut body).unwrap();
+            files.insert(f.name().to_string(), body.replace("\r\n", "\n"));
+        }
+        files
+    }
+
+    fn read_dir_files(dir: &std::path::Path) -> std::collections::BTreeMap<String, String> {
+        let mut files = std::collections::BTreeMap::new();
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for e in entries.flatten() {
+                let name = e.file_name().to_string_lossy().to_string();
+                if name == "check.json" {
+                    continue;
+                }
+                files.insert(name, std::fs::read_to_string(e.path()).unwrap());
+            }
+        }
+        files
+    }
+
+    #[tokio::test]
+    async fn test_patterns_match_the_legacy_output() {
+        let dir = patterns_dir();
+        let cases: Vec<serde_json::Value> =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("cases.json")).unwrap())
+                .unwrap();
+        let mut diffs: Vec<String> = Vec::new();
+
+        for case in &cases {
+            if case.get("expect").is_some() {
+                continue; // 誤りのある行などは、別のテスト(test_patterns_with_expectations)
+            }
+            let name = case["name"].as_str().unwrap();
+            let format = case["format"].as_str().unwrap();
+            let file = std::fs::read(dir.join(case["file"].as_str().unwrap())).unwrap();
+            let mut options = case["options"].clone();
+            options["format"] = format.into();
+            let options = options.to_string();
+
+            let res = hamlog_convert(None, multipart_of_bytes(&file, &options).await).await;
+            if res.status() != StatusCode::OK {
+                diffs.push(format!("{name}: HTTP {}", res.status()));
+                continue;
+            }
+            let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let got = unzip(&bytes);
+            let want = read_dir_files(&dir.join("expected").join(name));
+
+            let got_names: Vec<&String> = got.keys().collect();
+            let want_names: Vec<&String> = want.keys().collect();
+            if got_names != want_names {
+                diffs.push(format!(
+                    "{name}: ファイルの組が違う\n  新: {got_names:?}\n  旧: {want_names:?}"
+                ));
+                continue;
+            }
+            // ADIF は、確認(CSV読込)の結果も、旧版と同じ
+            if format == "pota" {
+                let mut check_options: serde_json::Value = serde_json::from_str(&options).unwrap();
+                check_options["command"] = "ADIFCSVCheck".into();
+                let res = pota_check(
+                    None,
+                    multipart_of_bytes(&file, &check_options.to_string()).await,
+                )
+                .await;
+                let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let got_check: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+                let want_check: serde_json::Value = serde_json::from_str(
+                    &std::fs::read_to_string(dir.join("expected").join(name).join("check.json"))
+                        .unwrap(),
+                )
+                .unwrap();
+                if got_check["status"] != want_check["status"] {
+                    diffs.push(format!(
+                        "{name}: 確認の status {}(旧 {})",
+                        got_check["status"], want_check["status"]
+                    ));
+                }
+                let (g, w) = (&got_check["log_text"], &want_check["logtext"]);
+                if g != w {
+                    let (ga, wa) = (
+                        g.as_array().cloned().unwrap_or_default(),
+                        w.as_array().cloned().unwrap_or_default(),
+                    );
+                    let i = ga
+                        .iter()
+                        .zip(wa.iter())
+                        .position(|(a, b)| a != b)
+                        .unwrap_or(ga.len().min(wa.len()));
+                    diffs.push(format!(
+                        "{name}: 確認の表の {}行目から違う\n  新: {}\n  旧: {}",
+                        i + 1,
+                        ga.get(i).map_or("(なし)".to_string(), |v| v.to_string()),
+                        wa.get(i).map_or("(なし)".to_string(), |v| v.to_string())
+                    ));
+                }
+            }
+            for (file_name, want_body) in &want {
+                if &got[file_name] != want_body {
+                    let (g, w) = (&got[file_name], want_body);
+                    let line = g
+                        .lines()
+                        .zip(w.lines())
+                        .position(|(a, b)| a != b)
+                        .map(|i| i + 1)
+                        .unwrap_or_else(|| g.lines().count().min(w.lines().count()) + 1);
+                    diffs.push(format!(
+                        "{name}/{file_name}: {line}行目から違う\n  新: {}\n  旧: {}",
+                        g.lines().nth(line - 1).unwrap_or("(なし)"),
+                        w.lines().nth(line - 1).unwrap_or("(なし)")
+                    ));
+                }
+            }
+        }
+        assert!(
+            diffs.is_empty(),
+            "旧版との差 {} 件:\n{}",
+            diffs.len(),
+            diffs.join("\n")
+        );
+    }
+
+    /// 旧版と比べない(新版の決めた動作を確かめる)ケース。cases.json の `expect`
+    #[tokio::test]
+    async fn test_patterns_with_expectations() {
+        let dir = patterns_dir();
+        let cases: Vec<serde_json::Value> =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("cases.json")).unwrap())
+                .unwrap();
+        let mut problems: Vec<String> = Vec::new();
+
+        // live_only(本番の公園データが要るケース)は、verify.py で確かめる
+        for case in cases
+            .iter()
+            .filter(|c| c.get("expect").is_some() && c.get("live_only").is_none())
+        {
+            let name = case["name"].as_str().unwrap();
+            let expect = &case["expect"];
+            let file = std::fs::read(dir.join(case["file"].as_str().unwrap())).unwrap();
+            let mut options = case["options"].clone();
+            options["format"] = case["format"].clone();
+            let options = options.to_string();
+
+            // 確認(/logconv/pota)か、変換(/logconv/hamlog)か
+            let (status, body): (StatusCode, Vec<u8>) = if case["endpoint"] == "check" {
+                let res = pota_check(None, multipart_of_bytes(&file, &options).await).await;
+                let status = res.status();
+                let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                (status, bytes.to_vec())
+            } else {
+                let res = hamlog_convert(None, multipart_of_bytes(&file, &options).await).await;
+                let status = res.status();
+                let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                (status, bytes.to_vec())
+            };
+
+            if let Some(http) = expect.get("http") {
+                if http.as_u64() != Some(status.as_u16() as u64) {
+                    problems.push(format!("{name}: HTTP {status}(期待 {http})"));
+                    continue;
+                }
+            }
+            // JSON の応答(確認・拒否)
+            if expect.get("error_lines").is_some() || expect.get("status").is_some() {
+                let json: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
+                if let Some(st) = expect.get("status") {
+                    if &json["status"] != st {
+                        problems.push(format!("{name}: status {}(期待 {st})", json["status"]));
+                    }
+                }
+                if let Some(lines) = expect.get("error_lines") {
+                    let got: Vec<u64> = match &json["error_log"] {
+                        serde_json::Value::Array(v) => v
+                            .iter()
+                            .filter_map(|l| l.as_str()?.split('行').next()?.parse().ok())
+                            .collect(),
+                        serde_json::Value::String(s) => s
+                            .lines()
+                            .filter_map(|l| l.split('行').next()?.parse().ok())
+                            .collect(),
+                        _ => vec![],
+                    };
+                    let want: Vec<u64> = lines
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter_map(|v| v.as_u64())
+                        .collect();
+                    if got != want {
+                        problems.push(format!("{name}: 誤りの行 {got:?}(期待 {want:?})"));
+                    }
+                }
+            }
+            // ZIP の中身
+            if expect.get("files").is_some()
+                || expect.get("lines").is_some()
+                || expect.get("records").is_some()
+            {
+                let got = unzip(&body);
+                if let Some(files) = expect.get("files") {
+                    let want: Vec<&str> = files
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .collect();
+                    let names: Vec<&str> = got.keys().map(String::as_str).collect();
+                    if names != want {
+                        problems.push(format!("{name}: ファイル {names:?}(期待 {want:?})"));
+                    }
+                }
+                if let Some(lines) = expect.get("lines").and_then(|v| v.as_object()) {
+                    for (file_name, n) in lines {
+                        let count = got.get(file_name).map_or(0, |b| b.lines().count());
+                        if Some(count as u64) != n.as_u64() {
+                            problems.push(format!("{name}/{file_name}: {count} 行(期待 {n})"));
+                        }
+                    }
+                }
+                if let Some(records) = expect.get("records").and_then(|v| v.as_object()) {
+                    for (file_name, n) in records {
+                        let count = got.get(file_name).map_or(0, |b| b.matches("<EOR>").count());
+                        if Some(count as u64) != n.as_u64() {
+                            problems.push(format!("{name}/{file_name}: {count} 記録(期待 {n})"));
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            problems.is_empty(),
+            "期待との差 {} 件:\n{}",
+            problems.len(),
+            problems.join("\n")
+        );
     }
 }
