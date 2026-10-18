@@ -25,9 +25,9 @@ pub const MAP_PATH: &str = "/api/v2/map";
 #[serde(rename_all = "lowercase")]
 pub enum TileLayer {
     /// OpenStreetMap（全世界）
-    #[default]
     Osm,
-    /// 地理院タイル（日本国内）
+    /// 地理院タイル（日本国内。既定）
+    #[default]
     Gsi,
 }
 
@@ -121,7 +121,7 @@ pub struct MapParam {
     /// マーカーに表示する名称
     #[validate(length(max = 100, message = "labelは100文字以内で指定してください"))]
     pub label: Option<String>,
-    /// 地図タイルの種別（省略時はosm）
+    /// 地図タイルの種別（省略時はgsi。日本国外はosmを指定）
     pub tile: Option<TileLayer>,
     /// 埋め込み表示（ヘッダを省略。iframeでの利用を想定）
     pub embed: Option<bool>,
@@ -387,8 +387,8 @@ mod tests {
     }
 
     #[test]
-    fn test_default_tile_is_osm() {
-        assert_eq!(param(None, None).tile_layer(), TileLayer::Osm);
+    fn test_default_tile_is_gsi() {
+        assert_eq!(param(None, None).tile_layer(), TileLayer::Gsi);
     }
 
     #[test]
