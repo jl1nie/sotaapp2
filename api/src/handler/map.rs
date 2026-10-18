@@ -1,9 +1,15 @@
 use axum::{response::Html, routing::get, Json, Router};
+use shaku_axum::Inject;
 use utoipa::OpenApi;
 
-use crate::model::map::{MapParam, MapView};
+use crate::model::map::{MapParam, MapView, NearbyRef};
 use crate::model::param::ValidatedQuery;
-use registry::AppState;
+use domain::model::event::FindRefBuilder;
+use registry::{AppRegistry, AppState};
+use service::services::UserService;
+
+/// 近傍検索で取得する件数の上限(円に絞り直す前)
+const NEARBY_QUERY_LIMIT: i32 = 500;
 
 /// Map API
 #[derive(OpenApi)]
@@ -15,6 +21,8 @@ use registry::AppState;
         crate::model::map::TileLayer,
         crate::model::map::TileLayerView,
         crate::model::map::ExternalMapLinks,
+        crate::model::map::NearbyRef,
+        crate::model::map::RefKind,
     )),
     tags((name = "map", description = "座標を中心とした地図表示API"))
 )]
@@ -36,12 +44,12 @@ fn escape_html(text: &str) -> String {
     escaped
 }
 
-/// 指定座標を中心とした地図ページを生成する
+/// 指定座標を中心とした地図ページを生成する(近傍のSOTA/POTAを含む)
 ///
 /// 座標・ズーム・タイル種別はdata属性としてHTMLに埋め込み、
 /// Leaflet(CDN)を読み込んだスクリプトから参照する。
 /// 利用者が指定した`label`はエスケープしてから埋め込む。
-fn render_map_html(param: &MapParam) -> String {
+fn render_map_html(param: &MapParam, nearby: &[NearbyRef]) -> String {
     let view = MapView::from(param);
     let (lat, lon, zoom, grid) = (view.latitude, view.longitude, view.zoom, view.maidenhead);
 
@@ -54,6 +62,9 @@ fn render_map_html(param: &MapParam) -> String {
     let title = escape_html(&title);
     let label = escape_html(label);
     let coords = format!("{:.6}, {:.6}", lat, lon);
+    // 近傍のリファレンスはJSONとしてdata属性に埋め込む(属性値としてエスケープ)
+    let nearby_json = escape_html(&serde_json::to_string(nearby).unwrap_or_else(|_| "[]".into()));
+    let radius = param.radius_m();
 
     // iframe埋め込み時はヘッダを省略して地図だけを表示する
     let header = if param.is_embed() {
@@ -104,6 +115,9 @@ fn render_map_html(param: &MapParam) -> String {
      data-lon="{lon}"
      data-zoom="{zoom}"
      data-label="{label}"
+     data-nearby="{nearby_json}"
+     data-radius="{radius}"
+     data-refs="{refs}"
      data-tile-url="{tile_url}"
      data-tile-attribution="{tile_attribution}"
      data-tile-max-zoom="{tile_max_zoom}"></div>
@@ -126,6 +140,37 @@ fn render_map_html(param: &MapParam) -> String {
     var popup = (el.dataset.label ? el.dataset.label + '<br>' : '') +
       lat.toFixed(6) + ', ' + lon.toFixed(6) + '<br>GL: {grid}';
     L.marker([lat, lon]).addTo(map).bindPopup(popup).openPopup();
+
+    // 近傍のSOTA山岳・POTA公園。ポップアップはtextContentで組み立てる
+    if (el.dataset.refs === 'true') {{
+      L.circle([lat, lon], {{
+        radius: parseInt(el.dataset.radius, 10),
+        color: '#6b7280', weight: 1, fill: false, dashArray: '4'
+      }}).addTo(map);
+    }}
+    var nearby = [];
+    try {{ nearby = JSON.parse(el.dataset.nearby || '[]'); }} catch (e) {{}}
+    nearby.forEach(function (r) {{
+      var color = r.kind === 'sota' ? '#2563eb' : '#16a34a';
+      var box = document.createElement('div');
+      var head = document.createElement('strong');
+      head.textContent = r.code;
+      box.appendChild(head);
+      var lines = [r.nameJ ? r.name + ' / ' + r.nameJ : r.name];
+      if (r.kind === 'sota') {{
+        lines.push(r.altM + ' m / ' + r.points + ' pt');
+      }} else if (r.location) {{
+        lines.push(r.location);
+      }}
+      lines.push('距離 ' + r.distanceM + ' m');
+      lines.forEach(function (t) {{
+        box.appendChild(document.createElement('br'));
+        box.appendChild(document.createTextNode(t));
+      }});
+      L.circleMarker([r.latitude, r.longitude], {{
+        radius: 8, color: color, fillColor: color, fillOpacity: 0.7, weight: 2
+      }}).addTo(map).bindPopup(box).bindTooltip(r.code);
+    }});
   }})();
 </script>
 </body>
@@ -134,6 +179,9 @@ fn render_map_html(param: &MapParam) -> String {
         title = title,
         header = header,
         label = label,
+        nearby_json = nearby_json,
+        radius = radius,
+        refs = param.want_refs() && !nearby.is_empty(),
         coords = coords,
         grid = grid,
         lat = lat,
@@ -143,6 +191,29 @@ fn render_map_html(param: &MapParam) -> String {
         tile_attribution = escape_html(&view.tile.attribution),
         tile_max_zoom = view.tile.max_zoom,
     )
+}
+
+/// 中心の近くにあるSOTA山岳・POTA公園を検索する
+///
+/// 近傍は補助情報なので、検索に失敗しても地図自体は返す(空として扱う)。
+async fn find_nearby(user_service: &dyn UserService, param: &MapParam) -> Vec<NearbyRef> {
+    if !param.want_refs() {
+        return Vec::new();
+    }
+    let radius = param.radius_m();
+    let query = FindRefBuilder::default()
+        .sota()
+        .pota()
+        .center(param.lon, param.lat, radius as f64)
+        .limit(NEARBY_QUERY_LIMIT)
+        .build();
+    match user_service.find_references(query).await {
+        Ok(result) => NearbyRef::collect(result, param.lat, param.lon, radius),
+        Err(e) => {
+            tracing::warn!("近傍のリファレンス検索に失敗: {e}");
+            Vec::new()
+        }
+    }
 }
 
 /// 指定座標の地図を表示
@@ -157,8 +228,17 @@ fn render_map_html(param: &MapParam) -> String {
     ),
     tag = "map"
 )]
-async fn show_map(ValidatedQuery(param): ValidatedQuery<MapParam>) -> Html<String> {
-    Html(render_map_html(&param))
+async fn show_map(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    ValidatedQuery(param): ValidatedQuery<MapParam>,
+) -> Html<String> {
+    let nearby = find_nearby(&*user_service, &param).await;
+    Html(render_map_html(&param, &nearby))
+}
+
+/// 地図情報(JSON)を組み立てる。`get_map_view`と同じ内容を返す
+fn build_map_view(param: &MapParam, nearby: Vec<NearbyRef>) -> MapView {
+    MapView::from(param).with_nearby(nearby)
 }
 
 /// 地図表示に必要な情報を取得（フロントエンド連携用）
@@ -176,8 +256,12 @@ async fn show_map(ValidatedQuery(param): ValidatedQuery<MapParam>) -> Html<Strin
     ),
     tag = "map"
 )]
-async fn get_map_view(ValidatedQuery(param): ValidatedQuery<MapParam>) -> Json<MapView> {
-    Json(MapView::from(&param))
+async fn get_map_view(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    ValidatedQuery(param): ValidatedQuery<MapParam>,
+) -> Json<MapView> {
+    let nearby = find_nearby(&*user_service, &param).await;
+    Json(build_map_view(&param, nearby))
 }
 
 pub fn build_map_routers() -> Router<AppState> {
@@ -190,7 +274,7 @@ pub fn build_map_routers() -> Router<AppState> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::map::TileLayer;
+    use crate::model::map::{RefKind, TileLayer};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
@@ -203,13 +287,40 @@ mod tests {
             label: label.map(|s| s.to_string()),
             tile,
             embed: None,
+            refs: None,
+            radius: None,
         }
+    }
+
+    fn sample_nearby() -> Vec<NearbyRef> {
+        vec![NearbyRef {
+            kind: RefKind::Sota,
+            code: "JA/YN-001".to_string(),
+            name: "Mt.Fuji".to_string(),
+            name_j: Some("富士山".to_string()),
+            latitude: 35.360_556,
+            longitude: 138.727_778,
+            distance_m: 0,
+            alt_m: Some(3776),
+            points: Some(10),
+            location: None,
+        }]
+    }
+
+    // 本番のハンドラはDI(Inject)が必要なので、テストでは同じ描画関数を
+    // 固定の近傍データで呼ぶハンドラを使う(近傍検索自体は別途テスト)
+    async fn test_show_map(ValidatedQuery(param): ValidatedQuery<MapParam>) -> Html<String> {
+        Html(render_map_html(&param, &sample_nearby()))
+    }
+
+    async fn test_map_view(ValidatedQuery(param): ValidatedQuery<MapParam>) -> Json<MapView> {
+        Json(build_map_view(&param, sample_nearby()))
     }
 
     fn test_router() -> Router {
         Router::new()
-            .route("/api/v2/map", get(show_map))
-            .route("/api/v2/map/view", get(get_map_view))
+            .route("/api/v2/map", get(test_show_map))
+            .route("/api/v2/map/view", get(test_map_view))
     }
 
     async fn get_map(uri: &str) -> (StatusCode, String) {
@@ -236,7 +347,7 @@ mod tests {
 
     #[test]
     fn test_render_contains_coordinates_and_grid_locator() {
-        let html = render_map_html(&param(None, None));
+        let html = render_map_html(&param(None, None), &[]);
         assert!(html.contains(r#"data-lat="35.360556""#));
         assert!(html.contains(r#"data-lon="138.727778""#));
         // 既定のズームレベル
@@ -247,27 +358,27 @@ mod tests {
 
     #[test]
     fn test_render_uses_osm_tile_by_default() {
-        let html = render_map_html(&param(None, None));
+        let html = render_map_html(&param(None, None), &[]);
         assert!(html.contains("tile.openstreetmap.org"));
         assert!(!html.contains("cyberjapandata.gsi.go.jp/xyz"));
     }
 
     #[test]
     fn test_render_uses_gsi_tile_when_requested() {
-        let html = render_map_html(&param(None, Some(TileLayer::Gsi)));
+        let html = render_map_html(&param(None, Some(TileLayer::Gsi)), &[]);
         assert!(html.contains("cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"));
     }
 
     #[test]
     fn test_render_escapes_label() {
-        let html = render_map_html(&param(Some("<script>alert(1)</script>"), None));
+        let html = render_map_html(&param(Some("<script>alert(1)</script>"), None), &[]);
         assert!(!html.contains("<script>alert(1)</script>"));
         assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
     }
 
     #[test]
     fn test_render_escapes_label_breaking_out_of_attribute() {
-        let html = render_map_html(&param(Some(r#"" onload="alert(1)"#), None));
+        let html = render_map_html(&param(Some(r#"" onload="alert(1)"#), None), &[]);
         assert!(!html.contains(r#"onload="alert(1)"#));
     }
 
@@ -275,7 +386,7 @@ mod tests {
     fn test_embed_mode_omits_header() {
         let mut p = param(Some("富士山"), None);
         p.embed = Some(true);
-        let html = render_map_html(&p);
+        let html = render_map_html(&p, &[]);
 
         assert!(!html.contains("<header>"));
         // 地図本体とフォールバック時の座標表示は残る
@@ -285,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_default_mode_includes_header() {
-        let html = render_map_html(&param(Some("富士山"), None));
+        let html = render_map_html(&param(Some("富士山"), None), &[]);
         assert!(html.contains("<header>"));
         assert!(html.contains("https://www.google.com/maps?q=35.360556,138.727778"));
     }
@@ -392,7 +503,7 @@ mod tests {
     async fn test_nested_route_matches_without_trailing_slash() {
         let app = Router::new().nest(
             "/api/v2",
-            Router::new().nest("/map", Router::new().route("/", get(show_map))),
+            Router::new().nest("/map", Router::new().route("/", get(test_show_map))),
         );
 
         let response = app
@@ -433,5 +544,45 @@ mod tests {
     async fn test_show_map_rejects_out_of_range_zoom() {
         let (status, _) = get_map("/api/v2/map?lat=35&lon=139&zoom=30").await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[test]
+    fn test_render_embeds_nearby_refs_as_escaped_json() {
+        let mut nearby = sample_nearby();
+        nearby[0].name = r#"<b>"x"</b>"#.to_string();
+        let html = render_map_html(&param(None, None), &nearby);
+        assert!(html.contains("JA/YN-001"));
+        // 属性値の中に生の引用符・タグが出ない
+        assert!(!html.contains(r#"<b>"x"</b>"#));
+        assert!(html.contains(r#"data-refs="true""#));
+    }
+
+    #[test]
+    fn test_render_without_nearby_has_refs_disabled() {
+        let html = render_map_html(&param(None, None), &[]);
+        assert!(html.contains(r#"data-refs="false""#));
+        assert!(html.contains(r#"data-nearby="[]""#));
+    }
+
+    #[tokio::test]
+    async fn test_view_includes_nearby() {
+        let (status, body) = get_map("/api/v2/map/view?lat=35.360556&lon=138.727778").await;
+        assert_eq!(status, StatusCode::OK);
+        let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(json["nearby"][0]["code"], "JA/YN-001");
+        assert_eq!(json["nearby"][0]["kind"], "sota");
+        assert_eq!(json["nearby"][0]["altM"], 3776);
+    }
+
+    #[tokio::test]
+    async fn test_invalid_radius_is_rejected() {
+        for uri in [
+            "/api/v2/map?lat=35&lon=139&radius=0",
+            "/api/v2/map?lat=35&lon=139&radius=10001",
+        ] {
+            let (status, body) = get_map(uri).await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
+            assert!(body.contains("radius"), "{uri}");
+        }
     }
 }
