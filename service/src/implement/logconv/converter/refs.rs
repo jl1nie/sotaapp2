@@ -1,6 +1,8 @@
 //! 備考・QTH の列から、自局・相手の参照を取る。誤りの知らせの行番号
 
-use super::super::types::{get_ref, ConversionOptions, HisQth, MyQth, QsoRecord, RefInfo};
+use super::super::options::{ConversionOptions, HisQth, MyQth};
+use super::super::record::QsoRecord;
+use super::super::reference::{get_ref, RefInfo};
 
 /// 交信の日付(`YYYYMMDD`。UTC)
 pub fn date_key(qso: &QsoRecord) -> String {

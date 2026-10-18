@@ -1,10 +1,10 @@
-use super::super::types::{ConversionOptions, HisQth, MyQth, QsoRecord};
+use super::super::options::{ConversionOptions, HisQth, MyQth};
+use super::super::record::QsoRecord;
 use super::*;
 use std::collections::HashMap;
 
 fn make_qso() -> QsoRecord {
     QsoRecord {
-        has_error: false,
         callsign: "JL1NIE".to_string(),
         year: 2024,
         month: 12,
@@ -355,7 +355,7 @@ fn legacy_parity_hamlog_ios() {
     let mut header_seen = false;
     for line in csv.lines() {
         let cols: Vec<String> = line.split(',').map(String::from).collect();
-        if let Ok(qso) = decode_auto(&cols, header_seen) {
+        if let Ok(Some(qso)) = decode_auto(&cols, header_seen) {
             records.push(qso);
         }
         header_seen = true;
