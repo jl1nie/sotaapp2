@@ -1,4 +1,22 @@
-//! コールサインの分解
+//! コールサインの分解と、全角の文字の半角化
+
+/// 全角の英数字・記号(U+FF01〜U+FF5E)を半角に、全角の空白(U+3000)を半角の空白にする
+///
+/// 参照やコールサインを読む前に使う。日本語の名前など、ほかの文字は変えない。
+pub fn normalize_width(text: &str) -> String {
+    text.chars()
+        .map(|c| match c {
+            '\u{FF01}'..='\u{FF5E}' => char::from_u32(c as u32 - 0xFEE0).unwrap_or(c),
+            '\u{3000}' => ' ',
+            _ => c,
+        })
+        .collect()
+}
+
+/// コールサインを、全角を半角にして、前後の空白を除き、大文字にそろえる
+pub fn normalize_callsign(call: &str) -> String {
+    normalize_width(call).trim().to_uppercase()
+}
 
 /// コールサインを、運用者(本来のコールサイン)と、運用の付記(`/1`、`/P`、`QRP`、前置の `JA` など)に分ける
 pub fn split_callsign(call: &str) -> (String, String) {

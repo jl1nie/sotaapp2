@@ -86,9 +86,10 @@ fn adif_lengths_stay_correct_with_japanese_values() {
         let r = &adif_records(body)[0];
         assert_eq!(r["CALL"], "あいう1", "{name}");
         assert_eq!(r["OPERATOR"], "山田太郎", "{name}");
-        assert_eq!(r["STATION_CALLSIGN"], "ＪＡ１ＺＺＺ/１", "{name}");
+        // 運用局は、半角の大文字にそろう
+        assert_eq!(r["STATION_CALLSIGN"], "JA1ZZZ/1", "{name}");
     }
-    assert!(result.files["ＪＡ１ＺＺＺ-１@JA-0001-20251018.adi"].contains("<OPERATOR:12>山田太郎"));
+    assert!(result.files["JA1ZZZ-1@JA-0001-20251018.adi"].contains("<OPERATOR:12>山田太郎"));
 
     // SOTA アクティベーターの ADIF も同じ
     let files = convert_to_sota_activator(&recs, "ＪＡ１ＺＺＺ/１", &opts);
@@ -133,22 +134,20 @@ fn japanese_name_qth_and_remarks_never_reach_the_outputs() {
 
 // ---- SOTA の CSV で日本語が出る列: 誤りの行のファイル(sota000000.csv)の1列目 ----
 
-/// 誤りの行の理由は日本語で、`sota000000.csv` の1列目に出る。UTF-8(BOM なし)。
-/// 仕様の確認が要る: このファイルは SOTA にアップロードするものではなく、利用者が読むもの。
-/// Excel は BOM なしの UTF-8 を文字化けして開くため、BOM をつけるべきか
+/// 誤りの行の理由は日本語で、`sota000000.csv` の1列目に出る。UTF-8 の BOM つき
+/// (このファイルは SOTA にアップロードするものではなく、利用者が Excel で読むもの)
 #[test]
-fn error_file_has_japanese_reason_in_utf8_without_bom() {
+fn error_file_has_japanese_reason_in_utf8_with_bom() {
     let recs = fixture_line("JA2CCC,25/10/19,99:99J,59,59,14.285,SSB,,,N,,,JA/TK-001,,");
     let files = convert_to_sota_activator(&recs, "JA1ZZZ/1", &options(MyQth::Rmks1, HisQth::Qth));
     let body = &files["sota000000.csv"];
-    assert!(body.starts_with("HamLog format error at Line 1. : 日時不正:25/10/19 99:99J,"));
-    assert!(!body.starts_with('\u{feff}'));
+    assert!(body.starts_with("\u{feff}HamLog format error at Line 1. : 日時不正:25/10/19 99:99J,"));
 
     let zip = create_zip(&files).unwrap();
     let entries = zip_entries(&zip);
     let raw = &entries["sota000000.csv"];
     assert_eq!(std::str::from_utf8(raw).unwrap(), body);
-    assert_ne!(&raw[..3], [0xEF, 0xBB, 0xBF]);
+    assert_eq!(&raw[..3], [0xEF, 0xBB, 0xBF]);
     // 10列(1列目が理由、あとは空)
     assert_eq!(body.trim_end().matches(',').count(), 9);
 }
@@ -218,7 +217,6 @@ fn zip_name_from_a_japanese_activator_round_trips() {
 /// 運用局に `\` や `..` を入れても、ZIP の中の名前がディレクトリを指さない(展開したときに、保存先の外へ書かない)。
 /// `/` は置き換えるが、`\` はそのまま名前に入り、Windows で展開すると区切りとして読まれる
 #[test]
-#[ignore = "不具合: 運用局の `\\` をファイル名に残す(ZIP の名前に `..\\` が入り、Windows で展開すると保存先の外を指す)"]
 fn zip_names_never_contain_backslash_or_dot_dot_components() {
     let recs = fixture_line("JA1AAA,25/10/18,01:00U,59,59,7.030,CW,,,N,,,JA-0001,,");
     let opts = ConversionOptions {

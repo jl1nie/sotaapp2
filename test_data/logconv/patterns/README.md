@@ -35,7 +35,7 @@ HAMLOG CSV の列は `コールサイン,日付,時刻,RST送,RST受,周波数,�
 - `expected/`: 旧版(HamLogConv の Python)の出力。`HAMLOGCONV_DIR=~/src/HamLogConv python3 legacy_snapshot.py` で作る(adif-io と requests が要る。公園の所在地の取得は外してある)。ADIF は `check.json`(CSV読込の結果)も。
   チェイサーは、旧版が全日付を1ファイルにするので、日付ごとに分け直してある(新版は日付ごと)。
 - `cases.json`: ケースの一覧。`expect` があるものは、旧版と比べず、新版の決めた動作を確かめる(誤りのある行・順不同のログ・公園の所在地)。
-  - 誤りのあるログは、ADIF を生成しない(400)。誤りの行は `sota000000.csv` に集める。
+  - 誤りのあるログは、ADIF を生成しない(400)。一部の行だけが誤りの CSV は、誤りの行を `sota000000.csv`(UTF-8 の BOM つき)に集める。SOTA で全行が誤りなら、ZIP ではなく 400 と誤りの一覧。
   - `live_only` は、本番の公園データが要るもの(`MY_STATE`)で、`verify.py` だけが確かめる。
 
 ## encoding / errors / options のケース

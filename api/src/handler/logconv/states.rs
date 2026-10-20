@@ -2,7 +2,9 @@
 
 use common::error::AppError;
 use domain::model::event::FindRefBuilder;
-use service::implement::logconv::{get_ref, ConversionOptions, MyQth, QsoRecord};
+use service::implement::logconv::{
+    get_ref_normalized as get_ref, ConversionOptions, MyQth, QsoRecord,
+};
 use service::services::AdminService;
 use std::collections::HashMap;
 

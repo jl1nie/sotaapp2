@@ -1,4 +1,4 @@
-use super::input::{decode_text, read_records};
+use super::input::{decode_text, read_log};
 use super::states::single_state;
 use super::*;
 use axum::http::{header, StatusCode};
@@ -89,6 +89,20 @@ async fn test_pota_check_respects_his_qth_none_for_csv() {
 }
 
 #[test]
+fn trailing_sub_eof_is_dropped() {
+    assert_eq!(decode_text(b"a,b\r\n\x1a"), "a,b\r\n");
+    assert_eq!(decode_text(b"a,b\x1a"), "a,b");
+    assert_eq!(decode_text(b"a,b\n\x1a\x1a\r\n"), "a,b\n");
+    assert_eq!(decode_text(b"a,b\n"), "a,b\n");
+}
+
+#[test]
+fn line_numbers_count_crlf_lf_and_cr() {
+    let starts = super::input::line_starts("a\r\nb\nc\rd");
+    assert_eq!(starts, [0, 3, 5, 7]);
+}
+
+#[test]
 fn test_decode_text_reads_shift_jis_and_utf8() {
     // HAMLOG(Shift-JIS)の行: 名前と QTH に日本語、備考1に参照と日本語
     let (sjis, _, _) = encoding_rs::SHIFT_JIS
@@ -126,7 +140,7 @@ fn test_source_lines_are_the_lines_of_the_file() {
             format!("{}\r\n\r\n{}\r\n{}", row("A"), row("B"), row("C")),
         ),
     ] {
-        let (records, _) = read_records(&csv);
+        let (records, _) = read_log(csv.as_bytes());
         let lines: Vec<usize> = records.iter().map(|q| q.source_line).collect();
         let want = if name == "空行" {
             [1, 3, 4]

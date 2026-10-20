@@ -20,7 +20,7 @@ pub mod reference;
 
 pub use adif::*;
 pub use bands::*;
-pub use callsign::split_callsign;
+pub use callsign::{normalize_callsign, normalize_width, split_callsign};
 pub use converter::*;
 pub use hamlog::*;
 pub use modes::*;
