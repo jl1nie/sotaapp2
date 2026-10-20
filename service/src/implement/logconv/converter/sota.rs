@@ -4,7 +4,7 @@ use super::super::adif::{adif_field, AdifField};
 use super::super::callsign::split_callsign;
 use super::super::options::{ConversionOptions, HisQth};
 use super::super::record::QsoRecord;
-use super::super::reference::{get_ref, RefInfo};
+use super::super::reference::get_ref;
 use super::files::{adif_header, csv_line, FileSet};
 use super::refs::{date_key, his_ref, line_of, my_ref_for_sota};
 use std::collections::HashMap;
@@ -108,11 +108,8 @@ fn adif_line(
     if my.sota.is_empty() {
         return None;
     }
-    // 旧版の ADIF は、相手の参照を備考1・備考2からだけ読む
-    let his = match options.his_qth {
-        HisQth::Rmks1 | HisQth::Rmks2 => his_ref(qso, options.his_qth),
-        HisQth::Qth | HisQth::None => RefInfo::default(),
-    };
+    // 相手の山(S2S)。CSV と同じ列から読む(FLE の HAMLOG の CSV は、相手の参照を QTH の列に書く)
+    let his = his_ref(qso, options.his_qth);
 
     let date = date_key(qso);
     let (operator, _) = split_callsign(callsign);
