@@ -768,12 +768,12 @@
    "callsign": "JA1ZZZ"
   },
   "expect": {
-   "files": [
-    "sota000000.csv"
-   ],
-   "lines": {
-    "sota000000.csv": 3
-   }
+   "http": 400,
+   "error_lines": [
+    1,
+    2,
+    3
+   ]
   }
  },
  {

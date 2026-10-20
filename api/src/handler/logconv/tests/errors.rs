@@ -92,8 +92,7 @@ async fn whitespace_only_lines_are_error_rows() {
 }
 
 // 画像などのバイナリ: 500 やパニックにならない。
-// 仕様の確認が要る: SOTA は 200 の ZIP(中身は誤りの行の sota000000.csv だけ)になる。
-// ログでないファイルは「読める交信がない」の 400 にしたほうが、利用者に伝わる。POTA は 400(誤りの一覧)
+// SOTA も POTA も 400 と誤りの一覧(読める交信が1つもない)
 #[tokio::test]
 async fn binary_file_is_not_a_crash() {
     let png = fixture("png_like.bin");
@@ -101,9 +100,11 @@ async fn binary_file_is_not_a_crash() {
         let r = try_hamlog(&png, opts).await.expect("パニック");
         assert_well_formed(format, &r);
     }
-    let r = hamlog(&png, SOTA_A).await;
-    assert_eq!(r.status, StatusCode::OK);
-    assert_eq!(r.zip().keys().collect::<Vec<_>>(), ["sota000000.csv"]);
+    for opts in [SOTA_A, SOTA_C] {
+        let r = hamlog(&png, opts).await;
+        assert_eq!(r.status, StatusCode::BAD_REQUEST);
+        assert!(!r.error_lines().is_empty());
+    }
     assert_eq!(hamlog(&png, POTA).await.status, StatusCode::BAD_REQUEST);
     let c = confirm(&png, POTA).await;
     assert_eq!(c.status, StatusCode::OK);
@@ -177,19 +178,19 @@ async fn unclosed_quote_is_reported_at_its_line() {
     let files = hamlog(&bytes, SOTA_C).await.zip();
     assert_eq!(files["other20251018.csv"].lines().count(), 1); // 1行目だけ
     assert_eq!(files["sota000000.csv"].lines().count(), 1);
-    assert!(files["sota000000.csv"].starts_with("HamLog format error at Line 2. :"));
+    assert!(files["sota000000.csv"].starts_with("\u{feff}HamLog format error at Line 2. :"));
 }
 
 // 1000 行と 1万行: 時間を出力する(`--nocapture` で見える)。時間の条件は付けず、出力の数だけ確かめる。
-// 1万行は、行番号の数え直し(`input.rs` の `line_at`)が行数の2乗で増えるため、debug ビルドで 4 回に約 3 分かかる
-// (1つの変換が約 40 秒。64MB の上限いっぱいなら、現実的な時間では終わらない)。普段は流さない
+// 1万行は、行の開始位置を先に作って二分探索で引くので、debug ビルドでも数秒(以前は行数の2乗で、1つの変換が約 40 秒かかった)。
+// 計測用なので、普段は流さない
 #[tokio::test]
 async fn a_thousand_rows_are_converted() {
     converts_n_rows(1_000).await;
 }
 
 #[tokio::test]
-#[ignore = "不具合(性能): 行番号の数え直しが行数の2乗で増え、1万行(810KB)の変換が debug で約 40 秒かかる"]
+#[ignore = "計測用: 1万行(810KB)の変換時間を出す(行番号を二分探索にしたので、debug でも数秒)"]
 async fn ten_thousand_rows_are_converted() {
     converts_n_rows(10_000).await;
 }
@@ -276,7 +277,7 @@ async fn converts_n_rows(n_rows: usize) {
 // 64MB を超える入力は、ハンドラーより手前の `DefaultBodyLimit`(api/src/handler/v2.rs)が弾く。
 // 本物のルーターは DB などの状態(AppState)が要るので、同じ上限をかけた最小のルーターに、同じ処理を載せて確かめる。
 // 上限の値が v2.rs とずれないよう、v2.rs の文面も確かめる。
-// 仕様の確認が要る: 上限を超えると、ハンドラーが「Missing 'file' parameter」の 400 を返す(本来は 413 が伝わる)。
+// 上限を超えると、413 と「ファイルが大きすぎます(上限 64MB)」を返す。
 // 64MB の本文を作るが、2 秒ほどで終わる(1行に大きな備考を入れて、行数を増やさない)
 #[tokio::test]
 async fn body_over_64mb_is_rejected_before_the_handler() {
@@ -343,8 +344,9 @@ async fn body_over_64mb_is_rejected_before_the_handler() {
         r.status,
         r.text().chars().take(200).collect::<String>()
     );
-    assert_eq!(r.status, StatusCode::BAD_REQUEST);
-    assert_eq!(r.json()["error"], "Missing 'file' parameter");
+    assert_eq!(r.status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(r.json()["status"], "NG");
+    assert_eq!(r.json()["error"], "ファイルが大きすぎます(上限 64MB)");
 }
 
 // multipart でないリクエスト(Content-Type が違う・本文がただの JSON)は、axum の拒否(4xx)で、500 にならない。
@@ -746,7 +748,6 @@ fn iosrow(datetime: &str) -> Vec<u8> {
 // 長さ(`<COMMENT:4>`)が、読み込み後の UTF-8 のバイト数と合わないと、文字の途中で切ってパニックする。
 // 日本語の ADIF を Shift_JIS のバイト数で書いた場合(日本のロガーが出す)に起きる
 #[tokio::test]
-#[ignore = "不具合: ADIF の値の長さが文字の途中にあたるとパニックする(Shift_JIS の ADIF で日本語の COMMENT)"]
 async fn adif_length_inside_a_multibyte_char_does_not_panic() {
     let bytes = fixture("adif_sjis_comment_len.adi");
     let r = try_hamlog(&bytes, POTA).await.expect("パニックした");
@@ -758,7 +759,6 @@ async fn adif_length_inside_a_multibyte_char_does_not_panic() {
 
 // QSO_DATE・TIME_ON が ASCII でないと、`[0..4]` が文字の途中にあたってパニックする
 #[tokio::test]
-#[ignore = "不具合: ADIF の QSO_DATE・TIME_ON が全角などの文字だとパニックする"]
 async fn adif_non_ascii_date_or_time_does_not_panic() {
     for name in ["adif_fullwidth_date.adi", "adif_fullwidth_time.adi"] {
         let r = try_hamlog(&fixture(name), POTA)
@@ -773,7 +773,6 @@ async fn adif_non_ascii_date_or_time_does_not_panic() {
 
 // ヘッダーに、大文字にすると長さの変わる字(ŉ)があると、`<EOH>` の位置がずれて、最初の記録が欠ける
 #[tokio::test]
-#[ignore = "不具合: ADIF のヘッダーに大文字で長さが変わる字(ŉ)があると、最初の記録が欠ける"]
 async fn adif_header_with_special_characters_keeps_the_first_record() {
     let r = hamlog(&fixture("adif_header_special_char.adi"), POTA).await;
     assert_eq!(r.status, StatusCode::OK, "{}", r.text());
@@ -782,7 +781,6 @@ async fn adif_header_with_special_characters_keeps_the_first_record() {
 
 // ADIF の存在しない日時(13月45日・99:99)は、HAMLOG CSV と違って検査されず、そのまま出力に入る
 #[tokio::test]
-#[ignore = "不具合: ADIF の入力は、存在しない日時を誤りにしない(HAMLOG CSV は誤りにする)"]
 async fn adif_nonexistent_datetime_is_an_error_like_csv() {
     let r = hamlog(&fixture("adif_nonexistent_datetime.adi"), POTA).await;
     assert_eq!(
@@ -797,7 +795,6 @@ async fn adif_nonexistent_datetime_is_an_error_like_csv() {
 // <EOR> のない最後の記録・CALL のない記録は、黙って捨てられる(誤りにも出ない)。
 // 途中で切れた ADIF の最後の交信が、知らせなしに消える
 #[tokio::test]
-#[ignore = "不具合: ADIF の <EOR> のない最後の記録・CALL のない記録が、黙って捨てられる"]
 async fn adif_record_without_eor_or_call_is_not_dropped_silently() {
     let good = "<CALL:6>JA1AAA<QSO_DATE:8>20251018<TIME_ON:4>0100<BAND:3>40m<MODE:2>CW<MY_SIG_INFO:7>JA-0001<EOR>\n";
     let cases = [
@@ -909,7 +906,7 @@ async fn error_line_numbers_match_the_file() {
             let err = &files["sota000000.csv"];
             assert!(
                 err.starts_with(&format!(
-                    "HamLog format error at Line {want}. : 日時不正:25/10/18 99:99U,"
+                    "\u{feff}HamLog format error at Line {want}. : 日時不正:25/10/18 99:99U,"
                 )),
                 "{name}: {err}"
             );
@@ -919,7 +916,6 @@ async fn error_line_numbers_match_the_file() {
 
 // 改行が CR だけのファイル(古い Mac)で、誤りの行番号が 1 になる(csv は CR で行を分けるが、行を数えるのは LF だけ)
 #[tokio::test]
-#[ignore = "不具合: 改行が CR だけのファイルで、誤りの行番号が常に 1 になる"]
 async fn error_line_numbers_match_the_file_with_cr_only_newlines() {
     let csv = log_with_newline("\r", true);
     let r = hamlog(csv.as_bytes(), POTA).await;
@@ -988,7 +984,7 @@ async fn some_bad_rows_are_split_by_format() {
     for files in [&a, &c] {
         let lines: Vec<&str> = files["sota000000.csv"].lines().collect();
         assert!(
-            lines[0].starts_with("HamLog format error at Line 2. :"),
+            lines[0].starts_with("\u{feff}HamLog format error at Line 2. :"),
             "{}",
             lines[0]
         );
@@ -1005,8 +1001,7 @@ async fn some_bad_rows_are_split_by_format() {
     }
 }
 
-// 全行が誤り: pota は 400(誤りの一覧に全行)。sota は 200 の ZIP で、誤りのファイル(sota000000.csv)だけ。
-// 仕様の確認が要る: SOTA の全行が誤りのとき、ZIP ではなく 400 にするか(日付のファイルが1つもできない)
+// 全行が誤り: pota も sota も 400(誤りの一覧に全行)
 #[tokio::test]
 async fn all_rows_bad_is_an_error_listing_every_line() {
     let csv = [bad_row("A"), bad_row("B"), bad_row("C")].join("\n") + "\n";
@@ -1018,10 +1013,8 @@ async fn all_rows_bad_is_an_error_listing_every_line() {
     assert_eq!(c.error_lines(), [1, 2, 3]);
     for opts in [SOTA_A, SOTA_C] {
         let r = hamlog(csv.as_bytes(), opts).await;
-        assert_eq!(r.status, StatusCode::OK);
-        let files = r.zip();
-        assert_eq!(files.keys().collect::<Vec<_>>(), ["sota000000.csv"]);
-        assert_eq!(files["sota000000.csv"].lines().count(), 3);
+        assert_eq!(r.status, StatusCode::BAD_REQUEST);
+        assert_eq!(r.error_lines(), [1, 2, 3]);
     }
 }
 
@@ -1048,7 +1041,7 @@ async fn ios_rows_follow_the_same_rules() {
     assert_eq!(r.error_lines(), [3]);
     let files = hamlog(csv.as_bytes(), SOTA_C).await.zip();
     assert_eq!(files["other20251018.csv"].lines().count(), 2);
-    assert!(files["sota000000.csv"].starts_with("HamLog format error at Line 3. :"));
+    assert!(files["sota000000.csv"].starts_with("\u{feff}HamLog format error at Line 3. :"));
 }
 
 // ================= C5. 日時 =================

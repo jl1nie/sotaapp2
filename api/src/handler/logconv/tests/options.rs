@@ -181,17 +181,17 @@ async fn unknown_qth_is_none() {
 
 // ---- Summit ----
 
-// `Summit`(myQTH=form)は、検査も整形もせず、そのまま CSV と ADIF の自局の山に入る。
-// 仕様の確認が要る: 小文字・前後の空白・誤った形がそのまま出る(SOTA のアップロードで弾かれる)。画面で検査しているか。
-// 協会が JA 以外(W7W/LC-001)も、そのまま通る
+// `Summit`(myQTH=form)は、全角を半角にし、前後の空白を除いて大文字にして、CSV と ADIF の自局の山に入る。
+// 形は検査しない(誤った形はそのまま出る)。協会が JA 以外(W7W/LC-001)も通る
 #[tokio::test]
-async fn summit_is_passed_through_verbatim() {
+async fn summit_is_normalized_but_not_validated() {
     for (summit, want) in [
         ("JA/TK-001", "JA/TK-001"),
         ("W7W/LC-001", "W7W/LC-001"),
-        ("ja/tk-001", "ja/tk-001"),
-        (" JA/TK-001 ", " JA/TK-001 "),
-        ("hello", "hello"),
+        ("ja/tk-001", "JA/TK-001"),
+        (" JA/TK-001 ", "JA/TK-001"),
+        ("ＪＡ／ＴＫ－００１", "JA/TK-001"),
+        ("hello", "HELLO"),
     ] {
         let opts = json!({"format": "sota_a", "myQTH": "form", "QTH": "none", "SOTAActivator": "JA1ZZZ/1", "Summit": summit});
         let files = zip_of(&summit_csv(), opts).await;
@@ -399,28 +399,27 @@ async fn callsign_option_wins_over_sota_activator() {
     );
 }
 
-// 小文字のコールサインは、整えずにそのまま出る(運用者だけ、運用局から取るとき大文字になる)。
-// 仕様の確認が要る: SOTA・POTA が小文字を受け付けるか。画面で大文字にしているか
+// コールサインは、前後の空白を除いて大文字にそろえ、すべての出力で同じになる
 #[tokio::test]
-async fn lowercase_callsigns_are_passed_through() {
+async fn callsigns_are_trimmed_and_uppercased() {
     let opts =
-        json!({"format": "sota_a", "myQTH": "rmks1", "QTH": "none", "SOTAActivator": "ja1zzz/p"});
+        json!({"format": "sota_a", "myQTH": "rmks1", "QTH": "none", "SOTAActivator": " ja1zzz/p "});
     let files = zip_of(&summit_csv(), opts).await;
-    assert_eq!(sota_fields(&files)[1], "ja1zzz/p");
+    assert_eq!(sota_fields(&files)[1], "JA1ZZZ/P");
     assert_eq!(
         adif_station(&files["sota20251018.adi"]),
-        ("ja1zzz/p".into(), "JA1ZZZ".into())
+        ("JA1ZZZ/P".into(), "JA1ZZZ".into())
     );
 
-    let opts = json!({"format": "pota", "myQTH": "rmks1", "QTH": "none", "POTAActivator": "ja1zzz/1", "POTAOperator": "ja1zzz"});
+    let opts = json!({"format": "pota", "myQTH": "rmks1", "QTH": "none", "POTAActivator": "ja1zzz/1", "POTAOperator": " ja1zzz"});
     let files = zip_of(&park_csv(), opts).await;
     assert_eq!(
         files.keys().collect::<Vec<_>>(),
-        ["ja1zzz-1@JA-0001-20251018.adi"]
+        ["JA1ZZZ-1@JA-0001-20251018.adi"]
     );
-    let adif = &files["ja1zzz-1@JA-0001-20251018.adi"];
+    let adif = &files["JA1ZZZ-1@JA-0001-20251018.adi"];
     assert!(
-        adif.contains("<STATION_CALLSIGN:8>ja1zzz/1<OPERATOR:6>ja1zzz"),
+        adif.contains("<STATION_CALLSIGN:8>JA1ZZZ/1<OPERATOR:6>JA1ZZZ"),
         "{adif}"
     );
 }
@@ -495,25 +494,48 @@ async fn slashes_in_callsigns_never_become_directories_in_the_zip() {
     }
 }
 
-// 運用局のコールサインを省くと、空のコールサインのファイルができる(200)。
-// 仕様の確認が要る: 400 にすべきか(SOTA・POTA に出せない出力になる)。いまの振る舞いを固定
+// 必要なコールサインが空(省く・空白だけ)なら、400 で断る(sota_a は運用局、sota_c は自局、pota は運用局)
 #[tokio::test]
-async fn missing_activator_callsign_makes_an_empty_station() {
+async fn missing_callsign_is_rejected() {
+    let cases = [
+        (
+            json!({"format": "sota_a", "myQTH": "rmks1", "QTH": "none"}),
+            summit_csv(),
+            "運用局のコールサインを入力してください",
+        ),
+        (
+            json!({"format": "sota_a", "myQTH": "rmks1", "QTH": "none", "SOTAActivator": "  "}),
+            summit_csv(),
+            "運用局のコールサインを入力してください",
+        ),
+        (
+            json!({"format": "sota_c", "QTH": "qth", "callsign": " "}),
+            summit_csv(),
+            "自局のコールサインを入力してください",
+        ),
+        (
+            json!({"format": "pota", "myQTH": "rmks1", "QTH": "none", "POTAOperator": "JA1ZZZ"}),
+            park_csv(),
+            "運用局のコールサインを入力してください",
+        ),
+    ];
+    for (opts, csv, message) in cases {
+        let r = hamlog(csv.as_bytes(), &opts.to_string()).await;
+        assert_eq!(r.status, StatusCode::BAD_REQUEST, "{opts}");
+        assert_eq!(r.json()["status"], "NG", "{opts}");
+        assert_eq!(r.json()["error"], message, "{opts}");
+    }
+}
+
+// `callsign` が空でも、`SOTAActivator` があればそれを使う
+#[tokio::test]
+async fn sota_callsign_falls_back_to_the_activator() {
     let files = zip_of(
         &summit_csv(),
-        json!({"format": "sota_a", "myQTH": "rmks1", "QTH": "none"}),
+        json!({"format": "sota_a", "myQTH": "rmks1", "QTH": "none", "callsign": "", "SOTAActivator": "ja1zzz"}),
     )
     .await;
-    assert_eq!(sota_fields(&files)[1], "");
-    assert!(files["sota20251018.adi"].contains("<STATION_CALLSIGN:0> <OPERATOR:0>"));
-
-    let files = zip_of(
-        &park_csv(),
-        json!({"format": "pota", "myQTH": "rmks1", "QTH": "none"}),
-    )
-    .await;
-    assert_eq!(files.keys().collect::<Vec<_>>(), ["@JA-0001-20251018.adi"]);
-    assert!(files["@JA-0001-20251018.adi"].contains("<STATION_CALLSIGN:0><OPERATOR:0>"));
+    assert_eq!(sota_fields(&files)[1], "JA1ZZZ");
 }
 
 // ---- 確認(/logconv/pota)も同じ名前を読む ----

@@ -56,6 +56,14 @@ impl Failure {
         }
     }
 
+    /// 413 Payload Too Large で、理由を返す
+    pub fn payload_too_large(error: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::PAYLOAD_TOO_LARGE,
+            body: LogconvResponse::ng(error),
+        }
+    }
+
     /// 誤りの行ごとの理由を添える
     pub fn with_error_log(mut self, error_log: Vec<String>) -> Self {
         self.body = self.body.with_error_log(error_log);

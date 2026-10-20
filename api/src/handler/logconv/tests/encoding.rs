@@ -111,7 +111,7 @@ async fn sjis_japanese_text_is_decoded_in_error_messages() {
         let files = hamlog(&fixture(name), SOTA_A).await.zip();
         assert_eq!(
             files["sota000000.csv"],
-            "HamLog format error at Line 2. : 日付フォーマット不正:令和7年10月18日①㈱髙﨑№,,,,,,,,,\n\
+            "\u{feff}HamLog format error at Line 2. : 日付フォーマット不正:令和7年10月18日①㈱髙﨑№,,,,,,,,,\n\
              HamLog format error at Line 3. : 日付フォーマット不正:表能ソ十予/ｱｲｳ,,,,,,,,,\n",
             "{name}"
         );
@@ -229,7 +229,7 @@ async fn broken_bytes_in_sjis_only_affect_their_own_row() {
         .zip();
     assert_eq!(files["other20251018.csv"].lines().count(), 4);
     assert_eq!(files["sota000000.csv"].lines().count(), 1);
-    assert!(files["sota000000.csv"].starts_with("HamLog format error at Line 5. :"));
+    assert!(files["sota000000.csv"].starts_with("\u{feff}HamLog format error at Line 5. :"));
 }
 
 // UTF-8 の日本語に壊れたバイトが1つでもあると、ファイル全体が Shift_JIS として読まれる(日本語は化ける)。
@@ -281,11 +281,10 @@ async fn utf16_without_bom_is_all_errors_but_not_a_crash() {
     let p = hamlog(&bytes, POTA).await;
     assert_eq!(p.status, StatusCode::BAD_REQUEST);
     assert_well_formed("UTF-16(BOMなし)POTA", &p);
-    // SOTA: 200 の ZIP で、中身は誤りの行(sota000000.csv)だけ
+    // SOTA: 読める交信がないので、400 と誤りの一覧
     let s = hamlog(&bytes, SOTA_A).await;
-    assert_eq!(s.status, StatusCode::OK);
-    let files = s.zip();
-    assert_eq!(files.keys().collect::<Vec<_>>(), ["sota000000.csv"]);
+    assert_eq!(s.status, StatusCode::BAD_REQUEST);
+    assert!(!s.error_lines().is_empty());
 }
 
 // ---- D-5: 改行と終わり ----
@@ -327,7 +326,6 @@ async fn sub_eof_at_the_end_of_the_last_line_is_harmless() {
 // 0x1A が最後の改行の後ろに単独であると、その行が「HAMLOG CSV形式ではありません」の誤りになり、
 // POTA の ADIF が作れなくなる(古い DOS 時代のファイルの終わりの印。無視すべき)。
 #[tokio::test]
-#[ignore = "不具合: 末尾の 0x1A(改行の後ろ)が誤りの行になり、POTA の ADIF を作れない"]
 async fn sub_eof_after_the_last_newline_is_ignored() {
     let bytes = fixture("sub_eof_after_newline.csv");
     let j = confirm(&bytes, POTA).await.json();
