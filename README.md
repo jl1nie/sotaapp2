@@ -425,7 +425,11 @@ makers fly-db-optimize
 
 ## 📄 ライセンス
 
-本プロジェクトは[MITライセンス](LICENSE)の下で公開されています。
+本プロジェクトは [Apache License 2.0](LICENSE) の下で公開されています。
+
+Copyright 2024-2026 Minoru Tomobe (JL1NIE)
+
+取り込んだ `vendor/fireauth` は、元のライセンス(WTFPL。`vendor/fireauth/LICENSE`)のままです。
 
 ## 📞 サポート
 
