@@ -391,5 +391,445 @@
     "JA1ZZZ-1@JP-0117-20251018.adi": "<MY_SIG_INFO:7>JP-0117<MY_STATE:2>TK"
    }
   }
+ },
+ {
+  "name": "encoding/sjis/sota_c",
+  "file": "../encoding/sjis_names.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20251018.csv",
+    "sota20251018.csv"
+   ],
+   "lines": {
+    "other20251018.csv": 3,
+    "sota20251018.csv": 1
+   },
+   "contains": {
+    "sota20251018.csv": ",JA1AAA,JA/KN-006,"
+   }
+  }
+ },
+ {
+  "name": "encoding/utf8/sota_c",
+  "file": "../encoding/utf8_names.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20251018.csv",
+    "sota20251018.csv"
+   ],
+   "lines": {
+    "other20251018.csv": 3,
+    "sota20251018.csv": 1
+   },
+   "contains": {
+    "sota20251018.csv": ",JA1AAA,JA/KN-006,"
+   }
+  }
+ },
+ {
+  "name": "encoding/utf8_bom/sota_c",
+  "file": "../encoding/utf8_bom_names.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20251018.csv",
+    "sota20251018.csv"
+   ],
+   "lines": {
+    "other20251018.csv": 3,
+    "sota20251018.csv": 1
+   },
+   "contains": {
+    "sota20251018.csv": ",JA1AAA,JA/KN-006,"
+   }
+  }
+ },
+ {
+  "name": "encoding/sjis/sota_a",
+  "file": "../encoding/sjis_names.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "SOTAActivator": "JA1ZZZ/1"
+  },
+  "expect": {
+   "files": [
+    "sota-s2s-20251018.csv",
+    "sota20251018.adi",
+    "sota20251018.csv"
+   ],
+   "lines": {
+    "sota20251018.csv": 4,
+    "sota-s2s-20251018.csv": 1
+   },
+   "records": {
+    "sota20251018.adi": 4
+   }
+  }
+ },
+ {
+  "name": "encoding/sjis/pota_check",
+  "file": "../encoding/sjis_names.csv",
+  "format": "pota",
+  "endpoint": "check",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "status": "OK",
+   "error_lines": []
+  }
+ },
+ {
+  "name": "encoding/sjis_error_text/pota_check",
+  "file": "../encoding/sjis_error_text.csv",
+  "format": "pota",
+  "endpoint": "check",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "status": "NG",
+   "error_lines": [
+    2,
+    3
+   ]
+  }
+ },
+ {
+  "name": "encoding/sjis_error_text/sota_c",
+  "file": "../encoding/sjis_error_text.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20251018.csv",
+    "sota000000.csv"
+   ],
+   "lines": {
+    "other20251018.csv": 2,
+    "sota000000.csv": 2
+   },
+   "contains": {
+    "sota000000.csv": "令和7年10月18日①㈱髙﨑№"
+   }
+  }
+ },
+ {
+  "name": "encoding/utf8_bom_error_text/pota_check",
+  "file": "../encoding/utf8_bom_error_text.csv",
+  "format": "pota",
+  "endpoint": "check",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "status": "NG",
+   "error_lines": [
+    2,
+    3
+   ]
+  }
+ },
+ {
+  "name": "encoding/utf8_bom_error_text/sota_c",
+  "file": "../encoding/utf8_bom_error_text.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20251018.csv",
+    "sota000000.csv"
+   ],
+   "lines": {
+    "other20251018.csv": 2,
+    "sota000000.csv": 2
+   },
+   "contains": {
+    "sota000000.csv": "令和7年10月18日①㈱髙﨑№"
+   }
+  }
+ },
+ {
+  "name": "encoding/sjis_invalid_bytes/pota_check",
+  "file": "../encoding/sjis_invalid_bytes.csv",
+  "format": "pota",
+  "endpoint": "check",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "status": "NG",
+   "error_lines": [
+    5
+   ]
+  }
+ },
+ {
+  "name": "encoding/sjis_invalid_bytes/sota_c",
+  "file": "../encoding/sjis_invalid_bytes.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20251018.csv",
+    "sota000000.csv"
+   ],
+   "lines": {
+    "other20251018.csv": 4,
+    "sota000000.csv": 1
+   }
+  }
+ },
+ {
+  "name": "errors/empty/sota_a",
+  "file": "../errors/empty.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "SOTAActivator": "JA1ZZZ/1"
+  },
+  "expect": {
+   "http": 400
+  }
+ },
+ {
+  "name": "errors/header_only_ios/pota",
+  "file": "../errors/header_only_ios.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "http": 400
+  }
+ },
+ {
+  "name": "errors/unclosed_quote/pota",
+  "file": "../errors/unclosed_quote.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "http": 400,
+   "error_lines": [
+    2
+   ]
+  }
+ },
+ {
+  "name": "errors/too_many_columns/sota_c",
+  "file": "../errors/too_many_columns.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20251018.csv"
+   ],
+   "lines": {
+    "other20251018.csv": 2
+   }
+  }
+ },
+ {
+  "name": "errors/dates_calendar/pota",
+  "file": "../errors/dates_calendar.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "http": 400,
+   "error_lines": [
+    2,
+    3,
+    8
+   ]
+  }
+ },
+ {
+  "name": "errors/dates_calendar/sota_c",
+  "file": "../errors/dates_calendar.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "other20240229.csv",
+    "other20251231.csv",
+    "other20260101.csv",
+    "sota000000.csv"
+   ],
+   "lines": {
+    "other20240229.csv": 2,
+    "other20251231.csv": 2,
+    "other20260101.csv": 1,
+    "sota000000.csv": 3
+   }
+  }
+ },
+ {
+  "name": "errors/all_bad/pota",
+  "file": "../errors/all_bad.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "http": 400,
+   "error_lines": [
+    1,
+    2,
+    3
+   ]
+  }
+ },
+ {
+  "name": "errors/all_bad/pota_check",
+  "file": "../errors/all_bad.csv",
+  "format": "pota",
+  "endpoint": "check",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "qth",
+   "POTAActivator": "JA1ZZZ/1",
+   "POTAOperator": "JA1ZZZ"
+  },
+  "expect": {
+   "status": "NG",
+   "error_lines": [
+    1,
+    2,
+    3
+   ]
+  }
+ },
+ {
+  "name": "errors/all_bad/sota_c",
+  "file": "../errors/all_bad.csv",
+  "format": "sota_c",
+  "options": {
+   "QTH": "qth",
+   "callsign": "JA1ZZZ"
+  },
+  "expect": {
+   "files": [
+    "sota000000.csv"
+   ],
+   "lines": {
+    "sota000000.csv": 3
+   }
+  }
+ },
+ {
+  "name": "options/park_form_multi",
+  "file": "references.csv",
+  "format": "pota",
+  "options": {
+   "myQTH": "form",
+   "Park": "JAFF-0005 JP-0014",
+   "QTH": "none",
+   "POTAActivator": "JA1ZZZ/1"
+  },
+  "expect": {
+   "files": [
+    "JA1ZZZ-1@JAFF-0005-20251018.adi",
+    "JA1ZZZ-1@JP-0014-20251018.adi"
+   ],
+   "records": {
+    "JA1ZZZ-1@JAFF-0005-20251018.adi": 22,
+    "JA1ZZZ-1@JP-0014-20251018.adi": 22
+   },
+   "contains": {
+    "JA1ZZZ-1@JP-0014-20251018.adi": "<STATION_CALLSIGN:8>JA1ZZZ/1<OPERATOR:6>JA1ZZZ"
+   }
+  }
+ },
+ {
+  "name": "options/unknown_my_qth_is_form",
+  "file": "references.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "RMKS1",
+   "Summit": "JA/OS-001",
+   "QTH": "none",
+   "SOTAActivator": "JA1ZZZ/1"
+  },
+  "expect": {
+   "contains": {
+    "sota20251018.csv": "V2,JA1ZZZ/1,JA/OS-001,"
+   }
+  }
+ },
+ {
+  "name": "options/callsign_wins",
+  "file": "references.csv",
+  "format": "sota_a",
+  "options": {
+   "myQTH": "rmks1",
+   "QTH": "none",
+   "SOTAActivator": "JA1ZZZ/1",
+   "callsign": "JA2YYY/2"
+  },
+  "expect": {
+   "contains": {
+    "sota20251018.csv": "V2,JA2YYY/2,"
+   }
+  }
  }
 ]
