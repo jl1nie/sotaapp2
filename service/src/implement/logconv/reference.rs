@@ -98,19 +98,20 @@ pub static JA_REGION_TABLE: Lazy<HashMap<&'static str, &'static str>> = Lazy::ne
 });
 
 /// 参照を見分ける正規表現
-static COORD_RE: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"(-?\d+(\.\d+)?[nsNS]?\s*,\s*-?\d+(\.\d+)?[ewEW]?)").unwrap());
+static COORD_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"(-?[0-9]+(\.[0-9]+)?[nsNS]?\s*,\s*-?[0-9]+(\.[0-9]+)?[ewEW]?)").unwrap()
+});
 static WWFF_RE: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"(?i)([A-Z0-9]+FF-\d+)").unwrap());
+    Lazy::new(|| regex::Regex::new(r"(?i-u)([A-Z0-9]+FF-[0-9]+)").unwrap());
 /// 公園の番号は4桁か5桁(`US-10995`)。数字が続けば公園でない(5桁を4桁で切って、別の公園と読まないように)
 static POTA_RE: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"([a-zA-Z0-9]+-\d{4,5})(?:[^0-9]|$)").unwrap());
+    Lazy::new(|| regex::Regex::new(r"([a-zA-Z0-9]+-[0-9]{4,5})(?:[^0-9]|$)").unwrap());
 static SOTA_RE: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"(([a-zA-Z0-9]+/[a-zA-Z0-9]+)-\d+)").unwrap());
+    Lazy::new(|| regex::Regex::new(r"(([a-zA-Z0-9]+/[a-zA-Z0-9]+)-[0-9]+)").unwrap());
 static GRID_RE: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"([a-zA-Z]{2}\d{2}[a-zA-Z]{2})").unwrap());
+    Lazy::new(|| regex::Regex::new(r"([a-zA-Z]{2}[0-9]{2}[a-zA-Z]{2})").unwrap());
 static SAT_RE: Lazy<regex::Regex> =
-    Lazy::new(|| regex::Regex::new(r"(([a-zA-Z]+-\d+)/([a-zA-Z]+/(\w+)))").unwrap());
+    Lazy::new(|| regex::Regex::new(r"(([a-zA-Z]+-[0-9]+)/([a-zA-Z]+/([a-zA-Z0-9_]+)))").unwrap());
 
 /// 文字列(空白かカンマで区切った語)から、参照を取り出す。コードは大文字にする
 ///
@@ -180,6 +181,11 @@ pub fn get_ref(s: &str) -> RefInfo {
     }
 
     info
+}
+
+/// `get_ref` の前に、全角の英数字・記号を半角にする(列と、画面で入れた参照を読むとき)
+pub fn get_ref_normalized(s: &str) -> RefInfo {
+    get_ref(&super::callsign::normalize_width(s))
 }
 
 #[cfg(test)]

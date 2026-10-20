@@ -20,7 +20,8 @@ use axum::{
 use registry::{AppRegistry, AppState};
 use serde::Deserialize;
 use service::implement::logconv::{
-    convert_to_adif, convert_to_sota_activator, convert_to_sota_chaser,
+    convert_to_adif, convert_to_sota_activator, convert_to_sota_chaser, error_log,
+    normalize_callsign,
 };
 use service::services::AdminService;
 use shaku_axum::Inject;
@@ -68,21 +69,51 @@ async fn convert(
 ) -> Result<Response, Failure> {
     let upload = Upload::read(multipart).await?;
     let request: LogconvRequest = upload.options_strict()?;
+    // コールサインは、前後の空白を除いて大文字にそろえる。必要なものが空なら断る
+    let sota_callsign = [
+        request.callsign.as_deref(),
+        request.options.sota_activator.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .map(normalize_callsign)
+    .find(|c| !c.is_empty())
+    .unwrap_or_default();
+    let pota_activator = normalize_callsign(
+        request
+            .options
+            .pota_activator
+            .as_deref()
+            .unwrap_or_default(),
+    );
+    match request.format {
+        OutputFormat::SotaA if sota_callsign.is_empty() => {
+            return Err(Failure::bad_request(
+                "運用局のコールサインを入力してください",
+            ))
+        }
+        OutputFormat::SotaC if sota_callsign.is_empty() => {
+            return Err(Failure::bad_request("自局のコールサインを入力してください"))
+        }
+        OutputFormat::Pota if pota_activator.is_empty() => {
+            return Err(Failure::bad_request(
+                "運用局のコールサインを入力してください",
+            ))
+        }
+        _ => {}
+    }
     let Loaded { records, options } = upload.load(request.options, admin).await?;
-    let callsign = request
-        .callsign
-        .unwrap_or_else(|| options.sota_activator.clone());
 
     Ok(match request.format {
-        OutputFormat::SotaA => reply::zip_or_empty(
-            convert_to_sota_activator(&records, &callsign, &options),
+        OutputFormat::SotaA => sota_reply(
+            &records,
+            convert_to_sota_activator(&records, &sota_callsign, &options),
             "sota.zip",
-            "No SOTA references found",
         ),
-        OutputFormat::SotaC => reply::zip_or_empty(
-            convert_to_sota_chaser(&records, &callsign, &options),
+        OutputFormat::SotaC => sota_reply(
+            &records,
+            convert_to_sota_chaser(&records, &sota_callsign, &options),
             "sota-chaser.zip",
-            "No SOTA references found",
         ),
         OutputFormat::Pota => {
             let result = convert_to_adif(&records, &options);
@@ -96,6 +127,20 @@ async fn convert(
             reply::zip_or_empty(result.files, "pota.zip", "No POTA references found")
         }
     })
+}
+
+/// SOTA の応答。読める交信が1つもなければ 400 と誤りの一覧、あれば ZIP
+fn sota_reply(
+    records: &[service::implement::logconv::QsoRecord],
+    files: std::collections::HashMap<String, String>,
+    zip_name: &str,
+) -> Response {
+    if records.iter().all(|r| r.has_error()) {
+        return Failure::bad_request("The log has errors")
+            .with_error_log(error_log(records))
+            .into_response();
+    }
+    reply::zip_or_empty(files, zip_name, "No SOTA references found")
 }
 
 /// POTA ADIF変換ハンドラー (JSON応答版)

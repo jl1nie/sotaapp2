@@ -1,16 +1,19 @@
 //! SOTA アクティベーター(CSV・S2S の CSV・ADIF)と、SOTA チェイサー(CSV)
 
 use super::super::adif::{adif_field, AdifField};
-use super::super::callsign::split_callsign;
+use super::super::callsign::{normalize_callsign, split_callsign};
 use super::super::options::{ConversionOptions, HisQth};
 use super::super::record::QsoRecord;
-use super::super::reference::get_ref;
+use super::super::reference::get_ref_normalized as parse_ref;
 use super::files::{adif_header, csv_line, FileSet};
 use super::refs::{date_key, his_ref, line_of, my_ref_for_sota};
 use std::collections::HashMap;
 
 /// 読み取りに失敗した行を集めるファイル(日付のファイルは、そのまま SOTA にアップロードするので、混ぜない)
 const ERROR_FILE: &str = "sota000000.csv";
+
+/// 誤りのファイルの先頭に付ける UTF-8 の BOM(Excel で開いて、日本語が化けないように)
+const BOM: &str = "\u{FEFF}";
 
 /// SOTA の CSV の1行(V2 形式)
 struct SotaRow {
@@ -86,8 +89,8 @@ fn chaser_row(qso: &QsoRecord, callsign: &str, options: &ConversionOptions) -> S
     // 最後の列は、場所(座標)の注記。旧版は、相手の参照を置いていない側の備考から取る
     // (相手を QTH に置いたときは備考1。指定しないときは、空白1つ)
     let note_loc = match options.his_qth {
-        HisQth::Rmks1 => get_ref(&qso.remarks2).loc,
-        HisQth::Rmks2 | HisQth::Qth => get_ref(&qso.remarks1).loc,
+        HisQth::Rmks1 => parse_ref(&qso.remarks2).loc,
+        HisQth::Rmks2 | HisQth::Qth => parse_ref(&qso.remarks1).loc,
         HisQth::None => " ".to_string(),
     };
     SotaRow::new(qso, callsign, "", &his.sota, &note_loc)
@@ -164,11 +167,12 @@ pub fn convert_to_sota_activator(
     callsign: &str,
     options: &ConversionOptions,
 ) -> HashMap<String, String> {
+    let callsign = &normalize_callsign(callsign);
     let mut files = FileSet::default();
 
     for (index, qso) in records.iter().enumerate() {
         if qso.has_error() {
-            files.append(ERROR_FILE, &error_line(qso, index));
+            files.append_with_header(ERROR_FILE, BOM, &error_line(qso, index));
             continue;
         }
         let Some(row) = activator_row(qso, callsign, options) else {
@@ -196,11 +200,12 @@ pub fn convert_to_sota_chaser(
     callsign: &str,
     options: &ConversionOptions,
 ) -> HashMap<String, String> {
+    let callsign = &normalize_callsign(callsign);
     let mut files = FileSet::default();
 
     for (index, qso) in records.iter().enumerate() {
         if qso.has_error() {
-            files.append(ERROR_FILE, &error_line(qso, index));
+            files.append_with_header(ERROR_FILE, BOM, &error_line(qso, index));
             continue;
         }
         let row = chaser_row(qso, callsign, options);

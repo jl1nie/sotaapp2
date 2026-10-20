@@ -84,17 +84,17 @@ logconv.sotalive.net の本番に出す前に、変換の正しさと、誤っ�
 ### 不具合(sotaapp2)
 | # | 内容 | テスト |
 |---|---|---|
-| 1 | ADIF: Shift_JIS の ADIF で、長さが Shift_JIS のバイト数の項目(`<COMMENT:4>山頂`)があるとパニック | `errors::adif_length_inside_a_multibyte_char_does_not_panic` |
-| 2 | ADIF: `QSO_DATE`・`TIME_ON` が全角数字だとパニック | `errors::adif_non_ascii_date_or_time_does_not_panic` |
-| 3 | ADIF: ヘッダーに大文字にすると長さが変わる字(`ŉ`)があると、最初の記録が欠ける | `errors::adif_header_with_special_characters_keeps_the_first_record` |
-| 4 | ADIF: 存在しない日時(13月45日、99:99)を検査しない | `errors::adif_nonexistent_datetime_is_an_error_like_csv` |
-| 5 | ADIF: 最後の記録に `<EOR>` がない・`CALL` がない記録が、黙って消える | `errors::adif_record_without_eor_or_call_is_not_dropped_silently` |
-| 6 | 改行の後ろの `0x1A`(DOS の EOF)が誤りの行になり、POTA は ADIF を作れない | `encoding::sub_eof_after_the_last_newline_is_ignored` |
-| 7 | 改行が CR だけのファイルで、誤りの行番号が常に 1 | `errors` の CR の行番号 |
-| 8 | 行番号を毎行、先頭から数え直す(行数の2乗)。release で1万行が約 1.3 秒/回 | `errors::ten_thousand_rows_are_converted`(計測) |
-| 9 | 全角の数字を含む参照(`JA-０１２３`)を読み、そのまま ADIF に出す | `references::fullwidth_digits_after_ascii_prefix_do_not_leak_into_adif` |
-| 10 | 画面で入れた `Summit` を大文字にせず、空白も除かない(`Park` はそろえる) | `options_matrix::summit_in_the_form_is_trimmed_and_uppercased` |
-| 11 | コールサインの `\`・`..` が ZIP の中の名前に残る(`/` だけ置き換え) | `output_encoding::zip_names_never_contain_backslash_or_dot_dot_components` |
+| 1 | ADIF: Shift_JIS の ADIF で、長さが Shift_JIS のバイト数の項目(`<COMMENT:4>山頂`)があるとパニック。**直した。ADIF を元の文字コードのバイト列のまま読み、値ごとに文字列にする** | `errors::adif_length_inside_a_multibyte_char_does_not_panic` |
+| 2 | ADIF: `QSO_DATE`・`TIME_ON` が全角数字だとパニック。**直した。全角などの日付・時刻は誤りの記録(400 と誤りの一覧)** | `errors::adif_non_ascii_date_or_time_does_not_panic` |
+| 3 | ADIF: ヘッダーに大文字にすると長さが変わる字(`ŉ`)があると、最初の記録が欠ける。**直した。`<EOH>` を、バイト列の中で大文字小文字を区別せず探す** | `errors::adif_header_with_special_characters_keeps_the_first_record` |
+| 4 | ADIF: 存在しない日時(13月45日、99:99)を検査しない。**直した。存在しない日時は `日時不正:…` の誤り(HAMLOG CSV と同じ)** | `errors::adif_nonexistent_datetime_is_an_error_like_csv` |
+| 5 | ADIF: 最後の記録に `<EOR>` がない・`CALL` がない記録が、黙って消える。**直した。`<EOR>` のない最後の記録も読む。`CALL` のない記録は、記録の番号つきの誤り** | `errors::adif_record_without_eor_or_call_is_not_dropped_silently` |
+| 6 | 改行の後ろの `0x1A`(DOS の EOF)が誤りの行になり、POTA は ADIF を作れない。**直した。末尾の 0x1A(と、それに続く空白)を読む前に除く** | `encoding::sub_eof_after_the_last_newline_is_ignored` |
+| 7 | 改行が CR だけのファイルで、誤りの行番号が常に 1。**直した。CRLF・LF・CR を行の区切りとして数える** | `errors` の CR の行番号 |
+| 8 | 行番号を毎行、先頭から数え直す(行数の2乗)。release で1万行が約 1.3 秒/回。**直した。行の開始位置を先に作って二分探索(debug で1万行が約 1 秒)。`ten_thousand_rows_are_converted` は計測用に ignore のまま** | `errors::ten_thousand_rows_are_converted`(計測) |
+| 9 | 全角の数字を含む参照(`JA-０１２３`)を読み、そのまま ADIF に出す。**直した。全角を半角にしてから参照を読み、参照の正規表現の数字は ASCII だけ** | `references::fullwidth_digits_after_ascii_prefix_do_not_leak_into_adif` |
+| 10 | 画面で入れた `Summit` を大文字にせず、空白も除かない(`Park` はそろえる)。**直した。`Summit` は全角を半角にし、前後の空白を除いて大文字にする** | `options_matrix::summit_in_the_form_is_trimmed_and_uppercased` |
+| 11 | コールサインの `\`・`..` が ZIP の中の名前に残る(`/` だけ置き換え)。**直した。`/`・`\`・Windows で使えない字・制御文字を `-` にする** | `output_encoding::zip_names_never_contain_backslash_or_dot_dot_components` |
 
 ### 不具合(画面 apps/logconv)
 | # | 内容 |
@@ -107,13 +107,11 @@ logconv.sotalive.net の本番に出す前に、変換の正しさと、誤っ�
 | 17 | 保存した設定の選択肢が知らない値のとき、既定に直さない |
 | 18 | `localStorage` に書けないと、入力のたびに例外 |
 
-### 仕様の確認が要る点(いまの振る舞いをテストで固定)
-- 全角の英数字・ハイフン・スラッシュの参照は、読まれず、知らせもない
-- `Summit`・`Park`・コールサインの形を検査しない。空のコールサインでも 200(`@JA-0001-….adi`)。小文字のコールサインは `OPERATOR` だけ大文字
-- SOTA で全行が誤り・バイナリのとき、200 で `sota000000.csv` だけの ZIP
-- UTF-16 は BOM つきなら読める。BOM なしは全行が誤り
-- `sota000000.csv` は BOM なしの UTF-8(Excel で文字化け)
-- 64MB を超えると "Missing 'file' parameter" の 400(413 の情報が出ない)
-- 通信の失敗は、ブラウザの英語のメッセージをそのまま出す
-- 同じ交信の重複・未来の日付は、取り除かず誤りにもしない
-- ADIF は `MY_SIG`・`SIG_INFO` で出す(`MY_POTA_REF`・`POTA_REF` は使わない。旧版と同じ)
+### 仕様の確認が要る点(2026-10-21 に決めて、直した)
+- 全角の英数字・記号(U+FF01〜U+FF5E)は半角に、全角の空白(U+3000)は半角の空白にしてから、参照(列と、画面の Summit・Park)とコールサインを読む。日本語の名前などほかの列は変えない。
+- コールサイン(SOTAActivator・POTAActivator・POTAOperator・callsign)は、前後の空白を除いて大文字にそろえ、すべての出力(CSV の自局、STATION_CALLSIGN、OPERATOR、ファイル名)で同じにする。
+- 必要なコールサインが空なら 400(sota_a は運用局、sota_c は自局、pota は運用局。`/logconv/pota` の確認は断らない)。
+- SOTA で読める交信が1つもない(全行が誤り・バイナリなど)ときは、200 の ZIP ではなく 400 と誤りの一覧(`error_log`)。一部だけが誤りなら、これまでどおり ZIP に `sota000000.csv`。
+- `sota000000.csv` は UTF-8 の BOM つき。
+- 64MB を超える入力は、413 と「ファイルが大きすぎます(上限 64MB)」。
+- 変えない: UTF-16(BOM つきは読む、なしは誤り)、重複・未来の日付は通す、ADIF は `MY_SIG`・`SIG_INFO` で出す(`MY_POTA_REF`・`POTA_REF` は使わない。旧版と同じ)、`Summit`・`Park` の形は検査しない、通信の失敗は、ブラウザのメッセージをそのまま出す(画面の担当)。

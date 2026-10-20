@@ -308,7 +308,6 @@ fn summit_of_another_association_is_accepted() {
 /// 画面で小文字や前後の空白つきで入れた Summit を、そのまま CSV に書く。
 /// SOTA の CSV の山の参照は大文字で空白なしなので、列から読んだ参照と同じに整える(大文字・trim)べき
 #[test]
-#[ignore = "不具合: form の Summit を整えない(小文字・前後の空白がそのまま CSV と ADIF の MY_SOTA_REF に出る)"]
 fn summit_in_the_form_is_trimmed_and_uppercased() {
     for input in ["ja/tk-001", " JA/TK-001 ", "\tja/tk-001\n"] {
         let files = sota_with_summit(input);
@@ -342,12 +341,8 @@ fn malformed_summit_is_written_as_is() {
 fn empty_summit_in_the_form_produces_nothing() {
     for input in ["", "   "] {
         let files = sota_with_summit(input);
-        // 空白だけの Summit は、空ではないので、山があるものとして出る。仕様の確認が要る(空白だけは「空」とみなすべき)
-        if input.is_empty() {
-            assert!(files.is_empty(), "{files:?}");
-        } else {
-            assert!(files.contains_key("sota20251018.csv"));
-        }
+        // 空白だけの Summit も、空とみなす(前後の空白を除くため)
+        assert!(files.is_empty(), "{input:?}: {files:?}");
     }
 }
 
@@ -523,14 +518,20 @@ fn sota_activator_callsign_with_suffixes() {
     }
 }
 
-/// 小文字のコールサイン: OPERATOR は大文字になるが、CSV の自局と STATION_CALLSIGN は入力のまま(不揃い)。
-/// 仕様の確認が要る(SOTA の受付は大文字小文字を区別しないか。区別しないなら不揃いでも害はない)
+/// 小文字・全角・前後の空白のコールサインは、半角の大文字にそろえる(CSV の自局・STATION_CALLSIGN・OPERATOR とも)
 #[test]
-fn sota_activator_lowercase_callsign_is_not_normalized() {
-    let (csv, adif) = sota_station("ja1zzz/1");
-    assert_eq!(csv, "ja1zzz/1");
-    assert_eq!(adif["STATION_CALLSIGN"], "ja1zzz/1");
-    assert_eq!(adif["OPERATOR"], "JA1ZZZ");
+fn sota_activator_callsign_is_normalized() {
+    for input in [
+        "ja1zzz/1",
+        " ja1zzz/1\t",
+        "ｊａ１ｚｚｚ／１",
+        "ＪＡ１ＺＺＺ/１",
+    ] {
+        let (csv, adif) = sota_station(input);
+        assert_eq!(csv, "JA1ZZZ/1", "{input:?}");
+        assert_eq!(adif["STATION_CALLSIGN"], "JA1ZZZ/1", "{input:?}");
+        assert_eq!(adif["OPERATOR"], "JA1ZZZ", "{input:?}");
+    }
 }
 
 /// 空のコールサインでも変換は進み、CSV の自局の列が空になる(service は検査しない)。
@@ -589,19 +590,20 @@ fn pota_operator_is_taken_from_the_activator_when_omitted() {
     }
 }
 
-/// 小文字の運用局: 運用者を省くと大文字になるが、指定した運用者はそのまま。ファイル名も入力のまま。
-/// 仕様の確認が要る(コールサインは大文字にそろえるべきか)
+/// 小文字・全角・前後の空白の運用局と運用者は、大文字にそろえる(STATION_CALLSIGN・OPERATOR・ファイル名・確認の表とも)
 #[test]
-fn pota_lowercase_callsigns_are_not_normalized() {
-    let result = pota_station("ja1zzz/1", "");
-    let body = &result.files["ja1zzz-1@JA-0001-20251018.adi"];
+fn pota_callsigns_are_normalized() {
+    let result = pota_station(" ja1zzz/1 ", "");
+    let body = &result.files["JA1ZZZ-1@JA-0001-20251018.adi"];
     let r = &adif_records(body)[0];
-    assert_eq!(r["STATION_CALLSIGN"], "ja1zzz/1");
+    assert_eq!(r["STATION_CALLSIGN"], "JA1ZZZ/1");
     assert_eq!(r["OPERATOR"], "JA1ZZZ");
+    assert_eq!(result.log_text[0][9], "JA1ZZZ/1");
 
-    let result = pota_station("JA1ZZZ/1", "ja1yyy");
+    let result = pota_station("ＪＡ１ＺＺＺ/１", " ja1yyy ");
     let r = &adif_records(&result.files["JA1ZZZ-1@JA-0001-20251018.adi"])[0];
-    assert_eq!(r["OPERATOR"], "ja1yyy");
+    assert_eq!(r["STATION_CALLSIGN"], "JA1ZZZ/1");
+    assert_eq!(r["OPERATOR"], "JA1YYY");
 }
 
 /// 運用局が空のとき、ファイル名は `@JA-0001-…` になり、STATION_CALLSIGN は空。

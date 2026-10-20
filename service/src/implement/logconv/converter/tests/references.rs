@@ -267,39 +267,45 @@ fn his_references_separated_by_ideographic_space() {
 }
 
 /// 全角の英数字・全角のハイフン・全角のスラッシュで書いた参照(日本語の入力で起きる)は、
-/// いまは参照として読まれない(相手の参照なしとして変換する。エラーにもならない)。
-/// 仕様の確認が要る: 半角にそろえて(NFKC)読むべきか、少なくとも警告を出すべきか
+/// 半角にしてから読む(U+FF01〜U+FF5E と U+3000)。ADIF には半角で出る
 #[test]
-fn fullwidth_references_are_not_recognized() {
-    for his in [
-        "ＪＡ／ＫＮ－００１",
-        "ＪＡ－０１２３",
-        "JA－0123",
-        "JA/KN－001",
-        "JA／KN-001",
+fn fullwidth_references_are_read_as_halfwidth() {
+    for (his, key, want) in [
+        ("ＪＡ／ＫＮ－００１", "SOTA_REF", "JA/KN-001"),
+        ("ＪＡ－０１２３", "SIG_INFO", "JA-0123"),
+        ("JA－0123", "SIG_INFO", "JA-0123"),
+        ("JA/KN－001", "SOTA_REF", "JA/KN-001"),
+        ("JA／KN-001", "SOTA_REF", "JA/KN-001"),
+        ("ＪＡＦＦ－０４５６", "SIG_INFO", "JAFF-0456"),
     ] {
         let recs = his_adif(his);
         assert!(
             recs.iter()
-                .all(|r| !r.contains_key("SIG_INFO") && !r.contains_key("SOTA_REF")),
-            "{his}"
+                .any(|r| r.get(key).map(String::as_str) == Some(want)),
+            "{his}: {recs:?}"
         );
     }
 }
 
-/// 全角の自局の参照(備考1)も読まれない: 参照のない行として、ファイルに入らない。仕様の確認が要る(上と同じ)
+/// 全角の自局の参照(備考1)も、半角にして読む
 #[test]
-fn fullwidth_my_reference_is_not_recognized() {
+fn fullwidth_my_reference_is_read_as_halfwidth() {
     let rows = [row("JA1AAA", "01:00U", "", "ＪＡ／ＴＫ－００１", "")];
     let result = convert_to_adif(&records(&rows), &rmks1_qth());
-    assert!(result.files.is_empty());
     assert_eq!(result.status, "OK");
+    assert!(
+        result
+            .files
+            .values()
+            .any(|b| b.contains("<MY_SOTA_REF:9>JA/TK-001")),
+        "{:?}",
+        result.files
+    );
 }
 
 /// 半角の英字に全角の数字が続く参照(`JA-０１２３`)は、そのまま参照として読んでしまう(`\d` が全角の数字に合う)。
 /// ADIF の SIG_INFO に全角の数字が出る(POTA に取り込めない)。読まないか、半角にするべき
 #[test]
-#[ignore = "不具合: 全角の数字を含む参照(JA-０１２３)を参照として読み、ADIF に全角のまま出す"]
 fn fullwidth_digits_after_ascii_prefix_do_not_leak_into_adif() {
     let recs = his_adif("JA-０１２３");
     for r in &recs {
