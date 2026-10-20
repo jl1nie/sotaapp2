@@ -110,23 +110,25 @@ fn adif_qsos(body: &str) -> Vec<BTreeMap<String, String>> {
 
 /// SOTA の CSV の行(`V2,自局,自局の山,日付,時刻,バンド,モード,相手,相手の山,場所の注記`)を、比べられる形にする
 ///
+/// - CSV として読み、どの行も10列であること(場所の注記 `%QTH%35.6N, 139.2E%` のカンマで、列がずれない)。
 /// - 日付の年は4桁にそろえる(FLE は `18/10/25`、logconv は旧版と同じ `18/10/2025`。SOTA はどちらも読む)。
-/// - 場所の注記(座標 `%QTH%35.6N, 139.2E%`)は、前後の空白と引用符を外す(logconv は引用符で囲み、末尾の空白が2つ)。
+/// - 場所の注記は、前後の空白を外す(logconv は旧版と同じく、末尾の空白が2つ)。
 fn sota_rows(body: &str) -> Vec<String> {
-    body.lines()
-        .map(|l| {
-            let mut f: Vec<String> = l.splitn(10, ',').map(str::to_string).collect();
-            if let Some(note) = f.get_mut(9) {
-                *note = note.trim().trim_matches('"').trim().to_string();
-            }
-            if let Some(date) = f.get_mut(3) {
-                if let [d, m, y] = date.split('/').collect::<Vec<_>>()[..] {
-                    if y.len() == 2 {
-                        *date = format!("{d}/{m}/20{y}");
-                    }
+    csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(body.as_bytes())
+        .records()
+        .map(|row| {
+            let row = row.unwrap();
+            assert_eq!(row.len(), 10, "SOTA の CSV は10列: {row:?}");
+            let mut f: Vec<String> = row.iter().map(str::to_string).collect();
+            f[9] = f[9].trim().to_string();
+            if let [d, m, y] = f[3].split('/').collect::<Vec<_>>()[..] {
+                if y.len() == 2 {
+                    f[3] = format!("{d}/{m}/20{y}");
                 }
             }
-            f.join(",")
+            f.join("|")
         })
         .collect()
 }
@@ -272,9 +274,9 @@ async fn fle_sota_s2s_converts_to_the_same_csv_as_fle() {
     // 備考の座標は、場所の注記になる(FLE の HAMLOG の CSV が、座標のカンマを残す)
     let row = sota_rows(&got["sota20251018.csv"])
         .into_iter()
-        .find(|r| r.contains(",JA1DDD,"))
+        .find(|r| r.contains("|JA1DDD|"))
         .unwrap();
-    assert!(row.ends_with(",%QTH%35.6N, 139.2E%"), "{row}");
+    assert!(row.ends_with("|%QTH%35.6N, 139.2E%"), "{row}");
     // ADIF にも、同じ S2S(SOTA_REF)。ファイルは1つ(最初の交信の UTC の日付)
     let adif = pick(&got, |n| n.ends_with(".adi"));
     assert_eq!(
@@ -337,7 +339,7 @@ async fn fle_chaser_splits_summit_contacts() {
     let fle_rows = sota_rows(&fle.files["sota20251018.csv"]);
     let (summits, others): (Vec<_>, Vec<_>) = fle_rows
         .into_iter()
-        .partition(|r| !r.split(',').nth(8).unwrap().is_empty());
+        .partition(|r| !r.split('|').nth(8).unwrap().is_empty());
     assert_eq!(sota_rows(&got["sota20251018.csv"]), summits);
     assert_eq!(sota_rows(&got["other20251018.csv"]), others);
     assert_eq!(summits.len(), 3);
