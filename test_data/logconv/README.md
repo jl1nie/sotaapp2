@@ -32,9 +32,10 @@ HAMLOG の CSV を logconv の画面と同じ指定で変換し、FLE が自分�
 | `sota_s2s.fle` | S2S・S2S+P2P・座標つき。JST で書いて、UTC の日付をまたぐ |
 | `sota_pota.fle` | 山と公園の同時運用。相手は S2S・P2P・S2S+P2P |
 | `chaser.fle` | チェイサー(自局の参照なし)。山との交信と、そうでない交信 |
+| `pota_move.fle` | 途中で運用先(山・公園)を変える |
 
-FLE の HAMLOG の CSV は、自局の参照を書かず(備考1が空)、相手の参照を QTH の列に書く。画面では、自局の参照を入力し、
-相手を「QTHで指定する」にする。
+FLE の HAMLOG の CSV は、自局の参照(QSO ごとの運用先)を備考1に、相手の参照を QTH の列に書く。画面では、運用先を
+「Remarks1で指定する」(か、入力)にし、相手を「QTHで指定する」にする。途中で運用先を変えたログは、Remarks1 でなければ分けられない。
 
 作り直すとき(sotalive-monorepo で):
 
