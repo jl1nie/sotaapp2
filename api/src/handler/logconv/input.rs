@@ -144,7 +144,9 @@ fn read_hamlog_csv(content: &str) -> Vec<QsoRecord> {
         if cols.is_empty() {
             continue;
         }
-        let line = row.position().map_or(0, |p| p.line() as usize);
+        let line = row
+            .position()
+            .map_or(0, |p| line_at(content, p.byte() as usize));
         match decode_auto(&cols, header_seen) {
             Ok(Some(mut qso)) => {
                 qso.source_line = line;
@@ -158,4 +160,22 @@ fn read_hamlog_csv(content: &str) -> Vec<QsoRecord> {
         header_seen = true;
     }
     records
+}
+
+/// 入力ファイルの、その位置から始まる行の番号(1から)
+///
+/// csv の `Position::line` は、改行が CRLF(Windows の HAMLOG の CSV)だと、2行目から1つ小さくなる。
+/// 記録の位置が、前の行の改行の途中を指すことがあるので、改行を読み飛ばしてから数える。
+fn line_at(content: &str, byte: usize) -> usize {
+    let bytes = content.as_bytes();
+    let start = byte.min(bytes.len());
+    let skip = bytes[start..]
+        .iter()
+        .take_while(|&&b| b == b'\r' || b == b'\n')
+        .count();
+    bytes[..start + skip]
+        .iter()
+        .filter(|&&b| b == b'\n')
+        .count()
+        + 1
 }

@@ -457,3 +457,5 @@ fn test_create_zip() {
     // Verify ZIP header
     assert_eq!(&zip_data[0..2], b"PK");
 }
+
+mod matrix;

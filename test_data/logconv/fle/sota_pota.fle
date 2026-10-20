@@ -1,0 +1,14 @@
+# SOTA と POTA の同時運用(山の中の公園)。相手は S2S・P2P・S2S+P2P
+mycall JA1ZZZ/1
+operator JA1ZZZ
+timezone jst
+date 2025-10-18
+mysota JA/TK-001
+mypota JA-0001
+40m cw
+1000 ja1aaa
+01 ja1bbb ja/kn-001
+02 ja1ccc ja-0123
+03 ja1ddd ja/kn-001 ja-0123 ja-0124 <能登さん>
+20m ssb
+10 ja1eee
