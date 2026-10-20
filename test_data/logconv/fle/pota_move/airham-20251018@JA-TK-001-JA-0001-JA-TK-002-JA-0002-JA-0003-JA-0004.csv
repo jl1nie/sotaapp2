@@ -1,0 +1,6 @@
+id,callsign,portable,qso_at,sent_rst,received_rst,sent_qth,received_qth,received_qra,frequency,mode,card,remarks
+,JA1AAA,,2025-10-18T00:00:00+00:00,599,599,,,,7MHz,CW,,
+,JA1BBB,,2025-10-18T00:01:00+00:00,599,599,,"JA/KN-001,JA-0123",,7MHz,CW,,
+,JA1CCC,,2025-10-18T02:00:00+00:00,599,599,,,,7MHz,CW,,
+,JA1DDD,,2025-10-18T02:01:00+00:00,599,599,,"JA/KN-002,JA-0123,JA-0124",,7MHz,CW,,
+,JA1EEE,,2025-10-18T04:00:00+00:00,599,599,,JA-0125,能登さん,7MHz,CW,,

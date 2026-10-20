@@ -1,0 +1,31 @@
+# POTA: 自局 2-fer(+WWFF)× 相手 0〜3-fer。日本語の名前・備考(2バイト目が 0x5C の字: 表・能・ソ)
+mycall JA1ZZZ/1
+operator JA1ZZZ
+timezone jst
+date 2025-10-18
+mygrid PM95uq
+mypota JA-0001 JA-0002
+mywwff JAFF-0001
+40m cw
+0900 ja1aaa
+01 ja1bbb ja-0123
+02 ja1ccc ja-0123 ja-0124
+03 ja1ddd ja-0123 ja-0124 ja-0125 <曽田さん>
+04 ja1eee jaff-0456 {東京都 表能ソ}
+05 ja1fff ja-0123 jaff-0456
+ssb
+14 ja1ggg 5 9 ja-0124 ja-0125
+2m fm
+20 ja1hhh
+70cm
+21 ja1iii ja-0125
+23cm
+22 ja1jjj
+6cm
+23 ja1kkk
+3cm
+24 ja1lll
+160m cw
+30 ja1mmm
+2190m
+31 ja1nnn

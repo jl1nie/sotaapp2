@@ -1,0 +1,17 @@
+# SOTA: S2S(相手の山)・S2S+P2P・座標つき。JST で書いて、UTC の日付をまたぐ(08:50 JST = 前日 23:50 UTC)
+mycall JA1ZZZ/1
+operator JA1ZZZ
+timezone jst
+date 2025-10-19
+mysota JA/TK-001
+40m cw
+0850 ja1aaa
+51 ja1bbb ja/kn-001
+52 ja1ccc ja/kn-002 ja-0123
+55 ja1ddd {35.6N, 139.2E}
+0905 ja1eee ja/kn-001 {箱根 表}
+06 ja1fff
+ssb
+10 ja1ggg ja/st-012
+2m fm
+15 ja1hhh

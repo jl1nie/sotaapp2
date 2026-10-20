@@ -1,4 +1,4 @@
-use super::input::decode_text;
+use super::input::{decode_text, read_records};
 use super::states::single_state;
 use super::*;
 use axum::http::{header, StatusCode};
@@ -98,6 +98,43 @@ fn test_decode_text_reads_shift_jis_and_utf8() {
     // UTF-8 は、そのまま(BOM は外す)
     assert_eq!(decode_text("高尾山".as_bytes()), "高尾山");
     assert_eq!(decode_text(b"\xEF\xBB\xBFabc"), "abc");
+}
+
+// 誤りの知らせの行番号は、入力ファイルの行。改行が CRLF(Windows の HAMLOG)でも、値を `"` で囲んでも、空行があっても
+#[test]
+fn test_source_lines_are_the_lines_of_the_file() {
+    let row = |call: &str| format!("{call},25/10/18,01:00U,59,59,7.030,CW,,,N,,,,,");
+    let quoted = |call: &str| {
+        row(call)
+            .split(',')
+            .map(|f| format!("\"{f}\""))
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    for (name, csv) in [
+        ("LF", format!("{}\n{}\n{}\n", row("A"), row("B"), row("C"))),
+        (
+            "CRLF",
+            format!("{}\r\n{}\r\n{}\r\n", row("A"), row("B"), row("C")),
+        ),
+        (
+            "CRLF・引用符",
+            format!("{}\r\n{}\r\n{}\r\n", quoted("A"), quoted("B"), quoted("C")),
+        ),
+        (
+            "空行",
+            format!("{}\r\n\r\n{}\r\n{}", row("A"), row("B"), row("C")),
+        ),
+    ] {
+        let (records, _) = read_records(&csv);
+        let lines: Vec<usize> = records.iter().map(|q| q.source_line).collect();
+        let want = if name == "空行" {
+            [1, 3, 4]
+        } else {
+            [1, 2, 3]
+        };
+        assert_eq!(lines, want, "{name}");
+    }
 }
 
 #[test]
@@ -397,3 +434,6 @@ async fn test_patterns_with_expectations() {
         problems.join("\n")
     );
 }
+
+// ---- e2e: FLE Online の HAMLOG の CSV(test_data/logconv/fle)----
+mod fle;
