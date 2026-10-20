@@ -37,3 +37,9 @@ HAMLOG CSV の列は `コールサイン,日付,時刻,RST送,RST受,周波数,�
 - `cases.json`: ケースの一覧。`expect` があるものは、旧版と比べず、新版の決めた動作を確かめる(誤りのある行・順不同のログ・公園の所在地)。
   - 誤りのあるログは、ADIF を生成しない(400)。誤りの行は `sota000000.csv` に集める。
   - `live_only` は、本番の公園データが要るもの(`MY_STATE`)で、`verify.py` だけが確かめる。
+
+## encoding / errors / options のケース
+
+`cases.json` の `encoding/…`・`errors/…`・`options/…` は、`../encoding/`・`../errors/` のフィクスチャ(`file` に相対パスで書く)で、
+文字コード(Shift_JIS・UTF-8・BOM)、例外系(空・見出しだけ・引用符が閉じない・日付の境目・全行が誤り)、画面の `options` の名前を、本番で確かめる。
+`expect.contains` は `verify.py` だけが確かめる(日本語が誤りの知らせに正しく出ること、BOM がコールサインに混ざらないこと)。
