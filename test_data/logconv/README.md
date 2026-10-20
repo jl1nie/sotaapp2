@@ -20,3 +20,22 @@ HAMLOG CSV(`コールサイン,日付,時刻,RST送,RST受,周波数,モード,�
 
 ## patterns/ — パターンを網羅したフィクスチャ
 デプロイ後の確認(`patterns/verify.py`)と、変換のテストに使う。詳しくは `patterns/README.md`。
+
+## fle/ — FLE Online が出した HAMLOG の CSV(e2e)
+`名前.fle` が FLE のログ、`名前/` が FLE Online の ZIP の中身(HAMLOG の CSV は Shift_JIS・CRLF。ほかに FLE が出す ADIF・SOTA の CSV)。
+HAMLOG の CSV を logconv の画面と同じ指定で変換し、FLE が自分で出した ADIF・SOTA の CSV と、交信ごとに同じになることを確かめる
+(`api/src/handler/logconv/tests/fle.rs`)。
+
+| ファイル | 内容 |
+|---|---|
+| `pota_nfer.fle` | 自局 2-fer(+WWFF)× 相手 0〜3-fer、全バンド(135kHz〜10GHz)、日本語の名前・備考(表・能・ソ) |
+| `sota_s2s.fle` | S2S・S2S+P2P・座標つき。JST で書いて、UTC の日付をまたぐ |
+| `sota_pota.fle` | 山と公園の同時運用。相手は S2S・P2P・S2S+P2P |
+| `chaser.fle` | チェイサー(自局の参照なし)。山との交信と、そうでない交信 |
+
+FLE の HAMLOG の CSV は、自局の参照を書かず(備考1が空)、相手の参照を QTH の列に書く。画面では、自局の参照を入力し、
+相手を「QTHで指定する」にする。
+
+作り直すとき(sotalive-monorepo で):
+
+    cargo run -p fle-core --example logconv_fixtures -- ~/src/sotaapp2/test_data/logconv/fle

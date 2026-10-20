@@ -1,0 +1,2 @@
+# FLE Online の出力(HAMLOG の CSV は Shift_JIS・CRLF)は、バイト列のまま扱う
+test_data/logconv/fle/*/** -text

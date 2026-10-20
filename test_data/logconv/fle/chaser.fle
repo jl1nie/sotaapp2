@@ -1,0 +1,11 @@
+# SOTA チェイサー(自宅から)。山との交信と、そうでない交信。UTC で書く
+mycall JA1ZZZ
+timezone +0
+date 2025-10-18
+40m cw
+0100 ja1aaa/1 ja/tk-001
+05 ja1bbb
+10 ja1ccc/1 ja/kn-001 ja-0123
+2m fm
+20 ja1ddd/1 ja/kn-002 {表丹沢}
+25 ja1eee
