@@ -437,3 +437,9 @@ async fn test_patterns_with_expectations() {
 
 // ---- e2e: FLE Online の HAMLOG の CSV(test_data/logconv/fle)----
 mod fle;
+
+// ---- 追加のテスト(担当2): 画面の options・例外系・文字コード ----
+mod encoding;
+mod errors;
+mod options;
+mod support;

@@ -21,6 +21,12 @@ HAMLOG CSV(`コールサイン,日付,時刻,RST送,RST受,周波数,モード,�
 ## patterns/ — パターンを網羅したフィクスチャ
 デプロイ後の確認(`patterns/verify.py`)と、変換のテストに使う。詳しくは `patterns/README.md`。
 
+## encoding/ — 文字コード・改行・末尾のバイト
+Shift_JIS(cp932)・UTF-8(BOM)・UTF-16・壊れたバイト・改行・末尾の 0x1A。`encoding/generate.py` で作る。一覧は `encoding/README.md`(`api/src/handler/logconv/tests/encoding.rs`)。
+
+## errors/ — 誤った入力
+空・見出しだけ・画像・引用符が閉じない・壊れた ADIF など。`errors/generate.py` で作る。一覧は `errors/README.md`(`api/src/handler/logconv/tests/errors.rs`)。
+
 ## fle/ — FLE Online が出した HAMLOG の CSV(e2e)
 `名前.fle` が FLE のログ、`名前/` が FLE Online の ZIP の中身(HAMLOG の CSV は Shift_JIS・CRLF。ほかに FLE が出す ADIF・SOTA の CSV)。
 HAMLOG の CSV を logconv の画面と同じ指定で変換し、FLE が自分で出した ADIF・SOTA の CSV と、交信ごとに同じになることを確かめる

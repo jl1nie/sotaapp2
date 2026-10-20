@@ -459,3 +459,7 @@ fn test_create_zip() {
 }
 
 mod matrix;
+mod options_matrix;
+mod output_encoding;
+mod references;
+mod support;
