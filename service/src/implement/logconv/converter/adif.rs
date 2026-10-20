@@ -1,12 +1,12 @@
 //! 自局の参照ごとの ADIF(POTA・WWFF・SOTA)と、確認画面に出す表
 
 use super::super::adif::{adif_field, AdifField};
-use super::super::callsign::split_callsign;
+use super::super::callsign::{normalize_callsign, split_callsign};
 use super::super::options::{ConversionOptions, ConversionResult};
 use super::super::record::QsoRecord;
 use super::super::reference::RefInfo;
 use super::files::{adif_header, FileSet};
-use super::refs::{date_key, his_ref, line_of, my_ref_for_adif};
+use super::refs::{date_key, error_log, his_ref, my_ref_for_adif};
 
 /// 1交信の ADIF
 struct AdifQso {
@@ -19,12 +19,13 @@ struct AdifQso {
 }
 
 /// 運用局のコールサインと、運用者(指定がなければ、運用局のコールサインから取る)
-fn station(options: &ConversionOptions) -> (&str, String) {
-    let activator = options.pota_activator.as_str();
-    let operator = if options.pota_operator.is_empty() {
-        split_callsign(activator).0
+fn station(options: &ConversionOptions) -> (String, String) {
+    let activator = normalize_callsign(&options.pota_activator);
+    let operator = normalize_callsign(&options.pota_operator);
+    let operator = if operator.is_empty() {
+        split_callsign(&activator).0
     } else {
-        options.pota_operator.clone()
+        operator
     };
     (activator, operator)
 }
@@ -61,8 +62,8 @@ fn refs_text(r: &RefInfo) -> String {
 }
 
 /// 運用局のコールサインと運用者
-struct Station<'a> {
-    activator: &'a str,
+struct Station {
+    activator: String,
     operator: String,
 }
 
@@ -77,7 +78,7 @@ struct QsoFields {
 impl QsoFields {
     fn new(qso: &QsoRecord, station: &Station, date: &str, time: &str) -> Self {
         let base = vec![
-            adif_field(AdifField::StationCallsign, station.activator),
+            adif_field(AdifField::StationCallsign, &station.activator),
             adif_field(AdifField::Operator, &station.operator),
             adif_field(AdifField::Call, &qso.callsign),
             adif_field(AdifField::QsoDate, date),
@@ -199,7 +200,7 @@ fn display_row(
         qso.rst_rcvd.clone(),
         refs_text(his),
         my_text,
-        station.activator.to_string(),
+        station.activator.clone(),
         station.operator.clone(),
     ]
 }
@@ -253,10 +254,25 @@ fn file_name(activator: &str, reference: &str, qso_date: &str, first_date: &str)
     };
     format!(
         "{}@{}-{}.adi",
-        activator.replace('/', "-"),
-        reference.replace('/', "-"),
+        safe_name_part(activator),
+        safe_name_part(reference),
         date
     )
+}
+
+/// ファイル名に入れる部分。区切り(`/`、`\\`)、Windows で使えない字、制御文字は `-` にする
+///
+/// ZIP を展開したときに、保存先の外を指す名前(`..\\..\\x`)や、ディレクトリになる名前にならないようにする。
+fn safe_name_part(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            if c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') {
+                '-'
+            } else {
+                c
+            }
+        })
+        .collect()
 }
 
 fn is_park(reference: &str) -> bool {
@@ -270,6 +286,7 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
     let mut result = ConversionResult::default();
     let mut files = FileSet::default();
     let header = adif_header("3.1.4");
+    let (activator, _) = station(options);
 
     // 最初の日付は、読み取りに成功した最初の交信のもの
     let first_date = records
@@ -278,14 +295,12 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
         .map(date_key)
         .unwrap_or_default();
 
-    for (index, qso) in records.iter().enumerate() {
+    result.error_log = error_log(records);
+    for qso in records {
         let q = match adif_qso(qso, options) {
             Ok(q) => q,
             Err(reason) => {
                 result.status = "NG".to_string();
-                result
-                    .error_log
-                    .push(format!("{}行:{}", line_of(qso, index), reason));
                 result.log_text.push(vec![reason]);
                 continue;
             }
@@ -293,7 +308,7 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
         result.log_text.push(q.display);
 
         for (reference, record) in &q.records {
-            let name = file_name(&options.pota_activator, reference, &q.date, &first_date);
+            let name = file_name(&activator, reference, &q.date, &first_date);
             files.append_with_header(name.clone(), &header, record);
             if is_park(reference) && !result.file_list.contains(&name) {
                 result.file_list.push(name);
