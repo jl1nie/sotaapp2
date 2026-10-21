@@ -274,10 +274,10 @@ async fn converts_n_rows(n_rows: usize) {
     );
 }
 
-// 上限(8MB)を超える入力は、ハンドラーより手前の `DefaultBodyLimit`(`upload_limit`)が弾く。
+// 上限(2MB)を超える入力は、ハンドラーより手前の `DefaultBodyLimit`(`upload_limit`)が弾く。
 // 本物のルーターは DB などの状態(AppState)が要るので、同じ上限をかけた最小のルーターに、同じ処理を載せて確かめる。
 // v2 と同じく、外側に全体の上限(64MB)をかけて入れ子にし、内側の logconv の上限が効くことも確かめる。
-// 上限を超えると、413 と「ファイルが大きすぎます(上限 8MB)」を返す
+// 上限を超えると、413 と「ファイルが大きすぎます(上限 2MB)」を返す
 #[tokio::test]
 async fn body_over_the_limit_is_rejected_before_the_handler() {
     use axum::{extract::DefaultBodyLimit, extract::Multipart, routing::post, Router};
@@ -357,7 +357,7 @@ async fn body_over_the_limit_is_rejected_before_the_handler() {
     );
     assert_eq!(r.status, StatusCode::PAYLOAD_TOO_LARGE);
     assert_eq!(r.json()["status"], "NG");
-    assert_eq!(r.json()["error"], "ファイルが大きすぎます(上限 8MB)");
+    assert_eq!(r.json()["error"], "ファイルが大きすぎます(上限 2MB)");
 }
 
 // multipart でないリクエスト(Content-Type が違う・本文がただの JSON)は、axum の拒否(4xx)で、500 にならない。
