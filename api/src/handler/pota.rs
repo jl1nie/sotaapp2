@@ -5,6 +5,7 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
+use bytes::Bytes;
 // Note: Query is still used for log_migrate which has different param type
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
@@ -259,12 +260,11 @@ async fn reqeust_shareid(
 
     let value = json!({ "share_id": share_id, "activator_logid": act_id, "hunter_logid": hntr_id });
 
+    let body = serde_json::to_vec(&value)
+        .map(Bytes::from)
+        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
     kvs_repo
-        .set(
-            share_id.to_string(),
-            value.clone(),
-            Some(Duration::minutes(30)),
-        )
+        .set(share_id.to_string(), body, Some(Duration::minutes(30)))
         .await;
 
     Ok(Json(value))
@@ -274,11 +274,12 @@ async fn obtain_shareid(
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     Path(share_id): Path<String>,
 ) -> AppResult<Json<Value>> {
-    if let Some(value) = kvs_repo.get(&share_id).await {
-        Ok(Json(value))
-    } else {
-        Err(AppError::EntityNotFound("invalid share_id".to_string()))
-    }
+    let Some(body) = kvs_repo.get(&share_id).await else {
+        return Err(AppError::EntityNotFound("invalid share_id".to_string()));
+    };
+    serde_json::from_slice(&body)
+        .map(Json)
+        .map_err(|e| AppError::ConversionEntityError(e.to_string()))
 }
 
 async fn log_stat(

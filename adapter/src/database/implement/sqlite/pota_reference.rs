@@ -837,6 +837,7 @@ mod tests {
                 cors_origin: None,
                 firebase_api_key: String::new(),
                 auth_token_ttl: d0,
+                kvs_capacity: 256,
                 log_level: String::new(),
                 sota_alert_endpoint: String::new(),
                 sota_spot_endpoint: String::new(),

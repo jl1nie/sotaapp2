@@ -1,8 +1,13 @@
 use aprs_message::AprsCallsign;
-use axum::{routing::get, Json, Router};
+use axum::{
+    http::header,
+    response::{IntoResponse, Response},
+    routing::get,
+    Json, Router,
+};
+use bytes::Bytes;
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
-use serde_json::Value;
 use shaku_axum::Inject;
 
 use domain::model::event::{FindActBuilder, FindAprs};
@@ -23,6 +28,18 @@ use crate::model::{
 const CACHE_TTL_SPOTS: i64 = 30;
 const CACHE_TTL_ALERTS: i64 = 180;
 const CACHE_TTL_TRACK: i64 = 60;
+
+/// 値を JSON のバイト列にする(キャッシュに入れ、そのままレスポンスにする)
+fn to_json_bytes<T: serde::Serialize>(value: &T) -> AppResult<Bytes> {
+    serde_json::to_vec(value)
+        .map(Bytes::from)
+        .map_err(|e| AppError::ConversionEntityError(e.to_string()))
+}
+
+/// JSON のバイト列をそのままレスポンスにする
+fn json_response(body: Bytes) -> Response {
+    ([(header::CONTENT_TYPE, "application/json")], body).into_response()
+}
 
 /// パラメータからFindActBuilderにグルーピングとフィルタを適用
 fn apply_common_filters(
@@ -69,10 +86,10 @@ async fn show_spots(
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     param: GetParam,
     query: FindActBuilder,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let key = param.to_key();
-    if let Some(val) = kvs_repo.get(&key).await {
-        return Ok(Json(val));
+    if let Some(body) = kvs_repo.get(&key).await {
+        return Ok(json_response(body));
     };
 
     let query = apply_common_filters(&param, query, 3).build();
@@ -87,13 +104,12 @@ async fn show_spots(
 
     spots.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value =
-        serde_json::to_value(spots).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
+    let body = to_json_bytes(&spots)?;
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_SPOTS)))
+        .set(key, body.clone(), Some(Duration::seconds(CACHE_TTL_SPOTS)))
         .await;
 
-    Ok(Json(value))
+    Ok(json_response(body))
 }
 
 async fn show_alerts(
@@ -101,10 +117,10 @@ async fn show_alerts(
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     param: GetParam,
     query: FindActBuilder,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let key = param.to_key();
-    if let Some(val) = kvs_repo.get(&key).await {
-        return Ok(Json(val));
+    if let Some(body) = kvs_repo.get(&key).await {
+        return Ok(json_response(body));
     };
 
     let query = apply_common_filters(&param, query, 24).build();
@@ -119,24 +135,19 @@ async fn show_alerts(
 
     alerts.sort_by(|a, b| a.key.cmp(&b.key));
 
-    let value =
-        serde_json::to_value(alerts).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
+    let body = to_json_bytes(&alerts)?;
     kvs_repo
-        .set(
-            key,
-            value.clone(),
-            Some(Duration::seconds(CACHE_TTL_ALERTS)),
-        )
+        .set(key, body.clone(), Some(Duration::seconds(CACHE_TTL_ALERTS)))
         .await;
 
-    Ok(Json(value))
+    Ok(json_response(body))
 }
 
 async fn show_sota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let query = FindActBuilder::default().sota();
     show_spots(user_service, kvs_repo, param, query).await
 }
@@ -145,7 +156,7 @@ async fn show_pota_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let query = FindActBuilder::default().pota();
     show_spots(user_service, kvs_repo, param, query).await
 }
@@ -154,7 +165,7 @@ async fn show_all_spots(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let query = FindActBuilder::default();
     show_spots(user_service, kvs_repo, param, query).await
 }
@@ -163,7 +174,7 @@ async fn show_sota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let query = FindActBuilder::default().sota();
     show_alerts(user_service, kvs_repo, param, query).await
 }
@@ -172,7 +183,7 @@ async fn show_pota_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let query = FindActBuilder::default().pota();
     show_alerts(user_service, kvs_repo, param, query).await
 }
@@ -181,7 +192,7 @@ async fn show_all_alerts(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let query = FindActBuilder::default();
     show_alerts(user_service, kvs_repo, param, query).await
 }
@@ -221,10 +232,10 @@ async fn show_aprs_track(
     user_service: Inject<AppRegistry, dyn UserService>,
     kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
     ValidatedQuery(param): ValidatedQuery<GetParam>,
-) -> AppResult<Json<Value>> {
+) -> AppResult<Response> {
     let key = param.to_key();
-    if let Some(val) = kvs_repo.get(&key).await {
-        return Ok(Json(val));
+    if let Some(body) = kvs_repo.get(&key).await {
+        return Ok(json_response(body));
     };
 
     let request = FindAprs {
@@ -236,14 +247,13 @@ async fn show_aprs_track(
     let tracks = user_service.get_aprs_track(request).await?;
     let tracks = tracks.into_iter().map(Track::from).collect();
     let value = Tracks { tracks };
-    let value =
-        serde_json::to_value(value).map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
+    let body = to_json_bytes(&value)?;
 
     kvs_repo
-        .set(key, value.clone(), Some(Duration::seconds(CACHE_TTL_TRACK)))
+        .set(key, body.clone(), Some(Duration::seconds(CACHE_TTL_TRACK)))
         .await;
 
-    Ok(Json(value))
+    Ok(json_response(body))
 }
 
 pub fn build_activation_routers() -> Router<AppState> {

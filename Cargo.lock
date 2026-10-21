@@ -20,6 +20,7 @@ dependencies = [
  "anyhow",
  "aprs-message",
  "async-trait",
+ "bytes",
  "chrono",
  "common",
  "csv",
@@ -137,6 +138,7 @@ dependencies = [
  "aprs-message",
  "axum 0.8.8",
  "axum-test",
+ "bytes",
  "chrono",
  "common",
  "csv",
@@ -881,6 +883,7 @@ version = "0.1.0"
 dependencies = [
  "aprs-message",
  "async-trait",
+ "bytes",
  "chrono",
  "common",
  "csv",

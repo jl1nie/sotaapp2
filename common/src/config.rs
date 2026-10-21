@@ -12,6 +12,8 @@ pub struct AppConfig {
     pub cors_origin: Option<String>,
     pub firebase_api_key: String,
     pub auth_token_ttl: Duration,
+    /// キャッシュ(MiniKvs)に持つエントリ数の上限。超えると最も長く使われていないものから捨てる
+    pub kvs_capacity: usize,
     pub log_level: String,
     pub sota_alert_endpoint: String,
     pub sota_spot_endpoint: String,
@@ -150,6 +152,7 @@ impl AppConfig {
 
             // 認証
             auth_token_ttl: Duration::hours(env_parse_or("AUTH_TOKEN_TTL", 24)),
+            kvs_capacity: env_parse_or("KVS_CAPACITY", 256),
 
             // SOTA エンドポイント
             sota_alert_endpoint: env_or(
