@@ -1,5 +1,8 @@
 //! 入力の受け取り: アップロード(multipart)、文字コード、ログの読み取り
 
+use std::borrow::Cow;
+
+use axum::body::Bytes;
 use axum::extract::multipart::MultipartError;
 use axum::extract::Multipart;
 use axum::http::StatusCode;
@@ -12,10 +15,11 @@ use service::services::AdminService;
 use super::options::ConversionOptionsRequest;
 use super::reply::Failure;
 use super::states::park_states;
+use super::MAX_UPLOAD_MB;
 
-/// アップロードされたもの(ログのファイルと、`options` の JSON)
+/// アップロードされたもの(ログのファイルと、`options` の JSON)。ファイルは受け取ったバッファのまま持つ(コピーしない)
 pub struct Upload {
-    file: Vec<u8>,
+    file: Bytes,
     options_json: Option<String>,
 }
 
@@ -38,7 +42,7 @@ impl Upload {
             };
             match field.name() {
                 Some("file") => match field.bytes().await {
-                    Ok(bytes) => file = Some(bytes.to_vec()),
+                    Ok(bytes) => file = Some(bytes),
                     Err(e) => return Err(read_failure(&e)),
                 },
                 Some("options") | Some("arg") => match field.text().await {
@@ -94,10 +98,10 @@ impl Upload {
     }
 }
 
-/// multipart の読み込みの失敗。上限(64MB)を超えたときは 413、それ以外は、ファイルが受け取れなかったとして 400
+/// multipart の読み込みの失敗。上限(`MAX_UPLOAD_MB`)を超えたときは 413、それ以外は、ファイルが受け取れなかったとして 400
 fn read_failure(e: &MultipartError) -> Failure {
     if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
-        Failure::payload_too_large("ファイルが大きすぎます(上限 64MB)")
+        Failure::payload_too_large(format!("ファイルが大きすぎます(上限 {MAX_UPLOAD_MB}MB)"))
     } else {
         Failure::bad_request("Missing 'file' parameter")
     }
@@ -121,13 +125,13 @@ fn strip_sub_eof(bytes: &[u8]) -> &[u8] {
 /// 入力ファイルの文字コードを判定して読む。UTF-8 として正しければ UTF-8、そうでなければ Shift-JIS(cp932)
 ///
 /// 日本語版の HAMLOG が出す CSV は Shift-JIS(旧版は常に cp932 で読んでいた)。
-/// 末尾の 0x1A は無視する。
-pub fn decode_text(bytes: &[u8]) -> String {
+/// 末尾の 0x1A は無視する。UTF-8 なら、入力をそのまま指す(コピーしない)。
+pub fn decode_text(bytes: &[u8]) -> Cow<'_, str> {
     let bytes = strip_sub_eof(bytes);
     let bytes = bytes.strip_prefix(UTF8_BOM).unwrap_or(bytes);
     match std::str::from_utf8(bytes) {
-        Ok(text) => text.to_string(),
-        Err(_) => encoding_rs::SHIFT_JIS.decode(bytes).0.into_owned(),
+        Ok(text) => Cow::Borrowed(text),
+        Err(_) => encoding_rs::SHIFT_JIS.decode(bytes).0,
     }
 }
 

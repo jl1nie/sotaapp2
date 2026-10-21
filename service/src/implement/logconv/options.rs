@@ -66,6 +66,8 @@ pub struct ConversionResult {
     pub error_log: Vec<String>,
     pub log_text: Vec<Vec<String>>,
     pub file_list: Vec<String>,
+    /// 出力ファイル(ZIP にする)。確認の JSON には入れない(画面は使わない。大きなログでは、応答とメモリの大半になる)
+    #[serde(skip)]
     pub files: HashMap<String, String>,
 }
 
