@@ -83,9 +83,9 @@ jobs:
 
           # 動いている DB の写しを、マシンの中で作る。VACUUM INTO は、まだ DB に反映していない変更(WAL)も含めた、
           # 一貫した1つのファイルになる。sqlite3 がない古いイメージでは、DB のファイルだけを取る(WAL の分は入らない)
-          if timeout 60 flyctl ssh console -C "sh -c 'command -v sqlite3 >/dev/null && echo HAS_SQLITE3 || echo NO_SQLITE3'" 2>&1 | grep -q HAS_SQLITE3; then
+          if timeout -k 10 60 flyctl ssh console -C "sh -c 'command -v sqlite3 >/dev/null && echo HAS_SQLITE3 || echo NO_SQLITE3'" 2>&1 | grep -q HAS_SQLITE3; then
             echo "Creating a consistent snapshot on the machine..."
-            timeout 300 flyctl ssh console -C "sqlite3 /data/sotaapp2.db \"VACUUM INTO '${SNAPSHOT}'\""
+            timeout -k 10 300 flyctl ssh console -C "sqlite3 /data/sotaapp2.db \"VACUUM INTO '${SNAPSHOT}'\""
             SOURCE="${SNAPSHOT}"
           else
             echo "::warning::sqlite3 is not in the running image. Downloading the database file only (changes still in the WAL are not included)"
@@ -93,11 +93,12 @@ jobs:
           fi
 
           # 取得が止まることがある(2026-10-21: 何も出さずに 16 分止まった)。5 分で打ち切って失敗にする
+          # 止まった flyctl は TERM では終わらない(timeout 300 のまま 15 分待った)。-k 10 で、10 秒後に KILL する
           echo "Downloading ${SOURCE}..."
           status=0
-          timeout 300 flyctl ssh sftp get "${SOURCE}" "./${BACKUP_FILE}" || status=$?
+          timeout -k 10 300 flyctl ssh sftp get "${SOURCE}" "./${BACKUP_FILE}" || status=$?
           if [ "${SOURCE}" = "${SNAPSHOT}" ]; then
-            timeout 60 flyctl ssh console -C "rm -f ${SNAPSHOT}" || echo "::warning::Could not remove ${SNAPSHOT}"
+            timeout -k 10 60 flyctl ssh console -C "rm -f ${SNAPSHOT}" || echo "::warning::Could not remove ${SNAPSHOT}"
           fi
           if [ "${status}" != 0 ] || [ ! -s "${BACKUP_FILE}" ]; then
             echo "::error::Database download failed (exit ${status}). Not deploying. Run again, or with skip_backup to deploy without a backup"
