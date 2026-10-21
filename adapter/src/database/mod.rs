@@ -87,6 +87,10 @@ pub mod connect {
         tracing::info!("Starting background database optimization...");
         sqlx::query("VACUUM").execute(pool.inner_ref()).await?;
         sqlx::query("ANALYZE").execute(pool.inner_ref()).await?;
+        // VACUUM は DB 全体を書き直すので、WAL が DB と同じ大きさまで膨らむ。DB に反映して、WAL を空にする
+        sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)")
+            .execute(pool.inner_ref())
+            .await?;
         tracing::info!("Database optimization completed.");
         Ok(())
     }
