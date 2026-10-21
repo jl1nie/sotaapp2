@@ -106,13 +106,16 @@ impl AppRegistry {
 pub struct AppState {
     module: Arc<AppRegistry>,
     pub config: AppConfig,
+    /// POTA ログ共有コードの置き場所。応答のキャッシュとは分け、キャッシュの入れ替えで共有コードが消えないようにする
+    pub share_kvs: Arc<MiniKvs>,
 }
 
 impl AppState {
-    pub fn new(module: AppRegistry, config: AppConfig) -> Self {
+    pub fn new(module: AppRegistry, config: AppConfig, share_kvs: Arc<MiniKvs>) -> Self {
         Self {
             module: Arc::new(module),
             config,
+            share_kvs,
         }
     }
 }

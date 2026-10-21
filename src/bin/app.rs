@@ -27,6 +27,9 @@ use api::handler::{admin, v2};
 use registry::{AppRegistry, AppState};
 use utoipa_swagger_ui::SwaggerUi;
 
+/// POTA ログ共有コードを同時に持てる数の上限(1 件は 200 バイトほど)
+const SHARE_KVS_CAPACITY: usize = 4096;
+
 #[derive(Parser)]
 #[command(name = "sotaapp2")]
 #[command(about = "SOTA/POTA Application Server", long_about = None)]
@@ -176,7 +179,8 @@ async fn bootstrap() -> Result<()> {
     let geomag = connect_geomag_with(&config).await?;
     let minikvs = Arc::new(MiniKvs::new(config.auth_token_ttl, config.kvs_capacity));
     let module = AppRegistry::new(&config, pool, aprs, geomag, minikvs);
-    let app_state = AppState::new(module, config.clone());
+    let share_kvs = Arc::new(MiniKvs::new(config.auth_token_ttl, SHARE_KVS_CAPACITY));
+    let app_state = AppState::new(module, config.clone(), share_kvs);
     let job_state = app_state.clone();
 
     let firebase = FireAuth::new(config.firebase_api_key.clone());

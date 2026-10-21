@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Multipart, Path, Query},
+    extract::{Multipart, Path, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
     routing::{delete, get, post, put},
@@ -9,7 +9,6 @@ use bytes::Bytes;
 // Note: Query is still used for log_migrate which has different param type
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
-use fastrand;
 use fireauth::FireAuth;
 use serde_json::{json, Value};
 use shaku_axum::Inject;
@@ -30,9 +29,7 @@ use domain::model::{
     event::{DeleteRef, FindActBuilder, FindRefBuilder},
     id::LogId,
 };
-use domain::{
-    model::pota::ParkCode, repository::minikvs::KvsRepositry, repository::pota::PotaRepository,
-};
+use domain::{model::pota::ParkCode, repository::pota::PotaRepository};
 use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadPOTALog, UploadPOTAReference};
 use service::services::{AdminService, PotaLogService, UserService};
@@ -248,35 +245,94 @@ async fn show_pota_alerts(
     Ok(Json(alerts))
 }
 
+/// ログ共有コードの文字(Crockford Base32。見間違えやすい I L O U は使わない)
+const SHARE_CODE_ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+/// ログ共有コードの長さ(8 文字 = 40 bit。約 1 兆通り)
+const SHARE_CODE_LEN: usize = 8;
+/// ログ共有コードの有効期限(分)。1 回取り出したらその場で消す
+const SHARE_CODE_TTL_MINUTES: i64 = 10;
+/// コードが既存のものとぶつかったときにやり直す回数
+const SHARE_CODE_RETRIES: usize = 5;
+/// 共有するログ ID の長さの上限(UUID は 36 文字)
+const MAX_SHARED_LOGID_LEN: usize = 64;
+
+/// 新しいログ共有コードを作る。UUID v4 の乱数(暗号論的に安全な RNG)の先頭 40 bit を使う
+fn new_share_code() -> String {
+    let bytes = uuid::Uuid::new_v4().into_bytes();
+    let mut n = bytes[..5]
+        .iter()
+        .fold(0u64, |acc, b| (acc << 8) | u64::from(*b));
+    (0..SHARE_CODE_LEN)
+        .map(|_| {
+            let c = SHARE_CODE_ALPHABET[(n & 31) as usize] as char;
+            n >>= 5;
+            c
+        })
+        .collect()
+}
+
+/// 入力されたログ共有コードを正規化する。区切り(`-`)と空白を除いて大文字にし、
+/// 紛らわしい文字を読み替える(O → 0、I・L → 1)。形が違えば None
+fn normalize_share_code(input: &str) -> Option<String> {
+    let code: String = input
+        .chars()
+        .filter(|c| *c != '-' && !c.is_whitespace())
+        .map(|c| match c.to_ascii_uppercase() {
+            'O' => '0',
+            'I' | 'L' => '1',
+            c => c,
+        })
+        .collect();
+    (code.len() == SHARE_CODE_LEN && code.bytes().all(|b| SHARE_CODE_ALPHABET.contains(&b)))
+        .then_some(code)
+}
+
+/// 表示用に 4 文字ずつ区切る(`K7QM-4XRT`)
+fn display_share_code(code: &str) -> String {
+    format!("{}-{}", &code[..4], &code[4..])
+}
+
 async fn reqeust_shareid(
-    kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
+    State(state): State<AppState>,
     Path((act_id, hntr_id)): Path<(String, String)>,
 ) -> AppResult<Json<Value>> {
-    let mut share_id: u16 = fastrand::u16(1000..=9999);
-
-    while kvs_repo.get(&share_id.to_string()).await.is_some() {
-        share_id = fastrand::u16(1000..=9999);
+    if act_id.len() > MAX_SHARED_LOGID_LEN || hntr_id.len() > MAX_SHARED_LOGID_LEN {
+        return Err(AppError::UnprocessableEntity(
+            "ログIDが長すぎます".to_string(),
+        ));
     }
 
-    let value = json!({ "share_id": share_id, "activator_logid": act_id, "hunter_logid": hntr_id });
+    for _ in 0..SHARE_CODE_RETRIES {
+        let code = new_share_code();
+        let value = json!({
+            "share_id": display_share_code(&code),
+            "activator_logid": act_id,
+            "hunter_logid": hntr_id
+        });
+        let body = serde_json::to_vec(&value)
+            .map(Bytes::from)
+            .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
+        if state
+            .share_kvs
+            .insert_new(code, body, Duration::minutes(SHARE_CODE_TTL_MINUTES))
+            .await
+        {
+            return Ok(Json(value));
+        }
+    }
 
-    let body = serde_json::to_vec(&value)
-        .map(Bytes::from)
-        .map_err(|e| AppError::ConversionEntityError(e.to_string()))?;
-    kvs_repo
-        .set(share_id.to_string(), body, Some(Duration::minutes(30)))
-        .await;
-
-    Ok(Json(value))
+    Err(AppError::ConversionEntityError(
+        "共有コードを発行できませんでした".to_string(),
+    ))
 }
 
 async fn obtain_shareid(
-    kvs_repo: Inject<AppRegistry, dyn KvsRepositry>,
+    State(state): State<AppState>,
     Path(share_id): Path<String>,
 ) -> AppResult<Json<Value>> {
-    let Some(body) = kvs_repo.get(&share_id).await else {
-        return Err(AppError::EntityNotFound("invalid share_id".to_string()));
-    };
+    let not_found = || AppError::EntityNotFound("invalid share_id".to_string());
+    let code = normalize_share_code(&share_id).ok_or_else(not_found)?;
+    let body = state.share_kvs.take(&code).await.ok_or_else(not_found)?;
     serde_json::from_slice(&body)
         .map(Json)
         .map_err(|e| AppError::ConversionEntityError(e.to_string()))
@@ -330,4 +386,44 @@ pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
     let routers = Router::new().merge(protected).merge(public);
 
     Router::new().nest("/pota", routers)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn share_code_has_expected_shape() {
+        for _ in 0..1000 {
+            let code = new_share_code();
+            assert_eq!(code.len(), SHARE_CODE_LEN);
+            assert!(code.bytes().all(|b| SHARE_CODE_ALPHABET.contains(&b)));
+            assert_eq!(normalize_share_code(&code), Some(code));
+        }
+    }
+
+    // 1 万個作って重複しない(40 bit なので、ぶつかる確率は 1 万分の 1 未満)
+    #[test]
+    fn share_codes_are_not_repeated() {
+        let codes: std::collections::HashSet<_> = (0..10_000).map(|_| new_share_code()).collect();
+        assert_eq!(codes.len(), 10_000);
+    }
+
+    #[test]
+    fn share_code_is_normalized_from_user_input() {
+        assert_eq!(normalize_share_code("K7QM-4XRT"), Some("K7QM4XRT".into()));
+        assert_eq!(normalize_share_code(" k7qm 4xrt "), Some("K7QM4XRT".into()));
+        // 紛らわしい文字を読み替える
+        assert_eq!(normalize_share_code("O1IL-oil0"), Some("01110110".into()));
+        assert_eq!(display_share_code("K7QM4XRT"), "K7QM-4XRT");
+    }
+
+    #[test]
+    fn malformed_share_code_is_rejected() {
+        assert_eq!(normalize_share_code("1234"), None);
+        assert_eq!(normalize_share_code("K7QM-4XRTX"), None);
+        assert_eq!(normalize_share_code("K7QM-4XRU"), None);
+        assert_eq!(normalize_share_code("K7QM-4XR!"), None);
+        assert_eq!(normalize_share_code(""), None);
+    }
 }

@@ -84,6 +84,17 @@ impl MiniKvs {
         let now = Utc::now().naive_utc();
         let expires_at = now + expire.unwrap_or(self.ttl);
         let mut store = self.store.lock().await;
+        self.insert(&mut store, key, value, expires_at, now);
+    }
+
+    fn insert(
+        &self,
+        store: &mut Store,
+        key: String,
+        value: Bytes,
+        expires_at: NaiveDateTime,
+        now: NaiveDateTime,
+    ) {
         if !store.entries.contains_key(&key) {
             store.make_room(self.capacity, now);
         }
@@ -96,6 +107,28 @@ impl MiniKvs {
                 last_used,
             },
         );
+    }
+
+    /// キーがまだ無い(または期限切れの)ときだけ入れる。入れられたら true
+    pub async fn insert_new(&self, key: String, value: Bytes, expire: Duration) -> bool {
+        let now = Utc::now().naive_utc();
+        let mut store = self.store.lock().await;
+        if store
+            .entries
+            .get(&key)
+            .is_some_and(|entry| now <= entry.expires_at)
+        {
+            return false;
+        }
+        self.insert(&mut store, key, value, now + expire, now);
+        true
+    }
+
+    /// 取り出して消す(1 回だけ使える値に使う)
+    pub async fn take(&self, key: &str) -> Option<Bytes> {
+        let mut store = self.store.lock().await;
+        let entry = store.entries.remove(key)?;
+        (Utc::now().naive_utc() <= entry.expires_at).then_some(entry.value)
     }
 
     async fn get(&self, key: &str) -> Option<Bytes> {
@@ -218,5 +251,48 @@ mod tests {
         kvs.set("a".into(), Bytes::from_static(b"2"), None).await;
         assert_eq!(kvs.get("a").await, Some(Bytes::from_static(b"2")));
         assert!(kvs.get("b").await.is_some());
+    }
+
+    // insert_new は、まだ使われているキーには入れない
+    #[tokio::test]
+    async fn insert_new_does_not_overwrite_live_key() {
+        let kvs = kvs(4);
+        assert!(
+            kvs.insert_new("a".into(), Bytes::from_static(b"1"), Duration::minutes(1))
+                .await
+        );
+        assert!(
+            !kvs.insert_new("a".into(), Bytes::from_static(b"2"), Duration::minutes(1))
+                .await
+        );
+        assert_eq!(kvs.take("a").await, Some(Bytes::from_static(b"1")));
+    }
+
+    // 期限切れのキーには insert_new で入れ直せる
+    #[tokio::test]
+    async fn insert_new_reuses_expired_key() {
+        let kvs = kvs(4);
+        assert!(
+            kvs.insert_new("a".into(), Bytes::from_static(b"1"), Duration::seconds(-1))
+                .await
+        );
+        assert!(
+            kvs.insert_new("a".into(), Bytes::from_static(b"2"), Duration::minutes(1))
+                .await
+        );
+        assert_eq!(kvs.take("a").await, Some(Bytes::from_static(b"2")));
+    }
+
+    // take は 1 回しか取り出せず、期限切れは取り出せない
+    #[tokio::test]
+    async fn take_returns_value_only_once() {
+        let kvs = kvs(4);
+        kvs.insert_new("a".into(), Bytes::from_static(b"1"), Duration::minutes(1))
+            .await;
+        assert_eq!(kvs.take("a").await, Some(Bytes::from_static(b"1")));
+        assert_eq!(kvs.take("a").await, None);
+        kvs.insert_new("b".into(), Bytes::from_static(b"1"), Duration::seconds(-1))
+            .await;
+        assert_eq!(kvs.take("b").await, None);
     }
 }
