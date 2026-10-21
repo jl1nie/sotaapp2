@@ -30,13 +30,13 @@ use input::{Loaded, Upload};
 use options::{ConversionOptionsRequest, OutputFormat};
 use reply::Failure;
 
-/// アップロードの上限(MB)。v2 の全体の上限(64MB)より小さくする。
+/// アップロードの上限(MB)。v2 の全体の上限(`multipart::USER_UPLOAD_MB`)と同じ大きさを、logconv でも明示しておく。
 ///
 /// 変換は、読み取った交信と出力を全部メモリに持つので、入力の十数倍のメモリを使う(0.8MB・1万行で 20MB 前後)。
 /// 本番のマシン(256MB。アプリの常駐は 80MB ほど)が落ちないよう、実際のログに足りる大きさ(1万 QSO に備考を書いても収まる)に抑える
 pub(crate) const MAX_UPLOAD_MB: usize = 2;
 
-/// アップロードの上限。v2 の全体の上限(`v2.rs`)より内側でかけるので、こちらが効く
+/// アップロードの上限。v2 の全体の上限(`v2.rs`)より内側でかける
 pub(crate) fn upload_limit() -> DefaultBodyLimit {
     DefaultBodyLimit::max(MAX_UPLOAD_MB * 1024 * 1024)
 }

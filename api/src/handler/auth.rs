@@ -8,16 +8,21 @@ use axum::Json;
 use axum::{routing::post, Router};
 use fireauth::FireAuth;
 
+use super::multipart::admin_upload_limit;
 use crate::model::auth::AuthRequest;
 use domain::model::id::UserId;
 use registry::AppState;
 
 /// 認証ミドルウェアをルーターに適用
+///
+/// 認証ありのルートは管理者が使うので、アップロードの上限も管理者の大きさにする
 pub fn with_auth<S: Clone + Send + Sync + 'static>(
     router: Router<S>,
     auth: &FireAuth,
 ) -> Router<S> {
-    router.route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle))
+    router
+        .route_layer(middleware::from_fn_with_state(auth.clone(), auth_middle))
+        .layer(admin_upload_limit())
 }
 
 pub async fn auth_middle(
