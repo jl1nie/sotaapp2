@@ -283,6 +283,19 @@ fn is_park(reference: &str) -> bool {
 ///
 /// 読み取りに失敗した交信は、`status` を `NG` にして、`error_log` に行番号つきで残す(ADIF には入れない)。
 pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> ConversionResult {
+    adif_result(records, options, true)
+}
+
+/// 確認(画面の表と誤りの一覧)だけ。ADIF のファイルは作らない(`files` は空。`file_list` は入る)
+pub fn check_adif(records: &[QsoRecord], options: &ConversionOptions) -> ConversionResult {
+    adif_result(records, options, false)
+}
+
+fn adif_result(
+    records: &[QsoRecord],
+    options: &ConversionOptions,
+    with_files: bool,
+) -> ConversionResult {
     let mut result = ConversionResult::default();
     let mut files = FileSet::default();
     let header = adif_header("3.1.4");
@@ -309,7 +322,9 @@ pub fn convert_to_adif(records: &[QsoRecord], options: &ConversionOptions) -> Co
 
         for (reference, record) in &q.records {
             let name = file_name(&activator, reference, &q.date, &first_date);
-            files.append_with_header(name.clone(), &header, record);
+            if with_files {
+                files.append_with_header(name.clone(), &header, record);
+            }
             if is_park(reference) && !result.file_list.contains(&name) {
                 result.file_list.push(name);
             }

@@ -11,7 +11,7 @@ mod reply;
 mod states;
 
 use axum::{
-    extract::Multipart,
+    extract::{DefaultBodyLimit, Multipart},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
@@ -20,7 +20,7 @@ use axum::{
 use registry::{AppRegistry, AppState};
 use serde::Deserialize;
 use service::implement::logconv::{
-    convert_to_adif, convert_to_sota_activator, convert_to_sota_chaser, error_log,
+    check_adif, convert_to_adif, convert_to_sota_activator, convert_to_sota_chaser, error_log,
     normalize_callsign,
 };
 use service::services::AdminService;
@@ -30,11 +30,23 @@ use input::{Loaded, Upload};
 use options::{ConversionOptionsRequest, OutputFormat};
 use reply::Failure;
 
+/// アップロードの上限(MB)。v2 の全体の上限(64MB)より小さくする。
+///
+/// 変換は、読み取った交信と出力を全部メモリに持つので、入力の十数倍のメモリを使う(8MB・10万行で 100MB 前後)。
+/// 本番のマシン(256MB。アプリの常駐は 80MB ほど)が落ちないよう、実際のログに足りる大きさ(約10万 QSO)に抑える
+pub(crate) const MAX_UPLOAD_MB: usize = 8;
+
+/// アップロードの上限。v2 の全体の上限(`v2.rs`)より内側でかけるので、こちらが効く
+pub(crate) fn upload_limit() -> DefaultBodyLimit {
+    DefaultBodyLimit::max(MAX_UPLOAD_MB * 1024 * 1024)
+}
+
 /// Logconvルーターを作成
 pub fn logconv_router() -> Router<AppState> {
     Router::new()
         .route("/hamlog", post(hamlog_handler))
         .route("/pota", post(pota_handler))
+        .layer(upload_limit())
 }
 
 /// `/hamlog` のオプション(`options` の JSON)
@@ -167,7 +179,7 @@ async fn check(
     let request: ConversionOptionsRequest = upload.options_or_default();
     let Loaded { records, options } = upload.load(request, admin).await?;
 
-    let result = convert_to_adif(&records, &options);
+    let result = check_adif(&records, &options);
     Ok((StatusCode::OK, Json(result)).into_response())
 }
 

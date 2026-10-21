@@ -274,36 +274,35 @@ async fn converts_n_rows(n_rows: usize) {
     );
 }
 
-// 64MB を超える入力は、ハンドラーより手前の `DefaultBodyLimit`(api/src/handler/v2.rs)が弾く。
+// 上限(8MB)を超える入力は、ハンドラーより手前の `DefaultBodyLimit`(`upload_limit`)が弾く。
 // 本物のルーターは DB などの状態(AppState)が要るので、同じ上限をかけた最小のルーターに、同じ処理を載せて確かめる。
-// 上限の値が v2.rs とずれないよう、v2.rs の文面も確かめる。
-// 上限を超えると、413 と「ファイルが大きすぎます(上限 64MB)」を返す。
-// 64MB の本文を作るが、2 秒ほどで終わる(1行に大きな備考を入れて、行数を増やさない)
+// v2 と同じく、外側に全体の上限(64MB)をかけて入れ子にし、内側の logconv の上限が効くことも確かめる。
+// 上限を超えると、413 と「ファイルが大きすぎます(上限 8MB)」を返す
 #[tokio::test]
-async fn body_over_64mb_is_rejected_before_the_handler() {
+async fn body_over_the_limit_is_rejected_before_the_handler() {
     use axum::{extract::DefaultBodyLimit, extract::Multipart, routing::post, Router};
     use tower::ServiceExt;
 
     let v2 = include_str!("../../v2.rs");
-    assert!(
-        v2.contains("DefaultBodyLimit::max(1024 * 1024 * 64)"),
-        "v2.rs の上限が変わった"
-    );
     assert!(v2.contains(r#".nest("/logconv", logconv_router())"#));
+    assert!(include_str!("../mod.rs").contains(".layer(upload_limit())"));
 
     let app = || {
-        Router::new()
+        let logconv = Router::new()
             .route(
                 "/hamlog",
                 post(|mp: Multipart| async move { hamlog_convert(None, mp).await }),
             )
+            .layer(upload_limit());
+        Router::new()
+            .nest("/logconv", logconv)
             .layer(DefaultBodyLimit::max(1024 * 1024 * 64))
     };
     let send = |file_len: usize| {
         let mut body =
             b"--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.csv\"\r\n\r\n"
                 .to_vec();
-        // 1行の備考に大きな文字列を入れる(行数が多いと、行番号の数え直しで終わらない。1万行のテストを参照)
+        // 1行の備考に大きな文字列を入れる(本文の大きさだけを変え、変換は軽くする)
         let filler = "x".repeat(file_len.saturating_sub(body.len() + 200));
         let line = row(
             "JA1AAA",
@@ -318,16 +317,22 @@ async fn body_over_64mb_is_rejected_before_the_handler() {
         body.extend_from_slice(format!("\r\n--B\r\nContent-Disposition: form-data; name=\"options\"\r\n\r\n{SOTA_C}\r\n--B--\r\n").as_bytes());
         axum::http::Request::builder()
             .method("POST")
-            .uri("/hamlog")
+            .uri("/logconv/hamlog")
             .header(header::CONTENT_TYPE, "multipart/form-data; boundary=B")
             .body(axum::body::Body::from(body))
             .unwrap()
     };
 
-    // 上限の手前(60MB)は通る
+    // 上限の手前は通る
     let t = Instant::now();
-    let r = Reply::of(app().oneshot(send(60 * 1024 * 1024)).await.unwrap()).await;
-    println!("60MB: {} {:?}", r.status, t.elapsed());
+    let r = Reply::of(
+        app()
+            .oneshot(send(MAX_UPLOAD_MB * 1024 * 1024 - 4096))
+            .await
+            .unwrap(),
+    )
+    .await;
+    println!("上限の手前: {} {:?}", r.status, t.elapsed());
     assert_eq!(
         r.status,
         StatusCode::OK,
@@ -336,8 +341,14 @@ async fn body_over_64mb_is_rejected_before_the_handler() {
     );
     // 上限を超えると、500 ではなく 4xx
     let t = Instant::now();
-    let r = Reply::of(app().oneshot(send(65 * 1024 * 1024)).await.unwrap()).await;
-    println!("65MB: {} {:?}", r.status, t.elapsed());
+    let r = Reply::of(
+        app()
+            .oneshot(send(MAX_UPLOAD_MB * 1024 * 1024 + 1024))
+            .await
+            .unwrap(),
+    )
+    .await;
+    println!("上限を超える: {} {:?}", r.status, t.elapsed());
     assert!(
         r.status.is_client_error(),
         "{}: {}",
@@ -346,7 +357,7 @@ async fn body_over_64mb_is_rejected_before_the_handler() {
     );
     assert_eq!(r.status, StatusCode::PAYLOAD_TOO_LARGE);
     assert_eq!(r.json()["status"], "NG");
-    assert_eq!(r.json()["error"], "ファイルが大きすぎます(上限 64MB)");
+    assert_eq!(r.json()["error"], "ファイルが大きすぎます(上限 8MB)");
 }
 
 // multipart でないリクエスト(Content-Type が違う・本文がただの JSON)は、axum の拒否(4xx)で、500 にならない。
@@ -1200,4 +1211,16 @@ async fn future_dates_are_accepted() {
     let got = dates_of(&[("2099/01/01", "01:00U"), ("99/12/31", "23:59U")]).await;
     // 2桁の 99 は 1999 年(65 以上は 19xx)
     assert_eq!(got, vec![ymd("20990101", "0100"), ymd("19991231", "2359")]);
+}
+
+// 確認(/logconv/pota)の応答は、画面が使う status・error_log・log_text・file_list だけ。
+// ADIF の本文(files)は入れない(画面は使わない。大きなログでは、応答とメモリの大半になる)
+#[tokio::test]
+async fn confirm_does_not_return_the_adif_files() {
+    let csv = [ok_row("JA1AAA"), ok_row("JA1BBB")].join("\r\n");
+    let j = confirm(csv.as_bytes(), POTA).await.json();
+    assert_eq!(j["status"], "OK");
+    assert_eq!(j["log_text"].as_array().unwrap().len(), 2);
+    assert!(!j["file_list"].as_array().unwrap().is_empty());
+    assert!(j.get("files").is_none(), "{j}");
 }

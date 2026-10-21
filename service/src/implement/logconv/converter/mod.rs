@@ -33,7 +33,7 @@ mod files;
 mod refs;
 mod sota;
 
-pub use adif::convert_to_adif;
+pub use adif::{check_adif, convert_to_adif};
 pub use files::create_zip;
 pub use refs::error_log;
 pub use sota::{convert_to_sota_activator, convert_to_sota_chaser};
