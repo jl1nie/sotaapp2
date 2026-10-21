@@ -174,7 +174,7 @@ async fn bootstrap() -> Result<()> {
 
     let aprs = connect_aprsis_with(&config).await?;
     let geomag = connect_geomag_with(&config).await?;
-    let minikvs = Arc::new(MiniKvs::new(config.auth_token_ttl));
+    let minikvs = Arc::new(MiniKvs::new(config.auth_token_ttl, config.kvs_capacity));
     let module = AppRegistry::new(&config, pool, aprs, geomag, minikvs);
     let app_state = AppState::new(module, config.clone());
     let job_state = app_state.clone();
