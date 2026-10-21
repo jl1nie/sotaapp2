@@ -15,7 +15,8 @@ COPY . .
 RUN cargo build --release
 
 FROM debian:bookworm-slim
-RUN apt update && apt install -y libssl-dev pkg-config ca-certificates && rm -rf /var/lib/apt/lists/*
+# sqlite3: デプロイの前のバックアップで、動いている DB の写しを作る(VACUUM INTO。.github/workflows/deploy.yml)
+RUN apt update && apt install -y libssl-dev pkg-config ca-certificates sqlite3 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder ./app/target/release/app ./target/release/app
 COPY --from=admin-builder /static/ static/
