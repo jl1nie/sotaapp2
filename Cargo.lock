@@ -144,7 +144,6 @@ dependencies = [
  "csv",
  "domain",
  "encoding_rs",
- "fastrand",
  "fireauth",
  "futures-util",
  "maidenhead",
@@ -161,6 +160,7 @@ dependencies = [
  "tracing",
  "typeshare",
  "utoipa",
+ "uuid",
  "validator",
  "zip 2.4.2",
 ]
