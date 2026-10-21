@@ -63,6 +63,8 @@ jobs:
     name: Backup Database
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.skip_backup != 'true' }}
+    # 取得が止まっても、待ち続けない(止まったら失敗にして、デプロイしない)
+    timeout-minutes: 15
     outputs:
       backup_file: ${{ steps.backup.outputs.backup_file }}
 
@@ -77,18 +79,34 @@ jobs:
         run: |
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           BACKUP_FILE="sotaapp2_${TIMESTAMP}.db"
+          SNAPSHOT="/data/backup_${TIMESTAMP}.db"
 
-          echo "Downloading database from Fly.io..."
-          flyctl ssh sftp get /data/sotaapp2.db "./${BACKUP_FILE}" || {
-            echo "::warning::Database download failed, continuing..."
-            exit 0
-          }
-
-          if [ -f "${BACKUP_FILE}" ]; then
-            SIZE=$(ls -lh "${BACKUP_FILE}" | awk '{print $5}')
-            echo "Downloaded: ${BACKUP_FILE} (${SIZE})"
-            echo "backup_file=${BACKUP_FILE}" >> $GITHUB_OUTPUT
+          # 動いている DB の写しを、マシンの中で作る。VACUUM INTO は、まだ DB に反映していない変更(WAL)も含めた、
+          # 一貫した1つのファイルになる。sqlite3 がない古いイメージでは、DB のファイルだけを取る(WAL の分は入らない)
+          if timeout 60 flyctl ssh console -C "sh -c 'command -v sqlite3 >/dev/null && echo HAS_SQLITE3 || echo NO_SQLITE3'" 2>&1 | grep -q HAS_SQLITE3; then
+            echo "Creating a consistent snapshot on the machine..."
+            timeout 300 flyctl ssh console -C "sqlite3 /data/sotaapp2.db \"VACUUM INTO '${SNAPSHOT}'\""
+            SOURCE="${SNAPSHOT}"
+          else
+            echo "::warning::sqlite3 is not in the running image. Downloading the database file only (changes still in the WAL are not included)"
+            SOURCE=/data/sotaapp2.db
           fi
+
+          # 取得が止まることがある(2026-10-21: 何も出さずに 16 分止まった)。5 分で打ち切って失敗にする
+          echo "Downloading ${SOURCE}..."
+          status=0
+          timeout 300 flyctl ssh sftp get "${SOURCE}" "./${BACKUP_FILE}" || status=$?
+          if [ "${SOURCE}" = "${SNAPSHOT}" ]; then
+            timeout 60 flyctl ssh console -C "rm -f ${SNAPSHOT}" || echo "::warning::Could not remove ${SNAPSHOT}"
+          fi
+          if [ "${status}" != 0 ] || [ ! -s "${BACKUP_FILE}" ]; then
+            echo "::error::Database download failed (exit ${status}). Not deploying. Run again, or with skip_backup to deploy without a backup"
+            exit 1
+          fi
+
+          SIZE=$(ls -lh "${BACKUP_FILE}" | awk '{print $5}')
+          echo "Downloaded: ${BACKUP_FILE} (${SIZE})"
+          echo "backup_file=${BACKUP_FILE}" >> $GITHUB_OUTPUT
 
       - name: Upload backup as artifact
         if: steps.backup.outputs.backup_file != ''
@@ -103,7 +121,11 @@ jobs:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
     needs: [resolve-image, backup-database]
-    if: always() && needs.resolve-image.result == 'success'
+    # 取り消したら出さない(always() だと、取り消しても動く)。バックアップは、取れたか、指定で飛ばしたときだけ
+    if: >-
+      !cancelled() && needs.resolve-image.result == 'success'
+      && (needs.backup-database.result == 'success' || needs.backup-database.result == 'skipped')
+    timeout-minutes: 20
     environment: production
     outputs:
       deploy_success: ${{ steps.health-check.outputs.success }}
