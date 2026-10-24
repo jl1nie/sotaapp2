@@ -139,18 +139,14 @@ fn test_convert_to_sota_chaser_from_hamlog_rows() {
     let files = convert_to_sota_chaser(&records, "JA1ZZZ/1", &options);
     let mut names: Vec<&String> = files.keys().collect();
     names.sort();
-    assert_eq!(
-        names,
-        vec!["other20251018.csv", "sota20251018.csv", "sota20251019.csv"]
-    );
+    // 日付をまたいでも分けない。全部の交信を、最初の交信の日付の名前の 1 ファイルにする(旧版と同じ。
+    // SOTA のチェイサーログは、行ごとに日付があるので、まとめて上げられる)
+    assert_eq!(names, vec!["other20251018.csv", "sota20251018.csv"]);
     assert_eq!(
         files["sota20251018.csv"],
         "V2,JA1ZZZ/1,,18/10/2025,01:05,7MHz,CW,JA1BBB,JA/KN-001, \n\
-         V2,JA1ZZZ/1,,18/10/2025,01:25,21MHz,SSB,JA1FFF,JA/KN-001, \n"
-    );
-    assert_eq!(
-        files["sota20251019.csv"],
-        "V2,JA1ZZZ/1,,19/10/2025,00:30,21MHz,SSB,JA1GGG,JA/TK-005, \n"
+         V2,JA1ZZZ/1,,18/10/2025,01:25,21MHz,SSB,JA1FFF,JA/KN-001, \n\
+         V2,JA1ZZZ/1,,19/10/2025,00:30,21MHz,SSB,JA1GGG,JA/TK-005, \n"
     );
     // 山のない交信(JA1AAA と、公園だけの JA1CCC)は other に
     assert_eq!(files["other20251018.csv"].lines().count(), 2);

@@ -193,8 +193,9 @@ pub fn convert_to_sota_activator(
 
 /// Convert QSO records to SOTA chaser format
 ///
-/// 相手局の SOTA 参照番号がある交信を日付ごとの CSV(`sotaYYYYMMDD.csv`)に、ない交信を
-/// `otherYYYYMMDD.csv` にする(旧版と同じ)。読み取りに失敗した行は、`sota000000.csv` に集める。
+/// 相手局の SOTA 参照番号がある交信を `sotaYYYYMMDD.csv` に、ない交信を `otherYYYYMMDD.csv` にする。
+/// 日付をまたいでも分けず、全部の交信を、最初の交信の日付の名前の 1 ファイルにする(旧版と同じ。SOTA の
+/// チェイサーログは行ごとに日付があるので、まとめて上げられる)。読み取りに失敗した行は、`sota000000.csv` に集める。
 pub fn convert_to_sota_chaser(
     records: &[QsoRecord],
     callsign: &str,
@@ -202,6 +203,7 @@ pub fn convert_to_sota_chaser(
 ) -> HashMap<String, String> {
     let callsign = &normalize_callsign(callsign);
     let mut files = FileSet::default();
+    let mut first_date: Option<String> = None;
 
     for (index, qso) in records.iter().enumerate() {
         if qso.has_error() {
@@ -209,8 +211,9 @@ pub fn convert_to_sota_chaser(
             continue;
         }
         let row = chaser_row(qso, callsign, options);
+        let date = first_date.get_or_insert_with(|| row.date.clone());
         let prefix = if row.his_summit { "sota" } else { "other" };
-        files.append(format!("{prefix}{}.csv", row.date), &row.line());
+        files.append(format!("{prefix}{date}.csv"), &row.line());
     }
     files.into_files()
 }

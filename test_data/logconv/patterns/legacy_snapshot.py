@@ -43,26 +43,12 @@ def run(case):
     return out, check
 
 
-def regroup_by_date(files):
-    """旧版のチェイサーは、全日付を1つのファイル(最初の日付の名前)に出す。新版は日付ごとに分ける。
-    正解も、行の日付(dd/mm/yyyy)で分け直す"""
-    out = {}
-    for name, body in files.items():
-        prefix = 'other' if name.startswith('other') else 'sota'
-        for line in body.splitlines(keepends=True):
-            d, m, y = line.split(',')[3].split('/')
-            out.setdefault(f'{prefix}{y}{m}{d}.csv', []).append(line)
-    return {k: ''.join(v) for k, v in out.items()}
-
-
 def main():
     cases = json.load(open(os.path.join(HERE, 'cases.json'), encoding='utf-8'))
     root = os.path.join(HERE, 'expected')
     shutil.rmtree(root, ignore_errors=True)
     for case in cases:
         files, check = run(case)
-        if case['format'] == 'sota_c':
-            files = regroup_by_date({n: lf(b) for n, b in files.items()})
         d = os.path.join(root, case['name'])
         os.makedirs(d, exist_ok=True)
         for name, body in files.items():
