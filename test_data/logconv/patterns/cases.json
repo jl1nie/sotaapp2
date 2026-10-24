@@ -708,14 +708,10 @@
   "expect": {
    "files": [
     "other20240229.csv",
-    "other20251231.csv",
-    "other20260101.csv",
     "sota000000.csv"
    ],
    "lines": {
-    "other20240229.csv": 2,
-    "other20251231.csv": 2,
-    "other20260101.csv": 1,
+    "other20240229.csv": 5,
     "sota000000.csv": 3
    }
   }

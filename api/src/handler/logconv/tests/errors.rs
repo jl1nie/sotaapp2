@@ -1179,9 +1179,10 @@ async fn dates_going_backwards_lose_nothing() {
         ok_row_at("D", "25/10/18", "02:00U"),
     ]
     .join("\n");
+    // チェイサーは日付で分けず、最初の交信の日付の名前の 1 ファイルに 4 件とも入る(旧版と同じ)
     let files = hamlog(csv.as_bytes(), SOTA_C).await.zip();
-    assert_eq!(files["other20251020.csv"].lines().count(), 2);
-    assert_eq!(files["other20251018.csv"].lines().count(), 2);
+    assert_eq!(files["other20251020.csv"].lines().count(), 4);
+    assert!(!files.contains_key("other20251018.csv"));
     let files = hamlog(csv.as_bytes(), POTA).await.zip();
     assert_eq!(
         files
