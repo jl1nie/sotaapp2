@@ -7,6 +7,7 @@ edition = "2021"
 anyhow.workspace = true
 serde.workspace = true
 axum.workspace = true
+tower-http.workspace = true
 fireauth.workspace = true
 tokio.workspace = true
 chrono.workspace = true

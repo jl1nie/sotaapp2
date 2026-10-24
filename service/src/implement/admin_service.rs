@@ -5,13 +5,13 @@ use shaku::Component;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use common::error::AppResult;
+use common::error::{AppError, AppResult};
 use common::utils::csv_reader;
 
 use domain::model::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{ParkCode, PotaReference};
-use domain::model::sota::{SotaReference, SummitCode};
+use domain::model::sota::{SotaReference, SummitCode, SummitMap, SummitPota};
 use domain::repository::{
     healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::PotaRepository,
     sota::SotaRepository,
@@ -19,8 +19,11 @@ use domain::repository::{
 
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
 use crate::model::pota::{POTAAllCSVFile, POTACSVFile, POTAExportRow, UploadPOTAReference};
+use crate::model::sota::{
+    parse_summit_map_line, SummitPotaCSV, UploadSOTASummit, UploadSOTASummitOpt, UploadSummitMaps,
+    UploadSummitPota,
+};
 use crate::model::sota::{SOTAExportRow, SOTASumitOptCSV, SOTASummitCSV};
-use crate::model::sota::{UploadSOTASummit, UploadSOTASummitOpt};
 
 use crate::services::AdminService;
 
@@ -222,6 +225,45 @@ impl AdminService for AdminServiceImpl {
         Ok(count)
     }
 
+    async fn import_summit_pota(
+        &self,
+        UploadSummitPota { data }: UploadSummitPota,
+    ) -> AppResult<usize> {
+        let csv: Vec<SummitPotaCSV> = csv_reader(data, false, 1)?;
+        let rows = csv
+            .into_iter()
+            .map(SummitPota::try_from)
+            .collect::<AppResult<Vec<_>>>()?;
+        let count = rows.len();
+        self.sota_repo.replace_summit_pota(rows).await?;
+        Ok(count)
+    }
+
+    async fn import_summit_maps(
+        &self,
+        UploadSummitMaps { data }: UploadSummitMaps,
+    ) -> AppResult<usize> {
+        // 全部で数十MBになるので、まとめて展開せず、1 行ずつ読んで塊ごとに入れる。
+        // 途中の行が壊れていたら何も入れないように、先に全行を確かめてから入れる
+        let mut count = 0;
+        for m in summit_map_lines(&data) {
+            m?;
+            count += 1;
+        }
+        let mut lines = summit_map_lines(&data);
+        loop {
+            let chunk = lines
+                .by_ref()
+                .take(MAP_CHUNK)
+                .collect::<AppResult<Vec<_>>>()?;
+            if chunk.is_empty() {
+                break;
+            }
+            self.sota_repo.upsert_summit_maps(chunk).await?;
+        }
+        Ok(count)
+    }
+
     async fn show_sota_reference(&self, event: FindRef) -> AppResult<SotaReference> {
         Ok(self.sota_repo.show_reference(&event).await?)
     }
@@ -344,6 +386,29 @@ impl AdminService for AdminServiceImpl {
     async fn health_check(&self) -> AppResult<bool> {
         Ok(self.check_repo.check_database().await?)
     }
+}
+
+const MAP_CHUNK: usize = 500;
+
+/// 簡易地図の JSON Lines(gzip でもよい)を 1 行ずつ確かめて返す。空の行は飛ばす
+fn summit_map_lines(data: &[u8]) -> impl Iterator<Item = AppResult<SummitMap>> + Send + '_ {
+    use std::io::{BufRead, BufReader, Read};
+    let reader: Box<dyn Read + Send + '_> = if data.starts_with(&[0x1f, 0x8b]) {
+        Box::new(flate2::read::GzDecoder::new(data))
+    } else {
+        Box::new(data)
+    };
+    BufReader::new(reader)
+        .lines()
+        .enumerate()
+        .filter(|(_, line)| !matches!(line, Ok(l) if l.trim().is_empty()))
+        .map(|(i, line)| {
+            let line = line.map_err(|e| {
+                AppError::UnprocessableEntity(format!("{} 行目を読めません: {}", i + 1, e))
+            })?;
+            parse_summit_map_line(&line)
+                .map_err(|e| AppError::UnprocessableEntity(format!("{} 行目: {}", i + 1, e)))
+        })
 }
 
 #[cfg(test)]
@@ -533,5 +598,67 @@ mod tests {
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].summit_code, "JA/TK-001");
         assert_eq!(records[0].valid_from, "01/01/2010");
+    }
+
+    fn gzip(data: &[u8]) -> Vec<u8> {
+        use std::io::Write;
+        let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        e.write_all(data).unwrap();
+        e.finish().unwrap()
+    }
+
+    const MAPS: &str = concat!(
+        r#"{"type":"FeatureCollection","summit":"JA/KN-001","features":[]}"#,
+        "\n\n",
+        r#"{"type":"FeatureCollection","summit":"JA/KN-002","features":[]}"#,
+        "\n"
+    );
+
+    #[test]
+    fn test_summit_map_lines_plain_and_gzip() {
+        for data in [MAPS.as_bytes().to_vec(), gzip(MAPS.as_bytes())] {
+            let maps: Vec<_> = summit_map_lines(&data)
+                .collect::<AppResult<Vec<_>>>()
+                .unwrap();
+            let codes: Vec<_> = maps.iter().map(|m| m.summit_code.as_str()).collect();
+            assert_eq!(codes, vec!["JA/KN-001", "JA/KN-002"]);
+            assert!(maps[0]
+                .geojson
+                .starts_with(r#"{"type":"FeatureCollection""#));
+        }
+    }
+
+    #[test]
+    fn test_summit_map_lines_reports_bad_line() {
+        let data = format!("{}{}\n", MAPS, r#"{"type":"Feature","summit":"JA/KN-003"}"#);
+        let err = summit_map_lines(data.as_bytes())
+            .collect::<AppResult<Vec<_>>>()
+            .unwrap_err();
+        assert!(err.to_string().contains("4 行目"), "{}", err);
+
+        let data = r#"{"type":"FeatureCollection","features":[]}"#;
+        assert!(summit_map_lines(data.as_bytes()).next().unwrap().is_err());
+    }
+
+    #[test]
+    fn test_summit_pota_csv() {
+        let data = "summit_code,muni_key,muni_name,pota_code,coverage,verified\n\
+                    JA/KN-017,JCG#11001B,神奈川県清川村,JP-1289,part,1\n"
+            .to_string();
+        let rows: Vec<SummitPotaCSV> = csv_reader(data, false, 1).unwrap();
+        let p = SummitPota::try_from(rows.into_iter().next().unwrap()).unwrap();
+        assert_eq!(p.muni_key, "JCG#11001B");
+        assert_eq!(p.coverage, domain::model::sota::ParkCoverage::Part);
+        assert!(p.verified);
+
+        let bad = SummitPotaCSV {
+            summit_code: "JA/KN-017".to_string(),
+            muni_key: "JCG#11001B".to_string(),
+            muni_name: "".to_string(),
+            pota_code: "JP-1289".to_string(),
+            coverage: "none".to_string(),
+            verified: 0,
+        };
+        assert!(SummitPota::try_from(bad).is_err());
     }
 }

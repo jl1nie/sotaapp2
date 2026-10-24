@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { auth } from '$lib/auth';
 	import {
-		uploadPotaParks, uploadSotaJaSummits, uploadJccJcg,
+		uploadPotaParks, uploadSotaJaSummits, uploadJccJcg, uploadSummitPota, uploadSummitMaps,
 		getSystemMetrics, restartServer, type SystemMetrics
 	} from '$lib/api';
 	import UploadCard from './UploadCard.svelte';
@@ -168,6 +168,22 @@
 				icon="location"
 				accept=".csv"
 				onUpload={uploadJccJcg}
+			/>
+
+			<UploadCard
+				title="SOTA × POTA"
+				description="Upload summit_pota.csv (parks by JCC/JCG for each summit)"
+				icon="park"
+				accept=".csv"
+				onUpload={uploadSummitPota}
+			/>
+
+			<UploadCard
+				title="Summit Maps"
+				description="Upload summit_maps.jsonl.gz (activation zone maps)"
+				icon="mountain"
+				accept=".gz,.jsonl"
+				onUpload={uploadSummitMaps}
 			/>
 		</div>
 

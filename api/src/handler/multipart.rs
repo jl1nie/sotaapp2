@@ -26,6 +26,13 @@ pub fn admin_upload_limit() -> DefaultBodyLimit {
 
 /// マルチパートからUTF-8文字列データを抽出する
 pub async fn extract_text_file(multipart: &mut Multipart) -> AppResult<String> {
+    let data = extract_file(multipart).await?;
+    String::from_utf8(data)
+        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))
+}
+
+/// マルチパートから最初のファイルをそのまま取り出す(gzip など文字列でないもの)
+pub async fn extract_file(multipart: &mut Multipart) -> AppResult<Vec<u8>> {
     let field = multipart
         .next_field()
         .await
@@ -37,9 +44,7 @@ pub async fn extract_text_file(multipart: &mut Multipart) -> AppResult<String> {
     let data = field.bytes().await.map_err(|e| {
         AppError::UnprocessableEntity(format!("ファイルの読み込みに失敗しました: {}", e))
     })?;
-
-    String::from_utf8(data.to_vec())
-        .map_err(|_| AppError::UnprocessableEntity("ファイルがUTF-8形式ではありません".to_string()))
+    Ok(data.to_vec())
 }
 
 #[cfg(test)]

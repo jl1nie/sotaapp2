@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT summit_code, geojson FROM summit_maps\n            WHERE summit_code >= $1 AND summit_code < $2\n            ORDER BY summit_code\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "summit_code",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "geojson",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "18d1f623a7dfeab4ef16241301d0adedc605b6a9e1a61e8dbe2e267fa8289156"
+}

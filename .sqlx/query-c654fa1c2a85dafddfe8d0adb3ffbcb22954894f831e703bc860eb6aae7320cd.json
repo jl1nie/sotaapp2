@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO summit_maps(summit_code, geojson) VALUES($1, $2)\n                ON CONFLICT (summit_code) DO UPDATE SET geojson = EXCLUDED.geojson\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "c654fa1c2a85dafddfe8d0adb3ffbcb22954894f831e703bc860eb6aae7320cd"
+}

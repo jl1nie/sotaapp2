@@ -51,3 +51,49 @@ pub struct SotaLog {
     pub comment: Option<String>,
     pub update: DateTime<Utc>,
 }
+
+/// 市区町村の中のゾーンのうち、公園に入る範囲
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParkCoverage {
+    /// 全部入る(その市区町村を選べば POTA になる)
+    All,
+    /// 一部だけ入る(現地で公園の中にいるかを確かめる)
+    Part,
+}
+
+impl ParkCoverage {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::All => "all",
+            Self::Part => "part",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "all" => Some(Self::All),
+            "part" => Some(Self::Part),
+            _ => None,
+        }
+    }
+}
+
+/// 山頂で、市区町村(JCC/JCG)を選んだときに当たる POTA の公園
+#[derive(Debug, Clone, PartialEq)]
+pub struct SummitPota {
+    pub summit_code: String,
+    pub muni_key: String,
+    pub muni_name: String,
+    pub pota_code: String,
+    pub park_name: Option<String>,
+    pub coverage: ParkCoverage,
+    /// 目視で確かめた答えなら true、推定なら false
+    pub verified: bool,
+}
+
+/// 山頂の簡易地図(GeoJSON の FeatureCollection の文字列)
+#[derive(Debug, Clone, PartialEq)]
+pub struct SummitMap {
+    pub summit_code: String,
+    pub geojson: String,
+}

@@ -336,6 +336,14 @@ export async function uploadJccJcg(file: File): Promise<UploadResult> {
 	return uploadFile('/api/v2/locator/jcc-jcg/import', file);
 }
 
+export async function uploadSummitPota(file: File): Promise<UploadResult> {
+	return uploadFile('/api/v2/sota/import/pota', file);
+}
+
+export async function uploadSummitMaps(file: File): Promise<UploadResult> {
+	return uploadFile('/api/v2/sota/import/maps', file);
+}
+
 // Award judgment types
 export type JudgmentMode = 'strict' | 'lenient';
 export type LogType = 'unknown' | 'activator' | 'chaser';

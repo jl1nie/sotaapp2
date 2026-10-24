@@ -12,6 +12,7 @@ use domain::model::aprslog::{AprsLog, AprsTrack};
 use domain::model::event::{FindAct, FindAprs, FindRef, FindRefBuilder, FindResult, GroupBy};
 use domain::model::geomag::GeomagIndex;
 use domain::model::locator::MunicipalityCenturyCode;
+use domain::model::sota::{SummitCode, SummitMap, SummitPota};
 use domain::repository::{
     activation::ActivationRepositry, aprs::AprsLogRepository, geomag::GeoMagRepositry,
     locator::LocatorRepositry, pota::PotaRepository, sota::SotaRepository,
@@ -175,6 +176,18 @@ impl UserService for UserServiceImpl {
             }
         }
         Ok(result)
+    }
+
+    async fn find_summit_pota(&self, summit_code: SummitCode) -> AppResult<Vec<SummitPota>> {
+        self.sota_repo.find_summit_pota(&summit_code).await
+    }
+
+    async fn find_summit_map(&self, summit_code: SummitCode) -> AppResult<Option<SummitMap>> {
+        self.sota_repo.find_summit_map(&summit_code).await
+    }
+
+    async fn find_summit_maps(&self, prefix: &str) -> AppResult<Vec<SummitMap>> {
+        self.sota_repo.find_summit_maps(prefix).await
     }
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode> {

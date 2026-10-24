@@ -5,7 +5,7 @@ use mockall::automock;
 use shaku::Interface;
 
 use crate::model::event::{DeleteLog, DeleteRef, FindLog, FindRef, PagenatedResult};
-use crate::model::sota::{SotaLog, SotaReference, SummitCode};
+use crate::model::sota::{SotaLog, SotaReference, SummitCode, SummitMap, SummitPota};
 
 #[cfg_attr(test, automock)]
 #[async_trait]
@@ -26,6 +26,15 @@ pub trait SotaRepository: Send + Sync + Interface {
     async fn upload_log(&self, logs: Vec<SotaLog>) -> AppResult<()>;
     async fn find_log(&self, query: &FindLog) -> AppResult<Vec<SotaLog>>;
     async fn delete_log(&self, query: DeleteLog) -> AppResult<()>;
+
+    /// 山頂と POTA の表を、渡した内容で置き換える
+    async fn replace_summit_pota(&self, rows: Vec<SummitPota>) -> AppResult<()>;
+    async fn find_summit_pota(&self, summit_code: &SummitCode) -> AppResult<Vec<SummitPota>>;
+    /// 簡易地図を入れる(同じ山頂は上書き)
+    async fn upsert_summit_maps(&self, maps: Vec<SummitMap>) -> AppResult<()>;
+    async fn find_summit_map(&self, summit_code: &SummitCode) -> AppResult<Option<SummitMap>>;
+    /// 山頂コードが prefix で始まる簡易地図(例: "JA/KN-")
+    async fn find_summit_maps(&self, prefix: &str) -> AppResult<Vec<SummitMap>>;
 }
 
 #[cfg(test)]

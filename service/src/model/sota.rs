@@ -1,10 +1,11 @@
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
+use common::error::AppError;
 use common::utils::{call_to_operator, maidenhead, parse_date_flexible};
 use domain::model::{
     id::UserId,
-    sota::{SotaLog, SotaReference},
+    sota::{ParkCoverage, SotaLog, SotaReference, SummitMap, SummitPota},
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -212,4 +213,64 @@ pub struct UploadSOTASummitOpt {
 
 pub struct UploadSOTALog {
     pub data: String,
+}
+
+/// 山頂と POTA の表(バッチで作った CSV)
+pub struct UploadSummitPota {
+    pub data: String,
+}
+
+/// summit_pota.csv の 1 行。見出しは summit_code,muni_key,muni_name,pota_code,coverage,verified
+#[derive(Debug, Deserialize)]
+pub struct SummitPotaCSV {
+    pub summit_code: String,
+    pub muni_key: String,
+    pub muni_name: String,
+    pub pota_code: String,
+    pub coverage: String,
+    pub verified: u8,
+}
+
+impl TryFrom<SummitPotaCSV> for SummitPota {
+    type Error = AppError;
+
+    fn try_from(c: SummitPotaCSV) -> Result<Self, Self::Error> {
+        let coverage = ParkCoverage::parse(&c.coverage).ok_or_else(|| {
+            AppError::UnprocessableEntity(format!(
+                "{}: coverage は all か part です: {}",
+                c.summit_code, c.coverage
+            ))
+        })?;
+        Ok(SummitPota {
+            summit_code: c.summit_code,
+            muni_key: c.muni_key,
+            muni_name: c.muni_name,
+            pota_code: c.pota_code,
+            park_name: None,
+            coverage,
+            verified: c.verified != 0,
+        })
+    }
+}
+
+/// 山頂ごとの簡易地図。1 行 1 山頂の GeoJSON(JSON Lines)。gzip で圧縮してあってもよい
+pub struct UploadSummitMaps {
+    pub data: Vec<u8>,
+}
+
+/// 簡易地図の 1 行を確かめて、山頂コードを取り出す
+pub fn parse_summit_map_line(line: &str) -> Result<SummitMap, String> {
+    let v: serde_json::Value = serde_json::from_str(line).map_err(|e| e.to_string())?;
+    if v.get("type").and_then(|t| t.as_str()) != Some("FeatureCollection") {
+        return Err("FeatureCollection ではありません".to_string());
+    }
+    let code = v
+        .get("summit")
+        .and_then(|s| s.as_str())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "summit がありません".to_string())?;
+    Ok(SummitMap {
+        summit_code: code.to_string(),
+        geojson: line.to_string(),
+    })
 }
