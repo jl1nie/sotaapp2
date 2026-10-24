@@ -168,7 +168,7 @@ dependencies = [
 [[package]]
 name = "aprs-message"
 version = "0.1.0"
-source = "git+https://github.com/jl1nie/aprs-message.git#af04e256e4def62ff8d40252df129fb82a2aa000"
+source = "git+https://github.com/jl1nie/aprs-message.git#581561bf8141b6af095a06ac39ffa53e4cdf1be2"
 dependencies = [
  "anyhow",
  "aprs-parser",
