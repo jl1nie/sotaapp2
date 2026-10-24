@@ -8,7 +8,7 @@
 
 ## 進め方の決まり(利用者の指示)
 
-- **設計は Opus、実装は Sonnet。** 詳細設計は Opus が書く。コードは Agent ツールで `model: "sonnet"` を指定したサブエージェントに書かせる。戻ってきた変更は Opus が読み、テストを通して確かめる。
+- **エージェントの進め方は [agent-workflow.md](agent-workflow.md)。** 2026-10-25 に、最初の「実装はいつも Sonnet のサブエージェント」から、この標準に変えた(PR #41)。設計は plan mode の Opus、承認したら同じループの Sonnet で実装する。
 - **設計が終わったら、一度利用者に確認をとる。** 確認がとれるまで実装に入らない。
 - 返事は日本語で。相談のときは実装しない(「直して」「PR を作って」と言われたら実装する)。
 - コミット・PR は、利用者に知らせてから。
@@ -108,10 +108,11 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 1. **詳細設計の確認を待っている**(summit-map-admin-design.md)。最後に利用者へ確かめていたことが 2 つある。
    - 今の verified=1 の 98 行は、目視の移行(計画 7 章)まで推定として扱われ、配信の「目視済み」の印が消える。7 章が済むまで本番に出さない運用でよいか。
    - もう一人の管理者には、段階 2 で新しい URL(ログインはメールの番号)に移ってもらう。
-2. 確認がとれたら、Sonnet のサブエージェント 2 つに並べて実装させる。
-   - Rust: 認証・マイグレーション・repository・service・API・テスト
-   - 管理画面: `admin/` の認証の流れ・見直しのページ・管理者の欄・vitest
-   - どちらも sotaapp2 の `feat/summit-review` で作業し、ファイルは重ならない。コミットは Opus が確かめてから。
+2. 確認がとれたら、agent-workflow.md に沿って実装する。
+   - Rust(認証・マイグレーション・repository・service・API・テスト): 主のループを Sonnet にして実装する。
+   - 管理画面(`admin/` の認証の流れ・見直しのページ・管理者の欄・vitest): Rust と独立しているので、`runner` を 1 つ並べてよい。
+   - 表を消すマイグレーションと、認証の変更が入るので、`reviewer` を通す。
+   - 作業は sotaapp2 の `feat/summit-review` で行う。
 3. そのあとの PR:
    - FLEonline の地図の取り直し(`apps/fle/src/lib/mapStore.ts` の `REFRESH_MS` は今 30 日。地域の版の API を見て取り直す。monorepo)
    - バッチの変更(注釈・判定用の層・`input_rev`・版の列。`explore/export_sotaapp.py` と `review2_data.py` を `tools/jaffpota` に移す)と、目視の移行(計画 7 章)
