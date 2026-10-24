@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 use common::utils::maidenhead;
 use domain::model::event::PagenatedResult;
-use domain::model::sota::SotaReference;
+use domain::model::sota::{SotaReference, SummitPota};
 use domain::model::Maidenhead;
 
 #[derive(Debug, Deserialize)]
@@ -312,6 +312,63 @@ impl From<SotaReference> for SotaSearchView {
     }
 }
 
+/// 公園と、市区町村の中のゾーンのうち公園に入る範囲
+#[derive(Debug, Serialize, ToSchema, PartialEq)]
+#[typeshare]
+#[serde(rename_all = "camelCase")]
+pub struct SummitParkView {
+    pub pota_code: String,
+    pub park_name: Option<String>,
+    /// "all": 全部入る / "part": 一部だけ入る(現地で公園の中にいるか確かめる)
+    pub coverage: String,
+    /// 目視で確かめた答えなら true、推定なら false
+    pub verified: bool,
+}
+
+/// 市区町村(JCC/JCG)を選んだときに当たる公園
+#[derive(Debug, Serialize, ToSchema, PartialEq)]
+#[typeshare]
+#[serde(rename_all = "camelCase")]
+pub struct SummitMuniPotaView {
+    /// "JCC#1115" や "JCG#11001B"
+    pub muni_key: String,
+    pub muni_name: String,
+    pub parks: Vec<SummitParkView>,
+}
+
+/// 山頂で、選ぶ市区町村ごとに当たる POTA の公園。載っていない市区町村を選ぶと POTA にはならない
+#[derive(Debug, Serialize, ToSchema, PartialEq)]
+#[typeshare]
+#[serde(rename_all = "camelCase")]
+pub struct SummitPotaView {
+    pub summit_code: String,
+    pub munis: Vec<SummitMuniPotaView>,
+}
+
+impl SummitPotaView {
+    /// 行(市区町村・公園の順に並んでいる)を市区町村ごとにまとめる
+    pub fn new(summit_code: String, rows: Vec<SummitPota>) -> Self {
+        let mut munis: Vec<SummitMuniPotaView> = Vec::new();
+        for r in rows {
+            let park = SummitParkView {
+                pota_code: r.pota_code,
+                park_name: r.park_name,
+                coverage: r.coverage.as_str().to_string(),
+                verified: r.verified,
+            };
+            match munis.last_mut() {
+                Some(m) if m.muni_key == r.muni_key => m.parks.push(park),
+                _ => munis.push(SummitMuniPotaView {
+                    muni_key: r.muni_key,
+                    muni_name: r.muni_name,
+                    parks: vec![park],
+                }),
+            }
+        }
+        Self { summit_code, munis }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -483,5 +540,34 @@ mod tests {
         assert!(json.contains("\"lat\""));
         assert!(json.contains("\"pts\""));
         assert!(json.contains("\"count\""));
+    }
+    #[test]
+    fn test_summit_pota_view_groups_by_muni() {
+        use domain::model::sota::ParkCoverage;
+        let row = |key: &str, pota: &str, coverage| SummitPota {
+            summit_code: "JA/ST-018".to_string(),
+            muni_key: key.to_string(),
+            muni_name: format!("{}の名前", key),
+            pota_code: pota.to_string(),
+            park_name: None,
+            coverage,
+            verified: true,
+        };
+        let v = SummitPotaView::new(
+            "JA/ST-018".to_string(),
+            vec![
+                row("JCC#1311", "JP-1148", ParkCoverage::Part),
+                row("JCC#1311", "JP-1150", ParkCoverage::Part),
+                row("JCG#13007C", "JP-1148", ParkCoverage::All),
+            ],
+        );
+        assert_eq!(v.munis.len(), 2);
+        assert_eq!(v.munis[0].muni_key, "JCC#1311");
+        assert_eq!(v.munis[0].parks.len(), 2);
+        assert_eq!(v.munis[0].parks[1].coverage, "part");
+        assert_eq!(v.munis[1].parks[0].coverage, "all");
+        let json = serde_json::to_value(&v).unwrap();
+        assert_eq!(json["munis"][1]["muniKey"], "JCG#13007C");
+        assert_eq!(json["munis"][1]["parks"][0]["potaCode"], "JP-1148");
     }
 }

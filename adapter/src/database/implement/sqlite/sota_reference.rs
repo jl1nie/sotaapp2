@@ -7,12 +7,12 @@ use sqlx::SqliteConnection;
 
 use common::error::{db_error, row_not_found, tx_error, AppResult};
 use domain::model::event::{DeleteLog, DeleteRef, FindLog, FindRef, PagenatedResult};
-use domain::model::sota::{SotaLog, SotaReference, SummitCode};
+use domain::model::sota::{SotaLog, SotaReference, SummitCode, SummitMap, SummitPota};
 use domain::model::AwardProgram::SOTA;
 
 use super::querybuilder::{findlog_query_builder, findref_query_builder};
 use crate::database::connect::ConnectionPool;
-use crate::database::model::sota::{SotaLogRow, SotaReferenceRow};
+use crate::database::model::sota::{SotaLogRow, SotaReferenceRow, SummitMapRow, SummitPotaRow};
 
 use domain::repository::sota::SotaRepository;
 
@@ -618,6 +618,121 @@ impl SotaRepository for SotaRepositoryImpl {
 
         Ok(())
     }
+
+    async fn replace_summit_pota(&self, rows: Vec<SummitPota>) -> AppResult<()> {
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(tx_error("begin replace_summit_pota"))?;
+        sqlx::query!("DELETE FROM summit_pota")
+            .execute(&mut *tx)
+            .await
+            .map_err(db_error("delete summit_pota"))?;
+        for r in rows {
+            let coverage = r.coverage.as_str();
+            let verified = r.verified as i64;
+            sqlx::query!(
+                r#"
+                INSERT INTO summit_pota(summit_code, muni_key, muni_name, pota_code, coverage, verified)
+                VALUES($1, $2, $3, $4, $5, $6)
+            "#,
+                r.summit_code,
+                r.muni_key,
+                r.muni_name,
+                r.pota_code,
+                coverage,
+                verified
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(db_error("insert summit_pota"))?;
+        }
+        tx.commit()
+            .await
+            .map_err(tx_error("commit replace_summit_pota"))?;
+        Ok(())
+    }
+
+    async fn find_summit_pota(&self, summit_code: &SummitCode) -> AppResult<Vec<SummitPota>> {
+        let code = summit_code.inner_ref();
+        let rows = sqlx::query_as!(
+            SummitPotaRow,
+            r#"
+            SELECT s.summit_code, s.muni_key, s.muni_name, s.pota_code,
+                   p.park_name_j AS "park_name?", s.coverage, s.verified
+            FROM summit_pota AS s
+            LEFT JOIN pota_references AS p ON p.pota_code = s.pota_code
+            WHERE s.summit_code = $1
+            ORDER BY s.muni_key, s.pota_code
+        "#,
+            code
+        )
+        .fetch_all(self.pool.inner_ref())
+        .await
+        .map_err(db_error("select summit_pota"))?;
+        Ok(rows.into_iter().map(SummitPota::from).collect())
+    }
+
+    async fn upsert_summit_maps(&self, maps: Vec<SummitMap>) -> AppResult<()> {
+        let mut tx = self
+            .pool
+            .inner_ref()
+            .begin()
+            .await
+            .map_err(tx_error("begin upsert_summit_maps"))?;
+        for m in maps {
+            sqlx::query!(
+                r#"
+                INSERT INTO summit_maps(summit_code, geojson) VALUES($1, $2)
+                ON CONFLICT (summit_code) DO UPDATE SET geojson = EXCLUDED.geojson
+            "#,
+                m.summit_code,
+                m.geojson
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(db_error("upsert summit_maps"))?;
+        }
+        tx.commit()
+            .await
+            .map_err(tx_error("commit upsert_summit_maps"))?;
+        Ok(())
+    }
+
+    async fn find_summit_map(&self, summit_code: &SummitCode) -> AppResult<Option<SummitMap>> {
+        let code = summit_code.inner_ref();
+        let row = sqlx::query_as!(
+            SummitMapRow,
+            "SELECT summit_code, geojson FROM summit_maps WHERE summit_code = $1",
+            code
+        )
+        .fetch_optional(self.pool.inner_ref())
+        .await
+        .map_err(db_error("select summit_maps"))?;
+        Ok(row.map(SummitMap::from))
+    }
+
+    async fn find_summit_maps(&self, prefix: &str) -> AppResult<Vec<SummitMap>> {
+        // LIKE の % と _ を避けるため、範囲で絞る(prefix 以上、prefix の次の文字列未満)
+        let lower = prefix.to_string();
+        let upper = format!("{}\u{10FFFF}", prefix);
+        let rows = sqlx::query_as!(
+            SummitMapRow,
+            r#"
+            SELECT summit_code, geojson FROM summit_maps
+            WHERE summit_code >= $1 AND summit_code < $2
+            ORDER BY summit_code
+        "#,
+            lower,
+            upper
+        )
+        .fetch_all(self.pool.inner_ref())
+        .await
+        .map_err(db_error("select summit_maps by prefix"))?;
+        Ok(rows.into_iter().map(SummitMap::from).collect())
+    }
 }
 
 #[cfg(test)]
@@ -625,6 +740,7 @@ mod tests {
     use super::*;
     use chrono::NaiveDate;
     use domain::model::event::FindRefBuilder;
+    use domain::model::sota::ParkCoverage;
     use sqlx::migrate::Migrator;
     use sqlx::sqlite::SqlitePool;
     use std::path::Path;
@@ -869,5 +985,115 @@ mod tests {
         assert_eq!(result.limit, 3);
         assert_eq!(result.offset, 0);
         assert_eq!(result.results.len(), 3);
+    }
+
+    fn summit_pota(code: &str, key: &str, pota: &str, coverage: ParkCoverage) -> SummitPota {
+        SummitPota {
+            summit_code: code.to_string(),
+            muni_key: key.to_string(),
+            muni_name: "テスト市".to_string(),
+            pota_code: pota.to_string(),
+            park_name: None,
+            coverage,
+            verified: coverage == ParkCoverage::All,
+        }
+    }
+
+    fn summit_map(code: &str) -> SummitMap {
+        SummitMap {
+            summit_code: code.to_string(),
+            geojson: format!(
+                r#"{{"type":"FeatureCollection","summit":"{}","features":[]}}"#,
+                code
+            ),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_summit_pota_replace_and_find() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        sqlx::query(
+            r#"INSERT INTO pota_references(pota_code, wwff_code, park_name, park_name_j, park_location,
+               park_locid, park_type, park_inactive, "update")
+               VALUES('JP-1289', '', 'Tanzawa', '県立丹沢大山自然公園', 'JP-KN', '', '', 0, '2026-01-01')"#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+
+        repo.replace_summit_pota(vec![
+            summit_pota("JA/KN-017", "JCG#11001B", "JP-1289", ParkCoverage::Part),
+            summit_pota("JA/KN-017", "JCC#1115", "JP-0118", ParkCoverage::All),
+            summit_pota("JA/KN-006", "JCC#1115", "JP-0118", ParkCoverage::All),
+        ])
+        .await
+        .unwrap();
+        let code = SummitCode::new("JA/KN-017".to_string());
+        let rows = repo.find_summit_pota(&code).await.unwrap();
+        // 市区町村、公園の順に並び、公園名は pota_references から引く
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].muni_key, "JCC#1115");
+        assert_eq!(rows[0].park_name, None);
+        assert_eq!(rows[1].muni_key, "JCG#11001B");
+        assert_eq!(rows[1].coverage, ParkCoverage::Part);
+        assert!(!rows[1].verified);
+        assert_eq!(rows[1].park_name.as_deref(), Some("県立丹沢大山自然公園"));
+
+        // 入れ直すと、前の表は残らない
+        repo.replace_summit_pota(vec![summit_pota(
+            "JA/KN-006",
+            "JCC#1115",
+            "JP-0118",
+            ParkCoverage::All,
+        )])
+        .await
+        .unwrap();
+        assert!(repo.find_summit_pota(&code).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_summit_maps_upsert_and_find() {
+        let (pool, _temp_dir) = setup_test_db().await;
+        let repo = SotaRepositoryImpl {
+            pool: crate::database::connect::ConnectionPool::new(pool),
+        };
+        repo.upsert_summit_maps(vec![
+            summit_map("JA/KN-001"),
+            summit_map("JA/KN-017"),
+            summit_map("JA/KT-001"),
+            summit_map("JA5/KC-001"),
+        ])
+        .await
+        .unwrap();
+        let mut updated = summit_map("JA/KN-001");
+        updated.geojson = updated.geojson.replace("[]", "[1]");
+        repo.upsert_summit_maps(vec![updated.clone()])
+            .await
+            .unwrap();
+
+        let m = repo
+            .find_summit_map(&SummitCode::new("JA/KN-001".to_string()))
+            .await
+            .unwrap();
+        assert_eq!(m, Some(updated));
+        let none = repo
+            .find_summit_map(&SummitCode::new("JA/KN-999".to_string()))
+            .await
+            .unwrap();
+        assert_eq!(none, None);
+
+        let codes: Vec<_> = repo
+            .find_summit_maps("JA/KN-")
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|m| m.summit_code)
+            .collect();
+        assert_eq!(codes, vec!["JA/KN-001", "JA/KN-017"]);
+        // LIKE の特殊文字は前方一致の文字としてだけ扱う
+        assert!(repo.find_summit_maps("JA/%").await.unwrap().is_empty());
     }
 }

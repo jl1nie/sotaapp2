@@ -19,16 +19,19 @@ use domain::model::{
 };
 use registry::{AppRegistry, AppState};
 use service::implement::award_pdf::{AwardPdfGenerator, AwardType, CertificateInfo};
-use service::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
+use service::model::sota::{
+    UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt, UploadSummitMaps, UploadSummitPota,
+};
 use service::services::{AdminService, SotaLogService, UserService};
 use std::path::PathBuf;
+use tower_http::compression::CompressionLayer;
 
 use crate::model::award::{
     ActivatorAwardResult, AwardJudgmentResult, ChaserAwardResult, JudgmentMode, LogType,
     SummitActivation, SummitChase,
 };
 use crate::model::import::ImportResult;
-use crate::model::sota::{PagenatedResponse, SotaRefView, UpdateRefRequest};
+use crate::model::sota::{PagenatedResponse, SotaRefView, SummitPotaView, UpdateRefRequest};
 use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
@@ -37,7 +40,7 @@ use crate::model::{
 };
 
 use super::auth::with_auth;
-use super::multipart::extract_text_file;
+use super::multipart::{extract_file, extract_text_file};
 
 async fn export_sota_reference_ja(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -95,6 +98,109 @@ async fn import_sota_opt_reference(
     let reqs = UploadSOTASummitOpt { data };
     let count = admin_service.import_summit_opt_list(reqs).await?;
     Ok(Json(ImportResult::success(count as u32, 0)))
+}
+
+async fn import_summit_pota(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    mut multipart: Multipart,
+) -> AppResult<Json<ImportResult>> {
+    let data = extract_text_file(&mut multipart).await?;
+    let count = admin_service
+        .import_summit_pota(UploadSummitPota { data })
+        .await?;
+    Ok(Json(ImportResult::success(count as u32, 0)))
+}
+
+async fn import_summit_maps(
+    admin_service: Inject<AppRegistry, dyn AdminService>,
+    mut multipart: Multipart,
+) -> AppResult<Json<ImportResult>> {
+    let data = extract_file(&mut multipart).await?;
+    let count = admin_service
+        .import_summit_maps(UploadSummitMaps { data })
+        .await?;
+    Ok(Json(ImportResult::success(count as u32, 0)))
+}
+
+async fn show_summit_pota(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Path(summit_code): Path<String>,
+) -> AppResult<Json<SummitPotaView>> {
+    let rows = user_service
+        .find_summit_pota(SummitCode::new(summit_code.clone()))
+        .await?;
+    Ok(Json(SummitPotaView::new(summit_code, rows)))
+}
+
+fn geojson_response(body: String) -> Response {
+    (
+        [(header::CONTENT_TYPE, "application/geo+json; charset=utf-8")],
+        body,
+    )
+        .into_response()
+}
+
+async fn show_summit_map(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Path(summit_code): Path<String>,
+) -> AppResult<Response> {
+    match user_service
+        .find_summit_map(SummitCode::new(summit_code))
+        .await?
+    {
+        Some(m) => Ok(geojson_response(m.geojson)),
+        None => Ok(StatusCode::NOT_FOUND.into_response()),
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct MapsParam {
+    prefix: String,
+}
+
+/// 地域ごとの簡易地図(端末にまとめて保存する用)。prefix は "JA/KN" のように地域まで指定する
+async fn show_summit_maps(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<MapsParam>,
+) -> AppResult<Response> {
+    let Some(prefix) = region_prefix(&param.prefix) else {
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            "prefix は JA/KN のように地域まで指定してください",
+        )
+            .into_response());
+    };
+    let maps = user_service.find_summit_maps(&prefix).await?;
+    // 保存してある GeoJSON をそのまま並べる(読み直して組み立て直さない)
+    let mut body =
+        String::with_capacity(maps.iter().map(|m| m.geojson.len() + 1).sum::<usize>() + 2);
+    body.push('[');
+    for (i, m) in maps.iter().enumerate() {
+        if i > 0 {
+            body.push(',');
+        }
+        body.push_str(&m.geojson);
+    }
+    body.push(']');
+    Ok((
+        [(header::CONTENT_TYPE, "application/json; charset=utf-8")],
+        body,
+    )
+        .into_response())
+}
+
+/// "JA/KN" や "JA/KN-0" を受け付け、山頂コードの前方一致に使う形("JA/KN-")にする
+fn region_prefix(s: &str) -> Option<String> {
+    let (assoc, rest) = s.split_once('/')?;
+    let (region, num) = rest.split_once('-').unwrap_or((rest, ""));
+    let ok = !assoc.is_empty()
+        && assoc
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        && region.len() == 2
+        && region.chars().all(|c| c.is_ascii_uppercase())
+        && num.chars().all(|c| c.is_ascii_digit());
+    ok.then(|| format!("{}/{}-{}", assoc, region, num))
 }
 
 async fn upload_log(
@@ -446,6 +552,8 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         Router::new()
             .route("/import", post(import_summit_list))
             .route("/import/ja", post(import_sota_opt_reference))
+            .route("/import/pota", post(import_summit_pota))
+            .route("/import/maps", post(import_summit_maps))
             .route("/log", post(upload_log))
             .route("/log", delete(delete_log))
             .route("/update", post(update_summit_list))
@@ -460,6 +568,13 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
         .route("/alerts", get(show_sota_alerts))
         .route("/summits", get(show_all_sota_reference))
         .route("/summits/{summit_code}", get(show_sota_reference))
+        .route("/summits/{summit_code}/pota", get(show_summit_pota))
+        .route("/summits/{summit_code}/map", get(show_summit_map))
+        // 地域ごとにまとめると 1 MB ほどになるので、圧縮して返す
+        .route(
+            "/maps",
+            get(show_summit_maps).layer(CompressionLayer::new()),
+        )
         .route("/summits/search", get(search_sota_reference))
         .route(
             "/award/10th-anniversary/judge",
@@ -473,4 +588,22 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
     let routers = Router::new().merge(protected).merge(public);
 
     Router::new().nest("/sota", routers)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::region_prefix;
+
+    #[test]
+    fn test_region_prefix() {
+        assert_eq!(region_prefix("JA/KN").as_deref(), Some("JA/KN-"));
+        assert_eq!(region_prefix("JA5/KC-0").as_deref(), Some("JA5/KC-0"));
+        // 協会だけ、全件、LIKE の特殊文字は受け付けない
+        assert_eq!(region_prefix("JA"), None);
+        assert_eq!(region_prefix("JA/"), None);
+        assert_eq!(region_prefix("JA/K"), None);
+        assert_eq!(region_prefix("JA/%"), None);
+        assert_eq!(region_prefix("JA/kn"), None);
+        assert_eq!(region_prefix("JA/KN-0a"), None);
+    }
 }

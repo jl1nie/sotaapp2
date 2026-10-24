@@ -7,7 +7,9 @@ use aprs_message::AprsData;
 use crate::model::award::{AwardResult, JudgmentMode};
 use crate::model::locator::UploadMuniCSV;
 use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
-use crate::model::sota::{UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt};
+use crate::model::sota::{
+    UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt, UploadSummitMaps, UploadSummitPota,
+};
 use common::error::AppResult;
 use domain::model::activation::{Alert, Spot, SpotLog};
 use domain::model::aprslog::{AprsLog, AprsTrack};
@@ -18,7 +20,7 @@ use domain::model::geomag::GeomagIndex;
 use domain::model::id::{LogId, UserId};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{ParkCode, PotaLogHist, PotaReference};
-use domain::model::sota::{SotaReference, SummitCode};
+use domain::model::sota::{SotaReference, SummitCode, SummitMap, SummitPota};
 use std::path::Path;
 
 /// SOTAログ管理サービス
@@ -57,6 +59,10 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_aprs_log(&self, event: FindAprs) -> AppResult<Vec<AprsLog>>;
     async fn get_aprs_track(&self, event: FindAprs) -> AppResult<Vec<AprsTrack>>;
     async fn get_geomagnetic(&self) -> AppResult<Option<GeomagIndex>>;
+
+    async fn find_summit_pota(&self, summit_code: SummitCode) -> AppResult<Vec<SummitPota>>;
+    async fn find_summit_map(&self, summit_code: SummitCode) -> AppResult<Option<SummitMap>>;
+    async fn find_summit_maps(&self, prefix: &str) -> AppResult<Vec<SummitMap>>;
 }
 
 /// 管理者向けAPIサービス（外部公開用）
@@ -68,6 +74,8 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<usize>;
     async fn import_pota_park_list_ja(&self, event: UploadPOTAReference) -> AppResult<usize>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<usize>;
+    async fn import_summit_pota(&self, event: UploadSummitPota) -> AppResult<usize>;
+    async fn import_summit_maps(&self, event: UploadSummitMaps) -> AppResult<usize>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
     async fn show_all_sota_references(
         &self,
