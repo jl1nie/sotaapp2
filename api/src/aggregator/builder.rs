@@ -10,6 +10,9 @@ use registry::{AppRegistry, AppState};
 
 use super::aprs_packet::process_incoming_packet;
 
+/// APRS の受信が失敗したときに次を試すまでの待ち時間
+const APRS_ERROR_BACKOFF: Duration = Duration::from_secs(1);
+
 pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
     let registry: Arc<AppRegistry> = state.into();
 
@@ -78,6 +81,8 @@ pub async fn build(config: &AppConfig, state: &AppState) -> AppResult<()> {
         loop {
             if let Err(e) = process_incoming_packet(&registry_aprs).await {
                 tracing::error!("APRS Error {:?}", e);
+                // 受信がすぐ失敗し続けても、ワーカーを占有して CPU を使い切らないように待つ
+                tokio::time::sleep(APRS_ERROR_BACKOFF).await;
             }
         }
     });
