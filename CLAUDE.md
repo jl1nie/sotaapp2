@@ -92,3 +92,9 @@ API → Service → Domain ← Adapter
 - Rust 2021 edition with rustfmt 2024 edition style
 - Use type-safe wrappers for domain identifiers (e.g., `SummitCode(String)`)
 - Prefer trait abstractions over concrete implementations in service layer
+
+## Agent Workflow
+
+- **One loop, model chosen by task** (`docs/agent-workflow.md`, Japanese). Default `opusplan` (`.claude/settings.json`): Opus designs in plan mode, the same loop implements on Sonnet once the plan is approved. Opus for design (schema/migrations, auth, API shapes used by FLEonline/MyACT, award rules) and unexplained production bugs; Sonnet for implementation, admin UI, docs, CI. Switch with `/model`, never a `fork` (a hook denies it).
+- Spawn a subagent only for context bloat (full test/clippy logs, docker build, `fly logs` → `runner`, Sonnet), independent parallel work (Rust and `admin/` at once), or unanchored review (`reviewer`, Opus). `reviewer` only when tests cannot judge the change: irreversible migrations on production data, auth/authorization, API shapes consumed by other repos, award judgment rules.
+- After delegating to parallel agents: `git status`, check for probe leftovers, commit by explicit path (never `static/_app`).

@@ -6,3 +6,6 @@ tmp/
 !.env.example
 sotaapp2.db
 bin/
+
+# Claude Code のワークツリー
+.claude/worktrees/
