@@ -1,5 +1,6 @@
 import type { Coverage, PairView, PreviousVerdict, ReviewInfo, SummitReviewDetailView } from './api';
 import type { Feature, MuniPota, SummitMap } from './mapDraw';
+import { maskEmail } from '../maskEmail';
 
 /** 組の鍵。選んだ答えはこの鍵で持つ */
 export const pairKey = (p: { muniKey: string; potaCode: string }): string => `${p.muniKey}|${p.potaCode}`;
@@ -62,7 +63,7 @@ export function statusLine(s: StatusLineInput): string {
 	if (s.saving) return '保存しています…';
 	if (s.error) return `保存できませんでした: ${s.error}`;
 	if (s.remaining > 0) return `あと ${s.remaining} 組を選んでください`;
-	if (s.review && !s.dirty) return `確定 ${formatTime(s.review.reviewedAt)} ${s.review.reviewedBy}`;
+	if (s.review && !s.dirty) return `確定 ${formatTime(s.review.reviewedAt)} ${maskEmail(s.review.reviewedBy)}`;
 	return '選びました(まだ確定していません)';
 }
 

@@ -5,7 +5,18 @@
 		type AdminUser, type AdminUserRole
 	} from '$lib/api';
 
+	import { maskEmail } from '$lib/maskEmail';
+
 	export let selfEmail = '';
+
+	// 伏せ字で表示し、行ごとに「表示」で全体を見る(画面共有や肩越しの目から守る)
+	let revealed: Record<string, boolean> = {};
+	function toggle(email: string) {
+		revealed = { ...revealed, [email]: !revealed[email] };
+	}
+	function label(email: string): string {
+		return revealed[email] ? email : maskEmail(email);
+	}
 
 	let users: AdminUser[] = [];
 	let loading = false;
@@ -50,7 +61,7 @@
 	}
 
 	async function remove(u: AdminUser) {
-		if (!confirm(`${u.email} を削除しますか?`)) return;
+		if (!confirm(`${label(u.email)} を削除しますか?`)) return;
 		const r = await deleteAdminUser(u.email);
 		message = r.message;
 		messageOk = r.success;
@@ -87,7 +98,14 @@
 				<tbody class="divide-y divide-slate-700/30">
 					{#each users as u (u.email)}
 						<tr>
-							<td class="px-4 py-3 text-slate-200">{u.email}{u.email === selfEmail ? '(自分)' : ''}</td>
+							<td class="px-4 py-3 text-slate-200">
+								<span>{label(u.email)}</span>{u.email === selfEmail ? '(自分)' : ''}
+								<button
+									type="button"
+									on:click={() => toggle(u.email)}
+									class="ml-2 text-xs text-slate-400 hover:text-slate-200 underline"
+								>{revealed[u.email] ? '隠す' : '表示'}</button>
+							</td>
 							<td class="px-4 py-3">
 								<select
 									value={u.role}

@@ -98,7 +98,7 @@ describe('statusLine', () => {
 		expect(statusLine({ ...base, saving: true, remaining: 2 })).toBe('保存しています…');
 		expect(statusLine({ ...base, error: '409' })).toBe('保存できませんでした: 409');
 		expect(statusLine({ ...base, review: { reviewedAt: '2026-01-02T03:04:00Z', reviewedBy: 'a@b' } })).toMatch(
-			/^確定 \d{4}-\d{2}-\d{2} \d{2}:\d{2} a@b$/
+			/^確定 \d{4}-\d{2}-\d{2} \d{2}:\d{2} a\*\*\*@b$/
 		);
 	});
 });

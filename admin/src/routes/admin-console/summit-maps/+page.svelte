@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { auth } from '$lib/auth';
+	import { maskEmail } from '$lib/maskEmail';
 	import { uploadSummitPota, uploadSummitMaps } from '$lib/api';
 	import UploadCard from '$lib/components/UploadCard.svelte';
 	import {
@@ -551,7 +552,7 @@
 											<td class="px-3 py-1.5 text-slate-400">{formatTime(l.changedAt)}</td>
 											<td class="px-3 py-1.5 font-mono">{l.muniKey} {l.potaCode}</td>
 											<td class="px-3 py-1.5">{l.before ? COVERAGE_LABEL[l.before] : '(なし)'} → {l.after ? COVERAGE_LABEL[l.after] : '(取り消し)'}</td>
-											<td class="px-3 py-1.5 text-slate-400">{l.changedBy}</td>
+											<td class="px-3 py-1.5 text-slate-400">{maskEmail(l.changedBy)}</td>
 										</tr>
 									{/each}
 								</tbody>
