@@ -123,6 +123,14 @@ impl AdminAuth {
     }
 }
 
+/// ログ用にメールアドレスを伏せる。先頭の 1 文字とドメインだけ残す(例: i***@gmail.com)
+pub fn mask_email(email: &str) -> String {
+    match email.rfind('@') {
+        Some(i) if i > 0 => format!("{}***{}", email.chars().next().unwrap_or('*'), &email[i..]),
+        _ => "***".to_string(),
+    }
+}
+
 fn bearer_token(headers: &HeaderMap) -> Option<&str> {
     headers
         .get(header::AUTHORIZATION)
@@ -219,7 +227,7 @@ async fn auth_middle(
     // 段階 2 で、Firebase がまだ使われているかを見るため
     tracing::info!(
         method = ?identity.method,
-        email = %identity.email,
+        email = %mask_email(&identity.email),
         path = %req.uri().path(),
         "admin request"
     );
@@ -228,7 +236,7 @@ async fn auth_middle(
         return Err(StatusCode::FORBIDDEN);
     }
     if identity.method == AuthMethod::Access && is_cross_site_write(req.method(), req.headers()) {
-        tracing::warn!(email = %identity.email, "cross-site write rejected");
+        tracing::warn!(email = %mask_email(&identity.email), "cross-site write rejected");
         return Err(StatusCode::FORBIDDEN);
     }
     req.extensions_mut().insert(user_id);
@@ -241,7 +249,7 @@ pub async fn sign_in(
     State(auth_service): State<FireAuth>,
     Json(creds_request): Json<AuthRequest>,
 ) -> impl IntoResponse {
-    tracing::info!("auth signin email={}", creds_request.email);
+    tracing::info!("auth signin email={}", mask_email(&creds_request.email));
 
     match auth_service
         .sign_in_email(
@@ -508,6 +516,23 @@ mod tests {
         let (s, body) = call(&app, "/admin-only", &[]).await;
         assert_eq!(s, StatusCode::OK);
         assert_eq!(body, "dev@example.com:admin:Dev");
+    }
+
+    #[test]
+    fn mask_email_keeps_only_the_first_char_and_the_domain() {
+        assert_eq!(mask_email("iizawa1138@gmail.com"), "i***@gmail.com");
+        assert_eq!(mask_email("a@b"), "a***@b");
+        // ローカル部の長さを漏らさない
+        assert_eq!(
+            mask_email("ab@example.com").len(),
+            mask_email("abcdefghij@example.com").len()
+        );
+        // メールの形でないものは全部伏せる
+        assert_eq!(mask_email("not-an-email"), "***");
+        assert_eq!(mask_email("@example.com"), "***");
+        assert_eq!(mask_email(""), "***");
+        // 日本語の文字も壊さない
+        assert_eq!(mask_email("太郎@example.com"), "太***@example.com");
     }
 
     #[test]
