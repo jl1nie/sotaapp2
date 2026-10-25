@@ -114,6 +114,8 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 | メールアドレスの伏せ字(管理画面とログ) | sotaapp2 PR #44 |
 | バッチの出力を新しい形式にし、今の目視を移す道具(`summit_export`・`migrate_verdicts`・`verify_served`) | sotalive-monorepo PR #119 |
 | 推定・地図・目視の移行・検証を 1 本で実行するスクリプト(`tools/jaffpota/scripts/load_summit_data.sh`) | sotalive-monorepo PR #120 |
+| 通信を待たせない(短い時間切れと遮断 `lib/net.ts`)。地図は版が変わった地域だけ取り直す | sotalive-monorepo PR #121 |
+| 公開の読み取り API に `Cache-Control` を付ける(スポット 30 秒、地磁気 10 分、検索 5 分、JCC/JCG 1 時間、地図の版 60 秒)。Cloudflare のキャッシュルールも設定済み | sotaapp2 PR #46、`docs/caching.md` |
 
 本番(2026-10-25): Deploy 済み。推定 3585 行(2454 山頂、なしの組 132)、地図 7069 山頂、目視 69 山頂(177 組)を移行済み。
 認証の移行は**段階 2 まで完了**(Access で入れる。管理者 2 人を `admin_users` に登録済み。もう一人の確認待ち)。Access のチームドメインは、Fly.io の secret `CF_ACCESS_TEAM_DOMAIN`、アプリの識別子は `CF_ACCESS_AUD`(値はリポジトリに書かない)。
@@ -122,7 +124,7 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 ### 次にやること(候補)
 
 1. **認証の段階 3**: ログの `method=Firebase` が 2〜4 週間なくなったら、古い `/admin-console` を新しい URL への案内だけにし、Firebase のトークンを受け付けない。段階 4 で `fireauth`・ログイン画面・Firebase の設定を消す。
-2. **FLEonline の地図の取り直し**: `apps/fle/src/lib/mapStore.ts` の `REFRESH_MS` は今 30 日。`GET /sota/maps/versions` を見て、変わった地域だけ取り直す(sotalive-monorepo)。
+2. (済み)FLEonline の地図の取り直し: 地図を開いたとき、版が変わった地域だけ取り直す(sotalive-monorepo PR #121)。
 3. **バッチの並列化**: 山頂ごとに独立なので、`--jobs` で `fork` の並列にできる(約 6 分 → 1〜2 分の見込み。出力が直列版とバイト単位で同じことをテストで固定する)。増分の実行(前回の `input_rev` と比べて、変わった山頂だけを書き出す)は、運用が回り始めてから。
 4. **出していないもの**: `peak`(山頂の最高点。標高データが要る)、`change_note`(前の入力との差分)。上流(`batch_zones.py`・`review_data.py`・`triage.py`・`heur.py`)は、手元の `explore/` のまま。
 5. **確定・取り消しの競合**: 確定の最中に地図が入れ直されると、tx の外で読んだ下地から配信用の地図が作られる(`reviewer` の指摘 4)。管理者が少人数なので後回しにした。
@@ -130,6 +132,8 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 7. 管理画面の実画面の確認(伏せ字、見直しのページ)。`npm run build` が追跡されている `static/` を書き換えるので、手元ではビルドしていない。
 
 ### 運用で分かったこと
+
+- **Cloudflare の Cache Rules の「ブラウザー TTL」は「Respect origin TTL」にする。** 固定の時間(既定は 4 時間)を選ぶと、サーバーの `Cache-Control` が書き換わり、MyACT のブラウザーがスポットを数時間使い回す。エッジ TTL は「ヘッダーがなければバイパス」(ヘッダーのない `/sota/maps` や `/pota` を、既定の時間でキャッシュしないため)。詳しくは `docs/caching.md`。
 
 - 本番は `shared-cpu-1x`(メモリ 256 MB)の 1 台。**クエリは全行の走査を避ける**(テーブルの規模は、ステージングでも本番と同じにして測る)。実行計画のテストで退行を防ぐ(`serving_query_looks_parks_up_by_index_not_by_scanning`)。
 - **本番に対する検証は標本にする**(全山頂は約 1.4 万リクエスト。`verify_served --sample 300 --workers 2`)。全山頂の検証は、手元のステージングでだけ実行する。
