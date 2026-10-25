@@ -25,23 +25,37 @@ Cloudflare がそれに従って応答を覚える(`api/src/handler/cache.rs` �
 - **`/sota/maps`(地域の地図の本体)・`/sota/summits/{code}/map`・`/sota/summits/{code}/pota`**: FLEonline は、版(`/sota/maps/versions`)が変わったときだけ地図を取り直す。地図の本体を覚えさせると、版の問い合わせだけが新しく、古い地図を新しい版として端末に保存してしまう恐れがある。
 - 管理系(`/admin`・見直し・取り込み)、ログ、認証、`/activation/aprs/log`。
 
-## Cloudflare のキャッシュルール(必須)
+## Cloudflare のキャッシュルール(必須。設定済み: 2026-10-25)
 
 Cloudflare は、JSON の API 応答を**既定ではキャッシュしない**(`cf-cache-status: DYNAMIC`)。ヘッダーを付けるだけでは、Fly.io までの要求は減らない。
-次のキャッシュルールを足す(ダッシュボード → `sotalive.net` → キャッシュ → キャッシュルール):
+次のキャッシュルールを足す(ダッシュボード → `sotalive.net` → キャッシュ → Cache Rules):
 
-- 条件: ホスト名が `sotaapp2.sotalive.net` で、URI パスが `/api/v2/` で始まり、メソッドが GET
-- キャッシュの適格性: **キャッシュ対象**
-- エッジ TTL: **キャッシュ制御ヘッダーがあれば従い、なければキャッシュしない**(「オリジンのキャッシュ制御を使用し、なければバイパス」)
-- ブラウザー TTL: **オリジンに従う**
+- 条件(式): `(http.host eq "sotaapp2.sotalive.net" and starts_with(http.request.uri.path, "/api/v2/") and http.request.method eq "GET")`
+- キャッシュの適格性(Cache eligibility): **適格(Eligible for cache)**
+- エッジ TTL(Edge TTL): **キャッシュ制御ヘッダーがあれば従い、なければキャッシュをバイパス**(Use cache-control header if present, bypass cache if not)
+- ブラウザー TTL(Browser TTL): **Respect origin TTL**(オリジンの TTL を尊重)
+- ほかの項目(クエリ文字列、キャッシュキー)は変えない(既定でクエリを含む URL 全体がキャッシュの単位)
 
-`Cache-Control` を付けていないエンドポイントは、この設定でも覚えられない(バイパス)。
+注意すること:
 
-確認: 同じ URL を 2 回呼び、2 回目の応答に `cf-cache-status: HIT`(1 回目は `MISS`)が出れば有効。
+- **エッジ TTL は「ヘッダーがなければバイパス」にする。** 「なければ Cloudflare の既定の時間でキャッシュ」にすると、ヘッダーを付けていない `/sota/maps`(地図の本体)や `/pota` まで数時間キャッシュされ、古い地図を配る恐れがある。
+- **ブラウザー TTL を「Respect origin TTL」にする。** 別の選択肢(固定の時間)を選ぶと、Cloudflare が応答の `Cache-Control` を書き換える。実際に、最初の設定で `max-age=14400`(4 時間)に書き換わり、MyACT のブラウザーがスポットを最大 4 時間使い回す状態になった。直したあとは、サーバーの `max-age`(スポット 30 秒)がそのまま返る。
+
+確認: 同じ URL を 2 回呼び、2 回目の応答に `cf-cache-status: HIT`(1 回目は `MISS`)が出れば有効。`cache-control` がサーバーの宣言(`max-age=30` など)のままであることも見る。
 
 ```bash
 curl -s -D - -o /dev/null "https://sotaapp2.sotalive.net/api/v2/activation/spots?pat_ref=%5E(JA%7CJP-)" | grep -iE "cache-control|cf-cache-status|^age"
 ```
+
+### 本番での確認結果(2026-10-25)
+
+| 種類 | `cf-cache-status` |
+|---|---|
+| スポット・アラート・軌跡・地磁気・検索・JCC/JCG・地図の版 | 2 回目が `HIT`。`cache-control` はサーバーの宣言のまま |
+| `log_id=` つきのスポット | `BYPASS`(`private`) |
+| `/sota/maps`・`/map`・`/pota`・`/activation/aprs/log`・`/pota/log-stat`・管理系・エラー(400・401) | `BYPASS` |
+
+スポットは、約 30 秒で `EXPIRED` になり、取り直される。
 
 ## 反映の遅れ
 
