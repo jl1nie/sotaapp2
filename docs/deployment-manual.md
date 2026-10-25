@@ -104,6 +104,13 @@ git push origin v0.1.x
 
 ### 手動デプロイ
 
+**デプロイの前に、`main` のイメージができていることを確かめる**(まだないと、`Deploy` ワークフローが `Resolve Image` で「Image not found」になって失敗する。本番には何も出ない)。
+
+```bash
+scripts/ci-wait.sh "$(git rev-parse origin/main)" --need 'Docker Build'   # 最後の行が `CI PASS` になってから
+gh workflow run deploy.yml                                                # バックアップ付き(既定)
+```
+
 ```bash
 # バックアップ付きデプロイ（推奨）
 makers deploy
