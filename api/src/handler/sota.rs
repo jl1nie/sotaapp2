@@ -7,11 +7,10 @@ use axum::{
     Extension, Json, Router,
 };
 use chrono::{Duration, Utc};
-use fireauth::FireAuth;
 use shaku_axum::Inject;
 
 use common::award_config::AwardTemplateConfig;
-use common::error::AppResult;
+use common::error::{AppError, AppResult};
 use domain::model::sota::SummitCode;
 use domain::model::{
     event::{DeleteRef, FindActBuilder, FindRefBuilder},
@@ -32,6 +31,7 @@ use crate::model::award::{
 };
 use crate::model::import::ImportResult;
 use crate::model::sota::{PagenatedResponse, SotaRefView, SummitPotaView, UpdateRefRequest};
+use crate::model::summit_review::{MapVersionView, PotaImportResultView};
 use crate::model::{
     activation::ActivationView,
     alerts::AlertView,
@@ -39,8 +39,9 @@ use crate::model::{
     spots::SpotView,
 };
 
-use super::auth::with_auth;
+use super::auth::{with_auth, AdminAuth};
 use super::multipart::{extract_file, extract_text_file};
+use super::summit_review::build_review_routers;
 
 async fn export_sota_reference_ja(
     admin_service: Inject<AppRegistry, dyn AdminService>,
@@ -100,15 +101,31 @@ async fn import_sota_opt_reference(
     Ok(Json(ImportResult::success(count as u32, 0)))
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct ImportPotaParam {
+    mode: Option<String>,
+}
+
+/// 推定の取り込み。`mode=full` なら、ファイルにない山頂の推定・地図を消す(目視は消さない)
 async fn import_summit_pota(
     admin_service: Inject<AppRegistry, dyn AdminService>,
+    Query(param): Query<ImportPotaParam>,
     mut multipart: Multipart,
-) -> AppResult<Json<ImportResult>> {
+) -> AppResult<Json<PotaImportResultView>> {
+    let full = match param.mode.as_deref() {
+        None | Some("") => false,
+        Some("full") => true,
+        Some(m) => {
+            return Err(AppError::BadRequest(format!(
+                "mode は full だけです(省くと、ファイルにある山頂だけを置き換えます): {m}"
+            )))
+        }
+    };
     let data = extract_text_file(&mut multipart).await?;
-    let count = admin_service
-        .import_summit_pota(UploadSummitPota { data })
+    let result = admin_service
+        .import_summit_pota(UploadSummitPota { data, full })
         .await?;
-    Ok(Json(ImportResult::success(count as u32, 0)))
+    Ok(Json(result.into()))
 }
 
 async fn import_summit_maps(
@@ -187,6 +204,40 @@ async fn show_summit_maps(
         body,
     )
         .into_response())
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct VersionsParam {
+    prefix: String,
+}
+
+/// 地域ごとの、配信用の地図の最新の更新日時。FLEonline はこれを見て、変わった地域だけ取り直す
+async fn show_map_versions(
+    user_service: Inject<AppRegistry, dyn UserService>,
+    Query(param): Query<VersionsParam>,
+) -> AppResult<Json<Vec<MapVersionView>>> {
+    let prefix = summit_prefix(&param.prefix).ok_or_else(|| {
+        AppError::BadRequest("prefix は JA か JA/KN のように指定してください".to_string())
+    })?;
+    let versions = user_service.find_map_versions(&prefix).await?;
+    Ok(Json(
+        versions
+            .into_iter()
+            .map(|(region, at)| MapVersionView::new(region, at))
+            .collect(),
+    ))
+}
+
+/// 協会("JA")か地域("JA/KN"・"JA/KN-0")を、山頂コードの前方一致に使う形にする。
+/// 協会だけなら "JA/"
+pub fn summit_prefix(s: &str) -> Option<String> {
+    if !s.contains('/') {
+        let ok = !s.is_empty()
+            && s.chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit());
+        return ok.then(|| format!("{s}/"));
+    }
+    region_prefix(s)
 }
 
 /// "JA/KN" や "JA/KN-0" を受け付け、山頂コードの前方一致に使う形("JA/KN-")にする
@@ -547,7 +598,7 @@ async fn generate_award_pdf(
     }
 }
 
-pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
+pub fn build_sota_routers(auth: &AdminAuth) -> Router<AppState> {
     let protected = with_auth(
         Router::new()
             .route("/import", post(import_summit_list))
@@ -575,6 +626,7 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
             "/maps",
             get(show_summit_maps).layer(CompressionLayer::new()),
         )
+        .route("/maps/versions", get(show_map_versions))
         .route("/summits/search", get(search_sota_reference))
         .route(
             "/award/10th-anniversary/judge",
@@ -585,14 +637,28 @@ pub fn build_sota_routers(auth: &FireAuth) -> Router<AppState> {
             get(generate_award_pdf),
         );
 
-    let routers = Router::new().merge(protected).merge(public);
+    let routers = Router::new()
+        .merge(protected)
+        .merge(build_review_routers(auth))
+        .merge(public);
 
     Router::new().nest("/sota", routers)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::region_prefix;
+    use super::{region_prefix, summit_prefix};
+
+    #[test]
+    fn test_summit_prefix() {
+        assert_eq!(summit_prefix("JA").as_deref(), Some("JA/"));
+        assert_eq!(summit_prefix("JA5").as_deref(), Some("JA5/"));
+        assert_eq!(summit_prefix("JA/KN").as_deref(), Some("JA/KN-"));
+        assert_eq!(summit_prefix("JA/KN-0").as_deref(), Some("JA/KN-0"));
+        for bad in ["", "ja", "JA%", "JA/", "JA/K", "JA/kn", "/KN"] {
+            assert_eq!(summit_prefix(bad), None, "{bad}");
+        }
+    }
 
     #[test]
     fn test_region_prefix() {

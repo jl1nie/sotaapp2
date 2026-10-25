@@ -1,7 +1,9 @@
 pub mod activation;
+pub mod admin_user;
 pub mod aprslog;
 pub mod healthcheck;
 pub mod locator;
 pub mod pota_reference;
 pub mod querybuilder;
 pub mod sota_reference;
+pub mod summit_review;

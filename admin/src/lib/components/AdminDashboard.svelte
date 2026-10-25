@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { auth } from '$lib/auth';
 	import {
-		uploadPotaParks, uploadSotaJaSummits, uploadJccJcg, uploadSummitPota, uploadSummitMaps,
+		uploadPotaParks, uploadSotaJaSummits, uploadJccJcg,
 		getSystemMetrics, restartServer, type SystemMetrics
 	} from '$lib/api';
 	import UploadCard from './UploadCard.svelte';
+	import AdminUsers from './AdminUsers.svelte';
 	import { onMount } from 'svelte';
 
 	let email = '';
+	let role = '';
 	let metrics: SystemMetrics | null = null;
 	let metricsError = '';
 	let metricsLoading = false;
@@ -16,6 +18,7 @@
 
 	auth.subscribe((state) => {
 		email = state.email || '';
+		role = state.role || '';
 	});
 
 	function handleLogout() {
@@ -84,7 +87,7 @@
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
 						</svg>
-						<span>{email}</span>
+						<span>{email}{role ? ` (${role})` : ''}</span>
 					</div>
 					<button
 						on:click={handleLogout}
@@ -138,6 +141,22 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 				</svg>
 			</a>
+
+			<a href="/admin-console/summit-maps"
+				class="group flex items-center gap-4 p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50 hover:border-amber-500/50 hover:bg-slate-800 transition-all md:col-span-2">
+				<div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/30 transition-colors">
+					<svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+					</svg>
+				</div>
+				<div>
+					<h3 class="text-lg font-semibold text-white group-hover:text-amber-400 transition-colors">山頂の地図の見直し</h3>
+					<p class="text-sm text-slate-400">SOTA × POTA の推定を見て、公園に入るかを確定する(推定・地図のアップロードもここ)</p>
+				</div>
+				<svg class="w-5 h-5 text-slate-500 ml-auto group-hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+			</a>
 		</div>
 
 		<div class="mb-8">
@@ -168,22 +187,6 @@
 				icon="location"
 				accept=".csv"
 				onUpload={uploadJccJcg}
-			/>
-
-			<UploadCard
-				title="SOTA × POTA"
-				description="Upload summit_pota.csv (parks by JCC/JCG for each summit)"
-				icon="park"
-				accept=".csv"
-				onUpload={uploadSummitPota}
-			/>
-
-			<UploadCard
-				title="Summit Maps"
-				description="Upload summit_maps.jsonl.gz (activation zone maps)"
-				icon="mountain"
-				accept=".gz,.jsonl"
-				onUpload={uploadSummitMaps}
 			/>
 		</div>
 
@@ -322,6 +325,7 @@
 			{/if}
 		</div>
 
+		<AdminUsers selfEmail={email} />
 	</main>
 
 	<footer class="mt-auto py-6 text-center text-slate-500 text-sm">

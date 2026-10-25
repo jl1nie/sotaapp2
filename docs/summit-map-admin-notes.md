@@ -105,16 +105,15 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 
 ## 今の状態と次にやること
 
-1. **詳細設計の確認を待っている**(summit-map-admin-design.md)。最後に利用者へ確かめていたことが 2 つある。
-   - 今の verified=1 の 98 行は、目視の移行(計画 7 章)まで推定として扱われ、配信の「目視済み」の印が消える。7 章が済むまで本番に出さない運用でよいか。
-   - もう一人の管理者には、段階 2 で新しい URL(ログインはメールの番号)に移ってもらう。
-2. 確認がとれたら、agent-workflow.md に沿って実装する。
-   - Rust(認証・マイグレーション・repository・service・API・テスト): 主のループを Sonnet にして実装する。
-   - 管理画面(`admin/` の認証の流れ・見直しのページ・管理者の欄・vitest): Rust と独立しているので、`runner` を 1 つ並べてよい。
-   - 表を消すマイグレーションと、認証の変更が入るので、`reviewer` を通す。
-   - 作業は sotaapp2 の `feat/summit-review` で行う。
-3. そのあとの PR:
-   - FLEonline の地図の取り直し(`apps/fle/src/lib/mapStore.ts` の `REFRESH_MS` は今 30 日。地域の版の API を見て取り直す。monorepo)
+1. **確認は済んだ**(2026-10-25): 目視の移行(計画 7 章)が済むまで本番に出さない。もう一人の管理者は段階 2 で新しい URL に移る。
+2. **実装は `feat/summit-review` に未コミットである**(Rust の 1〜7 段目、管理画面、テスト。`cargo test --workspace` と clippy が通る。管理画面は `npm run check`・`build`・vitest が通る)。実サーバーでの通し(取り込み → 確定 → 配信 → 取り消し)も確かめた。`reviewer` の指摘のうち、`full` が地図を消す・CSRF・`BEGIN IMMEDIATE`・JWKS の取り直しの待ち・最後の admin は直した。
+3. **残っていること**:
+   - 利用者の操作: `admin.sotalive.net` の DNS・`fly certs add`・Zero Trust のアプリ・Fly.io の secrets(設計 1 章)。
+   - 確定・取り消しで、tx の外で読んだ下地から配信用を作る(確定の最中に地図が入れ直されると、配信用が古い下地から作られる)。管理者が 2 人なので後回しにした。
+   - `summit_pota.verified=1` の 98 行は、マイグレーションの DROP で消える。目視の移行(7 章)の元の判定表が repo の外にあるので、デプロイの前に残っているか確かめる(なければ DROP の前に `summit_pota_verdicts` に写す)。
+   - コミット・PR(`static/` と `data/` は入れない)。PR の説明に、設計 1 章の手順と「7 章が済むまで本番に出さない」を書く。
+4. そのあとの PR:
+   - FLEonline の地図の取り直し(`apps/fle/src/lib/mapStore.ts` の `REFRESH_MS` は今 30 日。`/sota/maps/versions` を見て取り直す。monorepo)
    - バッチの変更(注釈・判定用の層・`input_rev`・版の列。`explore/export_sotaapp.py` と `review2_data.py` を `tools/jaffpota` に移す)と、目視の移行(計画 7 章)
    - 認証の移行の段階 3・4
    - 案 C(公園ごとの区域の指紋)、報告の受け口(利用者が増えてから)

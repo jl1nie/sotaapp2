@@ -12,3 +12,4 @@ pub mod pota;
 pub mod search;
 pub mod sota;
 pub mod spots;
+pub mod summit_review;

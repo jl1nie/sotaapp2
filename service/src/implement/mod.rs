@@ -1,5 +1,6 @@
 pub mod admin_periodic;
 pub mod admin_service;
+pub mod admin_user_service;
 pub mod aprs_service;
 pub mod award_calculator;
 pub mod award_pdf;
@@ -7,5 +8,6 @@ pub mod fle;
 pub mod logconv;
 pub mod pota_log_service;
 pub mod sota_log_service;
+pub mod summit_review_service;
 pub mod user_service;
 pub mod wspr_service;

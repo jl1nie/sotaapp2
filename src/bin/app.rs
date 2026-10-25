@@ -23,7 +23,7 @@ use adapter::{
     geomag::connect_geomag_with,
     minikvs::MiniKvs,
 };
-use api::handler::{admin, v2};
+use api::handler::{admin, auth::AdminAuth, v2};
 use registry::{AppRegistry, AppState};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -184,6 +184,20 @@ async fn bootstrap() -> Result<()> {
     let job_state = app_state.clone();
 
     let firebase = FireAuth::new(config.firebase_api_key.clone());
+    let admin_auth = AdminAuth::new(
+        firebase,
+        app_state.access_verifier(),
+        app_state.admin_users(),
+        config.admin_dev_email.clone(),
+    );
+    if config.cf_access_team_domain.is_some() != config.cf_access_aud.is_some() {
+        tracing::warn!(
+            "CF_ACCESS_TEAM_DOMAIN と CF_ACCESS_AUD は両方そろわないと効きません(Access の検証は無効のまま)"
+        );
+    }
+    if config.admin_dev_email.is_some() {
+        tracing::warn!("ADMIN_DEV_EMAIL が有効です(開発用。管理画面に認証なしで入れます)");
+    }
 
     let cors = match config.cors_origin.clone() {
         Some(origin) => {
@@ -203,7 +217,7 @@ async fn bootstrap() -> Result<()> {
 
     // OpenAPIレベルに応じてSwagger UIを設定
     let openapi_level = config.openapi_level;
-    let mut app = Router::new().merge(v2::routes(firebase));
+    let mut app = Router::new().merge(v2::routes(admin_auth));
 
     if let Some(openapi_doc) = api::create_api_doc(openapi_level) {
         let swagger_path = "/api/v2/docs";

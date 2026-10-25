@@ -84,6 +84,7 @@
 	onMount(() => {
 		auth.subscribe((state) => {
 			if (!state.loading && !state.isAuthenticated) goto('/admin-console');
+			if (state.role === 'reviewer') goto('/admin-console/summit-maps');
 		});
 		loadParks();
 	});

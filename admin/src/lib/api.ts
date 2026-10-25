@@ -1,4 +1,4 @@
-import { auth } from './auth';
+import { auth, reloadIfAccessExpired } from './auth';
 
 export interface UploadResult {
 	success: boolean;
@@ -18,8 +18,7 @@ interface ApiResponse {
 }
 
 async function uploadFile(endpoint: string, file: File): Promise<UploadResult> {
-	const token = auth.getToken();
-	if (!token) {
+	if (!auth.canCall()) {
 		return { success: false, message: '認証されていません' };
 	}
 
@@ -29,10 +28,11 @@ async function uploadFile(endpoint: string, file: File): Promise<UploadResult> {
 	try {
 		const response = await fetch(endpoint, {
 			method: 'POST',
-			headers: { 'Authorization': `Bearer ${token}` },
+			headers: auth.headers(),
 			body: formData
 		});
 
+		if (reloadIfAccessExpired(response)) return { success: false, message: 'ログインし直しています...' };
 		if (response.status === 401 || response.status === 403) {
 			auth.logout();
 			return { success: false, message: 'セッションが期限切れです。再度ログインしてください。' };
@@ -150,13 +150,12 @@ export async function getSotaSummits(params: {
 }
 
 export async function updateSotaSummit(code: string, data: SotaRefView): Promise<RefEditResult> {
-	const token = auth.getToken();
-	if (!token) return { success: false, message: '認証されていません' };
+	if (!auth.canCall()) return { success: false, message: '認証されていません' };
 
 	try {
 		const response = await fetch(`/api/v2/sota/summits/${encodeURIComponent(code)}`, {
 			method: 'PUT',
-			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+			headers: { ...auth.headers(), 'Content-Type': 'application/json' },
 			body: JSON.stringify(data)
 		});
 		if (response.status === 401 || response.status === 403) {
@@ -171,13 +170,12 @@ export async function updateSotaSummit(code: string, data: SotaRefView): Promise
 }
 
 export async function deleteSotaSummit(code: string): Promise<RefEditResult> {
-	const token = auth.getToken();
-	if (!token) return { success: false, message: '認証されていません' };
+	if (!auth.canCall()) return { success: false, message: '認証されていません' };
 
 	try {
 		const response = await fetch(`/api/v2/sota/summits/${encodeURIComponent(code)}`, {
 			method: 'DELETE',
-			headers: { 'Authorization': `Bearer ${token}` }
+			headers: auth.headers()
 		});
 		if (response.status === 401 || response.status === 403) {
 			auth.logout();
@@ -219,13 +217,12 @@ export async function getPotaParks(params: {
 }
 
 export async function updatePotaPark(parkCode: string, data: PotaRefView): Promise<RefEditResult> {
-	const token = auth.getToken();
-	if (!token) return { success: false, message: '認証されていません' };
+	if (!auth.canCall()) return { success: false, message: '認証されていません' };
 
 	try {
 		const response = await fetch(`/api/v2/pota/parks/${encodeURIComponent(parkCode)}`, {
 			method: 'PUT',
-			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+			headers: { ...auth.headers(), 'Content-Type': 'application/json' },
 			body: JSON.stringify(data)
 		});
 		if (response.status === 401 || response.status === 403) {
@@ -240,13 +237,12 @@ export async function updatePotaPark(parkCode: string, data: PotaRefView): Promi
 }
 
 export async function deletePotaPark(parkCode: string): Promise<RefEditResult> {
-	const token = auth.getToken();
-	if (!token) return { success: false, message: '認証されていません' };
+	if (!auth.canCall()) return { success: false, message: '認証されていません' };
 
 	try {
 		const response = await fetch(`/api/v2/pota/parks/${encodeURIComponent(parkCode)}`, {
 			method: 'DELETE',
-			headers: { 'Authorization': `Bearer ${token}` }
+			headers: auth.headers()
 		});
 		if (response.status === 401 || response.status === 403) {
 			auth.logout();
@@ -260,13 +256,12 @@ export async function deletePotaPark(parkCode: string): Promise<RefEditResult> {
 }
 
 export async function createPotaPark(data: PotaRefView): Promise<RefEditResult> {
-	const token = auth.getToken();
-	if (!token) return { success: false, message: '認証されていません' };
+	if (!auth.canCall()) return { success: false, message: '認証されていません' };
 
 	try {
 		const response = await fetch('/api/v2/pota/parks', {
 			method: 'POST',
-			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+			headers: { ...auth.headers(), 'Content-Type': 'application/json' },
 			body: JSON.stringify(data)
 		});
 		if (response.status === 401 || response.status === 403) {
@@ -281,11 +276,10 @@ export async function createPotaPark(data: PotaRefView): Promise<RefEditResult> 
 }
 
 export async function exportPotaParks(): Promise<void> {
-	const token = auth.getToken();
-	if (!token) return;
+	if (!auth.canCall()) return;
 
 	const response = await fetch('/api/v2/pota/parks/export', {
-		headers: { 'Authorization': `Bearer ${token}` }
+		headers: auth.headers()
 	});
 	if (!response.ok) return;
 
@@ -303,11 +297,10 @@ export async function exportPotaParks(): Promise<void> {
 }
 
 export async function exportSotaSummits(): Promise<void> {
-	const token = auth.getToken();
-	if (!token) return;
+	if (!auth.canCall()) return;
 
 	const response = await fetch('/api/v2/sota/summits/export', {
-		headers: { 'Authorization': `Bearer ${token}` }
+		headers: auth.headers()
 	});
 	if (!response.ok) return;
 
@@ -336,8 +329,9 @@ export async function uploadJccJcg(file: File): Promise<UploadResult> {
 	return uploadFile('/api/v2/locator/jcc-jcg/import', file);
 }
 
-export async function uploadSummitPota(file: File): Promise<UploadResult> {
-	return uploadFile('/api/v2/sota/import/pota', file);
+/** full: ファイルにない山頂を消す(mode=full)。省くと、ファイルにある山頂だけを置き換える */
+export async function uploadSummitPota(file: File, full = false): Promise<UploadResult> {
+	return uploadFile(`/api/v2/sota/import/pota${full ? '?mode=full' : ''}`, file);
 }
 
 export async function uploadSummitMaps(file: File): Promise<UploadResult> {
@@ -407,15 +401,14 @@ export interface RestartResponse {
 }
 
 export async function getSystemMetrics(): Promise<MetricsResponse> {
-	const token = auth.getToken();
-	if (!token) {
+	if (!auth.canCall()) {
 		return { success: false, message: '認証されていません' };
 	}
 
 	try {
 		const response = await fetch('/api/v2/admin/metrics', {
 			method: 'GET',
-			headers: { 'Authorization': `Bearer ${token}` }
+			headers: auth.headers()
 		});
 
 		if (response.status === 401 || response.status === 403) {
@@ -435,15 +428,14 @@ export async function getSystemMetrics(): Promise<MetricsResponse> {
 }
 
 export async function restartServer(): Promise<RestartResponse> {
-	const token = auth.getToken();
-	if (!token) {
+	if (!auth.canCall()) {
 		return { success: false, message: '認証されていません' };
 	}
 
 	try {
 		const response = await fetch('/api/v2/admin/restart', {
 			method: 'POST',
-			headers: { 'Authorization': `Bearer ${token}` }
+			headers: auth.headers()
 		});
 
 		if (response.status === 401 || response.status === 403) {
@@ -554,15 +546,14 @@ export interface AwardConfigResponse {
 }
 
 export async function getTemplateStatus(): Promise<TemplateStatusResponse> {
-	const token = auth.getToken();
-	if (!token) {
+	if (!auth.canCall()) {
 		return { success: false, message: '認証されていません' };
 	}
 
 	try {
 		const response = await fetch('/api/v2/admin/award/templates/status', {
 			method: 'GET',
-			headers: { 'Authorization': `Bearer ${token}` }
+			headers: auth.headers()
 		});
 
 		if (response.status === 401 || response.status === 403) {
@@ -582,8 +573,7 @@ export async function getTemplateStatus(): Promise<TemplateStatusResponse> {
 }
 
 export async function uploadTemplate(templateType: 'activator' | 'chaser', file: File): Promise<UploadResult> {
-	const token = auth.getToken();
-	if (!token) {
+	if (!auth.canCall()) {
 		return { success: false, message: '認証されていません' };
 	}
 
@@ -593,7 +583,7 @@ export async function uploadTemplate(templateType: 'activator' | 'chaser', file:
 	try {
 		const response = await fetch(`/api/v2/admin/award/templates/${templateType}`, {
 			method: 'POST',
-			headers: { 'Authorization': `Bearer ${token}` },
+			headers: auth.headers(),
 			body: formData
 		});
 
@@ -614,15 +604,14 @@ export async function uploadTemplate(templateType: 'activator' | 'chaser', file:
 }
 
 export async function getAwardConfig(): Promise<AwardConfigResponse> {
-	const token = auth.getToken();
-	if (!token) {
+	if (!auth.canCall()) {
 		return { success: false, message: '認証されていません' };
 	}
 
 	try {
 		const response = await fetch('/api/v2/admin/award/config', {
 			method: 'GET',
-			headers: { 'Authorization': `Bearer ${token}` }
+			headers: auth.headers()
 		});
 
 		if (response.status === 401 || response.status === 403) {
@@ -678,8 +667,7 @@ export async function updateAwardConfig(config: Partial<{
 	}>;
 	fixedIssueDate: string | null;
 }>): Promise<AwardConfigResponse> {
-	const token = auth.getToken();
-	if (!token) {
+	if (!auth.canCall()) {
 		return { success: false, message: '認証されていません' };
 	}
 
@@ -687,7 +675,7 @@ export async function updateAwardConfig(config: Partial<{
 		const response = await fetch('/api/v2/admin/award/config', {
 			method: 'POST',
 			headers: {
-				'Authorization': `Bearer ${token}`,
+				...auth.headers(),
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify(config)
@@ -709,3 +697,64 @@ export async function updateAwardConfig(config: Partial<{
 	}
 }
 
+
+// ─── Admin users (admin role only) ──────────────────────────────────────────
+
+export type AdminUserRole = 'admin' | 'reviewer';
+
+export interface AdminUser {
+	email: string;
+	role: AdminUserRole;
+	createdAt: number | string;
+}
+
+export interface AdminUsersResult {
+	success: boolean;
+	message: string;
+	users?: AdminUser[];
+}
+
+async function adminUserCall(path: string, init: RequestInit, failLabel: string): Promise<Response | string> {
+	if (!auth.canCall()) return '認証されていません';
+	try {
+		const response = await fetch(path, {
+			...init,
+			headers: { ...auth.headers(), ...(init.headers as Record<string, string> | undefined) }
+		});
+		if (reloadIfAccessExpired(response)) return 'ログインし直しています...';
+		if (response.status === 401 || response.status === 403) return '権限がありません(または期限切れです)';
+		if (!response.ok) {
+			let detail = '';
+			try {
+				const d = await response.json();
+				detail = d.message || d.error || '';
+			} catch {
+				// ignore
+			}
+			return `${failLabel}: ${response.status}${detail ? ' ' + detail : ''}`;
+		}
+		return response;
+	} catch {
+		return 'ネットワークエラー';
+	}
+}
+
+export async function listAdminUsers(): Promise<AdminUsersResult> {
+	const r = await adminUserCall('/api/v2/admin/users', {}, '取得失敗');
+	if (typeof r === 'string') return { success: false, message: r };
+	return { success: true, message: '', users: await r.json() };
+}
+
+export async function putAdminUser(email: string, role: AdminUserRole): Promise<RefEditResult> {
+	const r = await adminUserCall(
+		`/api/v2/admin/users/${encodeURIComponent(email)}`,
+		{ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) },
+		'保存失敗'
+	);
+	return typeof r === 'string' ? { success: false, message: r } : { success: true, message: '保存しました' };
+}
+
+export async function deleteAdminUser(email: string): Promise<RefEditResult> {
+	const r = await adminUserCall(`/api/v2/admin/users/${encodeURIComponent(email)}`, { method: 'DELETE' }, '削除失敗');
+	return typeof r === 'string' ? { success: false, message: r } : { success: true, message: '削除しました' };
+}

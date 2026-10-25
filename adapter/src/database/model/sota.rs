@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use domain::model::id::UserId;
-use domain::model::sota::{ParkCoverage, SotaLog, SotaReference, SummitMap, SummitPota};
+use domain::model::sota::{SotaLog, SotaReference};
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
@@ -202,47 +202,6 @@ impl From<SotaLogRow> for SotaLog {
             his_summit_code,
             comment,
             update,
-        }
-    }
-}
-
-#[derive(Debug, FromRow)]
-pub struct SummitPotaRow {
-    pub summit_code: String,
-    pub muni_key: String,
-    pub muni_name: String,
-    pub pota_code: String,
-    pub park_name: Option<String>,
-    pub coverage: String,
-    pub verified: i64,
-}
-
-impl From<SummitPotaRow> for SummitPota {
-    fn from(r: SummitPotaRow) -> Self {
-        SummitPota {
-            summit_code: r.summit_code,
-            muni_key: r.muni_key,
-            muni_name: r.muni_name,
-            pota_code: r.pota_code,
-            park_name: r.park_name,
-            // 取り込むときに all と part 以外は弾いている
-            coverage: ParkCoverage::parse(&r.coverage).unwrap_or(ParkCoverage::Part),
-            verified: r.verified != 0,
-        }
-    }
-}
-
-#[derive(Debug, FromRow)]
-pub struct SummitMapRow {
-    pub summit_code: String,
-    pub geojson: String,
-}
-
-impl From<SummitMapRow> for SummitMap {
-    fn from(r: SummitMapRow) -> Self {
-        SummitMap {
-            summit_code: r.summit_code,
-            geojson: r.geojson,
         }
     }
 }

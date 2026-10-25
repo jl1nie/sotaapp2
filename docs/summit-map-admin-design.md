@@ -36,6 +36,8 @@ FLEonline の利用者から地図の誤り(DM で届く)を受けたとき、�
 
 FLEonline・MyACT が使う `sotaapp2.sotalive.net` には何もかけない。
 
+取り込みの順は「推定の CSV を先に、地図を後に」。地図を先に入れると、`base_rev` が古い `input_rev` のままになり `map_mismatch` が出る。アップロードの上限は管理者で 8 MB なので、地図は `.gz` で送る。
+
 ## 2. 認証と役割
 
 ### 2.1 設定(`common/src/config.rs`)
@@ -43,12 +45,14 @@ FLEonline・MyACT が使う `sotaapp2.sotalive.net` には何もかけない。
 - `cf_access_team_domain: Option<String>`、`cf_access_aud: Option<String>`(環境変数 `CF_ACCESS_TEAM_DOMAIN`・`CF_ACCESS_AUD`)。どちらかがなければ Access の検証はしない(Firebase だけ)。
 - 手元の開発用: `ADMIN_DEV_EMAIL` があれば、その人として通す。**`#[cfg(debug_assertions)]` のときだけ**読む(Docker のリリースビルドでは効かない)。
 
-### 2.2 Access の署名の検証(`api/src/handler/access.rs` を新しく作る)
+### 2.2 Access の署名の検証(ポートと adapter)
+
+- ポート: `domain/src/repository/access.rs` の `AccessTokenVerifier`(`is_enabled`・`verify`)。実装は `adapter/src/access.rs`(`AccessTokenVerifierImpl`)。`registry` で組み立て、`api` の `AdminAuth` はポートだけを見る。
 
 - 署名は要求ヘッダー `Cf-Access-Jwt-Assertion`、なければ Cookie `CF_Authorization`。
 - `jsonwebtoken` を workspace に足す。RS256。鍵は `{team_domain}/cdn-cgi/access/certs` の JWKS(`keys`)。
-- 鍵は覚えておき、知らない `kid` が来たら取り直す(取り直しは 60 秒に 1 回まで)。取れなければ 401。
-- 確かめるもの: `aud` に `CF_ACCESS_AUD` が入っている、`iss == team_domain`、`exp`。`email` を取り出す(小文字にする)。
+- 鍵は覚えておき、知らない `kid` が来たら取り直す(取り直しは 60 秒に 1 回まで、1 度に 1 つ。取り直しの HTTP を待つあいだも、知っている `kid` の検証は待たせない)。取れなければ 401。
+- 確かめるもの: `aud` に `CF_ACCESS_AUD` が入っている、`iss == team_domain`、`exp`、`nbf`。`email` を取り出す(小文字にする)。
 - Fly.io のアプリの URL へ直接来た要求は Cloudflare を通らないので、署名がない。この検証が守りの本体になる。
 
 ### 2.3 役割の表
@@ -83,6 +87,8 @@ pub struct AdminIdentity { pub email: String, pub role: AdminRole, pub method: A
 - 要求ごとに `tracing::info!(method, email, path)` を出す(段階 2 で、Firebase がまだ使われているか見るため)。
 - 役割で分ける: `with_auth(router, auth)` は admin だけ、`with_review_auth(router, auth)` は admin と reviewer。今の保護されたルートはすべて `with_auth`(admin だけ)のまま。見直しの API(6 章)だけが `with_review_auth`。
 
+**CSRF**: Access の入り口は Cookie で通るので、ほかのサイトのフォームからの送信を断つ。Access で入った要求のうち GET・HEAD・OPTIONS 以外で、`Sec-Fetch-Site` が `same-origin`・`none` 以外なら 403(ヘッダーがなければ `Origin` と `Host` を比べる。どちらもなければ、ブラウザーでないので通す)。Firebase の Bearer は Cookie ではないので対象外。管理画面は `admin.sotalive.net` の同じ origin から呼ぶこと。
+
 ### 2.5 役割の API(admin だけ)
 
 | メソッド | パス | 中身 |
@@ -90,7 +96,7 @@ pub struct AdminIdentity { pub email: String, pub role: AdminRole, pub method: A
 | GET | `/admin/whoami` | `{ email, role, method }`(**reviewer も呼べる**。画面が自分の役割を知るため) |
 | GET | `/admin/users` | `[{ email, role, createdAt }]` |
 | PUT | `/admin/users/{email}` | 本文 `{ role }`。足す・変える |
-| DELETE | `/admin/users/{email}` | 消す。自分(Access で入っている人)自身は消せない(400) |
+| DELETE | `/admin/users/{email}` | 消す。自分(Access で入っている人)自身と、最後の admin は消せない(400)。最後の admin を reviewer に下げることもできない(400) |
 
 ## 3. マイグレーション
 
@@ -180,7 +186,7 @@ pub enum ReviewStatus { NoMap, Unreviewed, NeedsCheck, Rereview, Confirmed }   /
 
 | メソッド | 中身 |
 |---|---|
-| `import_summit_estimates(estimates, metas, full: bool) -> AppResult<usize>` | 1 つの tx。`metas` の山頂ごとに推定を消して入れ直し、meta を upsert。`full` なら、`metas` にない山頂の推定・meta・地図を消す(目視・review・log は消さない)。返り値は、確定だった(review.input_rev == 前の meta.input_rev)のに input_rev が変わった山頂の数(=要再確認になった数) |
+| `import_summit_estimates(estimates, metas, full: bool) -> AppResult<usize>` | 1 つの tx。`metas` の山頂ごとに推定を消して入れ直し、meta を upsert。`full` なら、`metas` にない山頂の推定・meta を消す(目視・review・log・地図は消さない。候補の組が 0 の山頂は CSV に行を書けず、地図だけを持つため)。返り値は、確定だった(review.input_rev == 前の meta.input_rev)のに input_rev が変わった山頂の数(=要再確認になった数) |
 | `find_summit_pota(code)` | 配信の答え。下の SQL |
 | `find_composed_pairs(codes: &[String]) -> HashMap<String, Vec<ComposedPair>>` | 地図の取り込みのとき用 |
 | `find_summit_map_inputs(codes: &[String]) -> Vec<SummitMapInput>` | 下地と答え。推定の取り込み後の作り直し用 |

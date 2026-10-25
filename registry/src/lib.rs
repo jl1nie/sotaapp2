@@ -6,17 +6,24 @@ use std::sync::Arc;
 use aprs_message::AprsIS;
 
 use adapter::{
+    access::{AccessKeys, AccessTokenVerifierImpl, AccessTokenVerifierImplParameters},
     aprs::{AprsRepositryImpl, AprsRepositryImplParameters},
     database::connect::ConnectionPool,
     geomag::{GeoMag, GeoMagRepositryImpl, GeoMagRepositryImplParameters},
     minikvs::{MiniKvs, MiniKvsRepositryImpl, MiniKvsRepositryImplParameters},
 };
 
+use domain::repository::access::AccessTokenVerifier;
+use service::services::AdminUserService;
+use shaku::HasComponent;
+
 use service::implement::{
     admin_periodic::{AdminPeriodicServiceImpl, AdminPeriodicServiceImplParameters},
     admin_service::{AdminServiceImpl, AdminServiceImplParameters},
+    admin_user_service::AdminUserServiceImpl,
     pota_log_service::{PotaLogServiceImpl, PotaLogServiceImplParameters},
     sota_log_service::SotaLogServiceImpl,
+    summit_review_service::SummitReviewServiceImpl,
     user_service::UserServiceImpl,
 };
 
@@ -33,6 +40,7 @@ use adapter::database::implement::postgis::{
 #[cfg(feature = "sqlite")]
 use adapter::database::implement::sqlite::{
     activation::{ActivationRepositryImpl, ActivationRepositryImplParameters},
+    admin_user::{AdminUserRepositoryImpl, AdminUserRepositoryImplParameters},
     aprslog::{AprsLogRepositoryImpl, AprsLogRepositoryImplParameters},
     healthcheck::{HealthCheckRepositryImpl, HealthCheckRepositryImplParameters},
     locator::{LocatorRepositryImpl, LocatorRepositryImplParameters},
@@ -42,7 +50,8 @@ use adapter::database::implement::sqlite::{
 
 module! {
     pub AppRegistry {
-        components = [UserServiceImpl, SotaLogServiceImpl, PotaLogServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl,ActivationRepositryImpl,
+        components = [UserServiceImpl, SotaLogServiceImpl, PotaLogServiceImpl, AdminServiceImpl, AdminPeriodicServiceImpl, SummitReviewServiceImpl, AdminUserServiceImpl, ActivationRepositryImpl,
+        AdminUserRepositoryImpl, AccessTokenVerifierImpl,
         SotaRepositoryImpl,PotaRepositoryImpl,
         LocatorRepositryImpl,GeoMagRepositryImpl,AprsRepositryImpl,AprsLogRepositoryImpl,
         MiniKvsRepositryImpl,
@@ -64,6 +73,17 @@ impl AppRegistry {
             .with_component_parameters::<SotaRepositoryImpl>(SotaRepositoryImplParameters {
                 pool: pool.clone(),
             })
+            .with_component_parameters::<AdminUserRepositoryImpl>(
+                AdminUserRepositoryImplParameters { pool: pool.clone() },
+            )
+            .with_component_parameters::<AccessTokenVerifierImpl>(
+                AccessTokenVerifierImplParameters {
+                    keys: AccessKeys::new(
+                        config.cf_access_team_domain.clone(),
+                        config.cf_access_aud.clone(),
+                    ),
+                },
+            )
             .with_component_parameters::<PotaRepositoryImpl>(PotaRepositoryImplParameters {
                 config: config.clone(),
                 pool: pool.clone(),
@@ -117,6 +137,18 @@ impl AppState {
             config,
             share_kvs,
         }
+    }
+}
+
+impl AppState {
+    /// 管理画面に入れる人と役割
+    pub fn admin_users(&self) -> Arc<dyn AdminUserService> {
+        self.module.resolve()
+    }
+
+    /// Cloudflare Access の署名の検証
+    pub fn access_verifier(&self) -> Arc<dyn AccessTokenVerifier> {
+        self.module.resolve()
     }
 }
 

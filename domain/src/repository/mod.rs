@@ -1,4 +1,6 @@
+pub mod access;
 pub mod activation;
+pub mod admin_user;
 pub mod aprs;
 pub mod geomag;
 pub mod healthcheck;

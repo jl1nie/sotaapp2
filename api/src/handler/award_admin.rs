@@ -10,12 +10,11 @@ use axum::{
     Json, Router,
 };
 use common::award_config::AwardTemplateConfig;
-use fireauth::FireAuth;
 use registry::AppState;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use super::auth::with_auth;
+use super::auth::{with_auth, AdminAuth};
 
 /// テンプレートの種類
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -326,7 +325,7 @@ async fn upload_template(
 }
 
 /// アワード管理ルーター作成
-pub fn build_award_admin_routers(auth: &FireAuth) -> Router<AppState> {
+pub fn build_award_admin_routers(auth: &AdminAuth) -> Router<AppState> {
     let admin_routes = with_auth(
         Router::new()
             .route("/templates/status", get(get_template_status))

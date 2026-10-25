@@ -3,7 +3,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use fireauth::FireAuth;
 use shaku_axum::Inject;
 
 use crate::model::import::ImportResult;
@@ -17,7 +16,7 @@ use registry::{AppRegistry, AppState};
 use service::model::locator::UploadMuniCSV;
 use service::services::{AdminService, UserService};
 
-use super::auth::with_auth;
+use super::auth::{with_auth, AdminAuth};
 use super::multipart::extract_text_file;
 
 async fn import_muni_csv(
@@ -50,7 +49,7 @@ async fn find_map_code(
     Ok(Json(mapcode.into()))
 }
 
-pub fn build_locator_routers(auth: &FireAuth) -> Router<AppState> {
+pub fn build_locator_routers(auth: &AdminAuth) -> Router<AppState> {
     let protected = with_auth(
         Router::new().route("/jcc-jcg/import", post(import_muni_csv)),
         auth,

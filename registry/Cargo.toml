@@ -11,6 +11,7 @@ axum.workspace = true
 shaku.workspace = true
 adapter.workspace = true
 service.workspace = true
+domain.workspace = true
 common.workspace = true
 tracing.workspace = true
 aprs-message.workspace = true

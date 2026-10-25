@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use chrono::Local;
+use chrono::{Local, Utc};
 
 use shaku::Component;
 use std::collections::{HashMap, HashSet};
@@ -11,7 +11,7 @@ use common::utils::csv_reader;
 use domain::model::event::{DeleteRef, FindRef, FindRefBuilder, PagenatedResult};
 use domain::model::locator::MunicipalityCenturyCode;
 use domain::model::pota::{ParkCode, PotaReference};
-use domain::model::sota::{SotaReference, SummitCode, SummitMap, SummitPota};
+use domain::model::sota::{SotaReference, SummitCode, SummitMap};
 use domain::repository::{
     healthcheck::HealthCheckRepositry, locator::LocatorRepositry, pota::PotaRepository,
     sota::SotaRepository,
@@ -20,10 +20,11 @@ use domain::repository::{
 use crate::model::locator::{MuniCSVFile, UploadMuniCSV};
 use crate::model::pota::{POTAAllCSVFile, POTACSVFile, POTAExportRow, UploadPOTAReference};
 use crate::model::sota::{
-    parse_summit_map_line, SummitPotaCSV, UploadSOTASummit, UploadSOTASummitOpt, UploadSummitMaps,
-    UploadSummitPota,
+    parse_summit_map_line, SummitPotaImportResult, UploadSOTASummit, UploadSOTASummitOpt,
+    UploadSummitMaps, UploadSummitPota,
 };
 use crate::model::sota::{SOTAExportRow, SOTASumitOptCSV, SOTASummitCSV};
+use crate::model::summit_review::{build_served_map, parse_estimates_csv};
 
 use crate::services::AdminService;
 
@@ -227,16 +228,44 @@ impl AdminService for AdminServiceImpl {
 
     async fn import_summit_pota(
         &self,
-        UploadSummitPota { data }: UploadSummitPota,
-    ) -> AppResult<usize> {
-        let csv: Vec<SummitPotaCSV> = csv_reader(data, false, 1)?;
-        let rows = csv
-            .into_iter()
-            .map(SummitPota::try_from)
-            .collect::<AppResult<Vec<_>>>()?;
-        let count = rows.len();
-        self.sota_repo.replace_summit_pota(rows).await?;
-        Ok(count)
+        UploadSummitPota { data, full }: UploadSummitPota,
+    ) -> AppResult<SummitPotaImportResult> {
+        let now = Utc::now();
+        let parsed = parse_estimates_csv(&data, now)?;
+        if full && parsed.metas.is_empty() {
+            // 空のファイルで全件を置き換えると、推定と地図がすべて消える
+            return Err(AppError::UnprocessableEntity(
+                "全件の取り込みですが、ファイルに山頂がありません".to_string(),
+            ));
+        }
+        let codes: Vec<String> = parsed.metas.iter().map(|m| m.summit_code.clone()).collect();
+        let summits = codes.len();
+        let rereview = self
+            .sota_repo
+            .import_summit_estimates(parsed.estimates, parsed.metas, full)
+            .await?;
+
+        // 取り込んだ山頂の配信用の地図を、新しい答えで作り直す
+        for chunk in codes.chunks(MAP_CHUNK) {
+            let inputs = self.sota_repo.find_summit_map_inputs(chunk).await?;
+            let mut maps = Vec::with_capacity(inputs.len());
+            for i in inputs {
+                match build_served_map(&i.base_geojson, &i.pairs) {
+                    Ok(geojson) => maps.push(SummitMap {
+                        summit_code: i.summit_code,
+                        geojson,
+                    }),
+                    Err(e) => tracing::warn!("{} の地図を作り直せません: {}", i.summit_code, e),
+                }
+            }
+            self.sota_repo.update_served_maps(maps, now).await?;
+            tokio::task::yield_now().await;
+        }
+        Ok(SummitPotaImportResult {
+            rows: parsed.rows,
+            summits,
+            rereview,
+        })
     }
 
     async fn import_summit_maps(
@@ -250,6 +279,7 @@ impl AdminService for AdminServiceImpl {
             m?;
             count += 1;
         }
+        let now = Utc::now();
         let mut lines = summit_map_lines(&data);
         loop {
             let chunk = lines
@@ -259,7 +289,19 @@ impl AdminService for AdminServiceImpl {
             if chunk.is_empty() {
                 break;
             }
-            self.sota_repo.upsert_summit_maps(chunk).await?;
+            // 取り込んだ地図(下地)に、今の答えを差し込んで配信用にする
+            let codes: Vec<String> = chunk.iter().map(|m| m.summit_code.clone()).collect();
+            let mut pairs = self.sota_repo.find_composed_pairs(&codes).await?;
+            let maps = chunk
+                .into_iter()
+                .map(|m| {
+                    let p = pairs.remove(&m.summit_code).unwrap_or_default();
+                    let served = build_served_map(&m.geojson, &p)?;
+                    Ok((m, served))
+                })
+                .collect::<AppResult<Vec<_>>>()?;
+            self.sota_repo.upsert_summit_maps(maps, now).await?;
+            tokio::task::yield_now().await;
         }
         Ok(count)
     }
@@ -638,27 +680,5 @@ mod tests {
 
         let data = r#"{"type":"FeatureCollection","features":[]}"#;
         assert!(summit_map_lines(data.as_bytes()).next().unwrap().is_err());
-    }
-
-    #[test]
-    fn test_summit_pota_csv() {
-        let data = "summit_code,muni_key,muni_name,pota_code,coverage,verified\n\
-                    JA/KN-017,JCG#11001B,神奈川県清川村,JP-1289,part,1\n"
-            .to_string();
-        let rows: Vec<SummitPotaCSV> = csv_reader(data, false, 1).unwrap();
-        let p = SummitPota::try_from(rows.into_iter().next().unwrap()).unwrap();
-        assert_eq!(p.muni_key, "JCG#11001B");
-        assert_eq!(p.coverage, domain::model::sota::ParkCoverage::Part);
-        assert!(p.verified);
-
-        let bad = SummitPotaCSV {
-            summit_code: "JA/KN-017".to_string(),
-            muni_key: "JCG#11001B".to_string(),
-            muni_name: "".to_string(),
-            pota_code: "JP-1289".to_string(),
-            coverage: "none".to_string(),
-            verified: 0,
-        };
-        assert!(SummitPota::try_from(bad).is_err());
     }
 }
