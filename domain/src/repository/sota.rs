@@ -5,7 +5,14 @@ use mockall::automock;
 use shaku::Interface;
 
 use crate::model::event::{DeleteLog, DeleteRef, FindLog, FindRef, PagenatedResult};
-use crate::model::sota::{SotaLog, SotaReference, SummitCode, SummitMap, SummitPota};
+use chrono::{DateTime, Utc};
+use std::collections::HashMap;
+
+use crate::model::sota::{
+    ComposedPair, DeleteSummitReview, SaveSummitReview, SotaLog, SotaReference, SummitCode,
+    SummitEstimateMeta, SummitMap, SummitMapInput, SummitPota, SummitPotaEstimate,
+    SummitReviewDetail, SummitReviewSummary,
+};
 
 #[cfg_attr(test, automock)]
 #[async_trait]
@@ -27,14 +34,46 @@ pub trait SotaRepository: Send + Sync + Interface {
     async fn find_log(&self, query: &FindLog) -> AppResult<Vec<SotaLog>>;
     async fn delete_log(&self, query: DeleteLog) -> AppResult<()>;
 
-    /// 山頂と POTA の表を、渡した内容で置き換える
-    async fn replace_summit_pota(&self, rows: Vec<SummitPota>) -> AppResult<()>;
+    /// 推定を取り込む。`metas` の山頂ごとに推定を消して入れ直し、meta を upsert する。
+    /// `full` なら、`metas` にない山頂の推定・meta・地図も消す(目視・確定・履歴は消さない)。
+    /// 返り値は、確定していたのに input_rev が変わった山頂の数(要再確認になった数)
+    async fn import_summit_estimates(
+        &self,
+        estimates: Vec<SummitPotaEstimate>,
+        metas: Vec<SummitEstimateMeta>,
+        full: bool,
+    ) -> AppResult<usize>;
+    /// 配信の答え(目視があれば目視、なければ推定。all / part だけ)
     async fn find_summit_pota(&self, summit_code: &SummitCode) -> AppResult<Vec<SummitPota>>;
-    /// 簡易地図を入れる(同じ山頂は上書き)
-    async fn upsert_summit_maps(&self, maps: Vec<SummitMap>) -> AppResult<()>;
+    /// 地図の取り込み用の、山頂ごとの組の答え
+    async fn find_composed_pairs(
+        &self,
+        codes: &[String],
+    ) -> AppResult<HashMap<String, Vec<ComposedPair>>>;
+    /// 推定の取り込み後の作り直し用の、下地と答え
+    async fn find_summit_map_inputs(&self, codes: &[String]) -> AppResult<Vec<SummitMapInput>>;
+    /// 下地と配信用の地図を入れる(同じ山頂は上書き)。`base_rev` はその山頂の meta の input_rev
+    async fn upsert_summit_maps(
+        &self,
+        maps: Vec<(SummitMap, String)>,
+        now: DateTime<Utc>,
+    ) -> AppResult<()>;
+    /// 配信用の地図と served_at だけを更新する
+    async fn update_served_maps(&self, maps: Vec<SummitMap>, now: DateTime<Utc>) -> AppResult<()>;
+    /// 配信用の簡易地図(sota_references にない山頂は返さない)
     async fn find_summit_map(&self, summit_code: &SummitCode) -> AppResult<Option<SummitMap>>;
-    /// 山頂コードが prefix で始まる簡易地図(例: "JA/KN-")
+    /// 山頂コードが prefix で始まる配信用の簡易地図(例: "JA/KN-")
     async fn find_summit_maps(&self, prefix: &str) -> AppResult<Vec<SummitMap>>;
+    /// 地域("JA/KN")ごとの、配信用の地図を作り直した最新の日時
+    async fn find_map_versions(&self, prefix: &str) -> AppResult<Vec<(String, DateTime<Utc>)>>;
+
+    async fn find_summit_review_list(&self, prefix: &str) -> AppResult<Vec<SummitReviewSummary>>;
+    async fn find_summit_review_detail(
+        &self,
+        summit_code: &SummitCode,
+    ) -> AppResult<Option<SummitReviewDetail>>;
+    async fn save_summit_review(&self, req: SaveSummitReview) -> AppResult<()>;
+    async fn delete_summit_review(&self, req: DeleteSummitReview) -> AppResult<()>;
 }
 
 #[cfg(test)]

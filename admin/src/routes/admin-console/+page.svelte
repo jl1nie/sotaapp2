@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { auth } from '$lib/auth';
 	import LoginForm from '$lib/components/LoginForm.svelte';
 	import AdminDashboard from '$lib/components/AdminDashboard.svelte';
 
 	let isAuthenticated = false;
 	let loading = true;
+	let role: string | null = null;
 
 	onMount(() => {
 		auth.init();
@@ -14,6 +16,9 @@
 	auth.subscribe((state) => {
 		isAuthenticated = state.isAuthenticated;
 		loading = state.loading;
+		role = state.role;
+		// reviewer にはダッシュボードを出さず、見直しのページだけ
+		if (state.isAuthenticated && state.role === 'reviewer') goto('/admin-console/summit-maps', { replaceState: true });
 	});
 </script>
 
@@ -24,8 +29,8 @@
 			<p class="mt-4 text-slate-400">Loading...</p>
 		</div>
 	</div>
-{:else if isAuthenticated}
+{:else if isAuthenticated && role !== 'reviewer'}
 	<AdminDashboard />
-{:else}
+{:else if !isAuthenticated}
 	<LoginForm />
 {/if}

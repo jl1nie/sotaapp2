@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use domain::model::AwardProgram;
 use regex::Regex;
 use shaku::Component;
@@ -188,6 +189,10 @@ impl UserService for UserServiceImpl {
 
     async fn find_summit_maps(&self, prefix: &str) -> AppResult<Vec<SummitMap>> {
         self.sota_repo.find_summit_maps(prefix).await
+    }
+
+    async fn find_map_versions(&self, prefix: &str) -> AppResult<Vec<(String, DateTime<Utc>)>> {
+        self.sota_repo.find_map_versions(prefix).await
     }
 
     async fn find_century_code(&self, muni_code: i32) -> AppResult<MunicipalityCenturyCode> {

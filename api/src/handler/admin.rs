@@ -3,21 +3,23 @@
 //! システム状態の表示とグレースフルリブート機能
 
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
+    routing::{get, post, put},
+    Extension, Json, Router,
 };
-use fireauth::FireAuth;
+use common::error::{AppError, AppResult};
+use domain::model::admin_user::AdminRole;
 use registry::AppState;
 use serde::Serialize;
 use shaku_axum::Inject;
 use std::time::Instant;
 
-use super::auth::with_auth;
+use super::auth::{with_auth, with_review_auth, AdminAuth, AdminIdentity, AuthMethod};
+use crate::model::summit_review::{AdminUserView, PutAdminUserRequest, WhoAmIView};
 use registry::AppRegistry;
-use service::services::AdminService;
+use service::services::{AdminService, AdminUserService};
 
 /// アプリ起動時刻（グローバル）
 static START_TIME: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
@@ -104,16 +106,63 @@ async fn restart_server(State(state): State<AppState>) -> impl IntoResponse {
     )
 }
 
+async fn whoami(Extension(who): Extension<AdminIdentity>) -> Json<WhoAmIView> {
+    Json(WhoAmIView::from(&who))
+}
+
+async fn list_admin_users(
+    service: Inject<AppRegistry, dyn AdminUserService>,
+) -> AppResult<Json<Vec<AdminUserView>>> {
+    Ok(Json(
+        service
+            .list_users()
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect(),
+    ))
+}
+
+async fn put_admin_user(
+    service: Inject<AppRegistry, dyn AdminUserService>,
+    Path(email): Path<String>,
+    Json(body): Json<PutAdminUserRequest>,
+) -> AppResult<Json<AdminUserView>> {
+    let role = AdminRole::parse(&body.role)
+        .ok_or_else(|| AppError::BadRequest("role は admin か reviewer です".to_string()))?;
+    Ok(Json(service.put_user(&email, role).await?.into()))
+}
+
+async fn delete_admin_user(
+    service: Inject<AppRegistry, dyn AdminUserService>,
+    Extension(who): Extension<AdminIdentity>,
+    Path(email): Path<String>,
+) -> AppResult<StatusCode> {
+    // Access で入っている人が自分を消すと、その場で入れなくなる
+    let acting_as = (who.method == AuthMethod::Access).then_some(who.email.as_str());
+    service.delete_user(&email, acting_as).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// 管理ルーター作成
-pub fn build_admin_routers(auth: &FireAuth) -> Router<AppState> {
+pub fn build_admin_routers(auth: &AdminAuth) -> Router<AppState> {
     let router = Router::new()
         .route("/metrics", get(get_metrics))
         .route("/restart", post(restart_server));
 
+    // 管理者の一覧と変更(admin だけ)
+    let router = router.route("/users", get(list_admin_users)).route(
+        "/users/{email}",
+        put(put_admin_user).delete(delete_admin_user),
+    );
+
     // 認証ミドルウェアを適用
     let protected = with_auth(router, auth);
 
-    Router::new().nest("/admin", protected)
+    // 自分の役割(画面が知るため。reviewer も呼べる)
+    let whoami = with_review_auth(Router::new().route("/whoami", get(whoami)), auth);
+
+    Router::new().nest("/admin", protected.merge(whoami))
 }
 
 #[cfg(test)]

@@ -23,6 +23,7 @@ bytes.workspace = true
 serde.workspace = true
 aprs-message.workspace = true
 tokio-cron-scheduler.workspace = true
+jsonwebtoken.workspace = true
 
 [dev-dependencies]
 csv.workspace = true

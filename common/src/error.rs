@@ -55,6 +55,10 @@ pub enum AppError {
     #[error("許可されていない操作です")]
     ForbiddenOperation,
     #[error("{0}")]
+    BadRequest(String),
+    #[error("{0}")]
+    Conflict(String),
+    #[error("{0}")]
     ConversionEntityError(String),
     #[error("ファイルIO処理に失敗しました: {0}")]
     IoError(String),
@@ -107,6 +111,10 @@ impl IntoResponse for AppError {
                 "認可情報が誤っています".to_string(),
                 Some("UNAUTHORIZED"),
             ),
+            AppError::BadRequest(msg) => {
+                (StatusCode::BAD_REQUEST, msg.clone(), Some("BAD_REQUEST"))
+            }
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone(), Some("CONFLICT")),
             AppError::ForbiddenOperation => (
                 StatusCode::FORBIDDEN,
                 "許可されていない操作です".to_string(),

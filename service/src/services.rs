@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use shaku::Interface;
 use std::collections::HashMap;
 
@@ -8,10 +9,13 @@ use crate::model::award::{AwardResult, JudgmentMode};
 use crate::model::locator::UploadMuniCSV;
 use crate::model::pota::{UploadPOTALog, UploadPOTAReference};
 use crate::model::sota::{
-    UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt, UploadSummitMaps, UploadSummitPota,
+    SummitPotaImportResult, UploadSOTALog, UploadSOTASummit, UploadSOTASummitOpt, UploadSummitMaps,
+    UploadSummitPota,
 };
+use crate::model::summit_review::{ConfirmSummit, ReviewedDetail, StatusFilter, SummitReviewList};
 use common::error::AppResult;
 use domain::model::activation::{Alert, Spot, SpotLog};
+use domain::model::admin_user::{AdminRole, AdminUser};
 use domain::model::aprslog::{AprsLog, AprsTrack};
 use domain::model::event::{
     DeleteRef, FindAct, FindAprs, FindRef, FindResult, GroupBy, PagenatedResult,
@@ -63,6 +67,35 @@ pub trait UserService: Send + Sync + Interface {
     async fn find_summit_pota(&self, summit_code: SummitCode) -> AppResult<Vec<SummitPota>>;
     async fn find_summit_map(&self, summit_code: SummitCode) -> AppResult<Option<SummitMap>>;
     async fn find_summit_maps(&self, prefix: &str) -> AppResult<Vec<SummitMap>>;
+    /// 地域("JA/KN")ごとの、配信用の地図の最新の更新日時
+    async fn find_map_versions(&self, prefix: &str) -> AppResult<Vec<(String, DateTime<Utc>)>>;
+}
+
+/// 管理画面に入れる人と役割
+#[async_trait]
+pub trait AdminUserService: Send + Sync + Interface {
+    async fn list_users(&self) -> AppResult<Vec<AdminUser>>;
+    async fn find_user(&self, email: &str) -> AppResult<Option<AdminUser>>;
+    /// 足す、または役割を変える。メールは小文字にして保存する
+    async fn put_user(&self, email: &str, role: AdminRole) -> AppResult<AdminUser>;
+    /// 消す。`acting_as` は、Access で入っている人のメール(自分自身は消せない)
+    async fn delete_user(&self, email: &str, acting_as: Option<&str>) -> AppResult<()>;
+}
+
+/// 山頂の地図と POTA の判定の見直しサービス(管理画面)
+#[async_trait]
+pub trait SummitReviewService: Send + Sync + Interface {
+    async fn list_summits(
+        &self,
+        prefix: &str,
+        filter: Option<StatusFilter>,
+        q: Option<&str>,
+    ) -> AppResult<SummitReviewList>;
+    async fn show_summit(&self, summit_code: &str) -> AppResult<ReviewedDetail>;
+    /// 目視の答えを確定する。`answers` は今の推定の組とぴったり一致していること
+    async fn confirm_summit(&self, req: ConfirmSummit) -> AppResult<ReviewedDetail>;
+    async fn cancel_review(&self, summit_code: &str, changed_by: &str)
+        -> AppResult<ReviewedDetail>;
 }
 
 /// 管理者向けAPIサービス（外部公開用）
@@ -74,7 +107,10 @@ pub trait AdminService: Send + Sync + Interface {
     async fn import_pota_park_list(&self, event: UploadPOTAReference) -> AppResult<usize>;
     async fn import_pota_park_list_ja(&self, event: UploadPOTAReference) -> AppResult<usize>;
     async fn import_muni_century_list(&self, event: UploadMuniCSV) -> AppResult<usize>;
-    async fn import_summit_pota(&self, event: UploadSummitPota) -> AppResult<usize>;
+    async fn import_summit_pota(
+        &self,
+        event: UploadSummitPota,
+    ) -> AppResult<SummitPotaImportResult>;
     async fn import_summit_maps(&self, event: UploadSummitMaps) -> AppResult<usize>;
     async fn show_sota_reference(&self, query: FindRef) -> AppResult<SotaReference>;
     async fn show_all_sota_references(

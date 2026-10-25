@@ -12,6 +12,13 @@ pub struct AppConfig {
     pub cors_origin: Option<String>,
     pub firebase_api_key: String,
     pub auth_token_ttl: Duration,
+    /// Cloudflare Access のチームのドメイン(例 https://team.cloudflareaccess.com)。
+    /// これと `cf_access_aud` の両方があるときだけ、Access の署名を検証する
+    pub cf_access_team_domain: Option<String>,
+    /// Cloudflare Access のアプリの Application Audience (AUD) Tag
+    pub cf_access_aud: Option<String>,
+    /// 手元の開発用: この人として管理画面に入れる。デバッグビルドでだけ読む(リリースビルドでは常に None)
+    pub admin_dev_email: Option<String>,
     /// キャッシュ(MiniKvs)に持つエントリ数の上限。超えると最も長く使われていないものから捨てる
     pub kvs_capacity: usize,
     pub log_level: String,
@@ -103,6 +110,25 @@ where
         .unwrap_or(default)
 }
 
+/// 空でない環境変数だけを返す
+fn env_non_empty(key: &str) -> Option<String> {
+    std::env::var(key)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
+/// `ADMIN_DEV_EMAIL` はデバッグビルドでだけ読む(Docker のリリースビルドでは効かない)
+#[cfg(debug_assertions)]
+fn admin_dev_email() -> Option<String> {
+    env_non_empty("ADMIN_DEV_EMAIL").map(|e| e.to_lowercase())
+}
+
+#[cfg(not(debug_assertions))]
+fn admin_dev_email() -> Option<String> {
+    None
+}
+
 /// 環境変数を取得（デフォルト値あり）
 fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
@@ -152,6 +178,9 @@ impl AppConfig {
 
             // 認証
             auth_token_ttl: Duration::hours(env_parse_or("AUTH_TOKEN_TTL", 24)),
+            cf_access_team_domain: env_non_empty("CF_ACCESS_TEAM_DOMAIN"),
+            cf_access_aud: env_non_empty("CF_ACCESS_AUD"),
+            admin_dev_email: admin_dev_email(),
             kvs_capacity: env_parse_or("KVS_CAPACITY", 256),
 
             // SOTA エンドポイント

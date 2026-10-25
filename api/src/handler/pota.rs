@@ -9,7 +9,6 @@ use bytes::Bytes;
 // Note: Query is still used for log_migrate which has different param type
 use chrono::{Duration, Utc};
 use common::error::{AppError, AppResult};
-use fireauth::FireAuth;
 use serde_json::{json, Value};
 use shaku_axum::Inject;
 use std::str::FromStr;
@@ -34,7 +33,7 @@ use registry::{AppRegistry, AppState};
 use service::model::pota::{UploadPOTALog, UploadPOTAReference};
 use service::services::{AdminService, PotaLogService, UserService};
 
-use super::auth::with_auth;
+use super::auth::{with_auth, AdminAuth};
 use super::multipart::extract_text_file;
 
 async fn create_pota_reference(
@@ -358,7 +357,7 @@ async fn log_migrate(
     Ok(StatusCode::NOT_FOUND)
 }
 
-pub fn build_pota_routers(auth: &FireAuth) -> Router<AppState> {
+pub fn build_pota_routers(auth: &AdminAuth) -> Router<AppState> {
     let protected = with_auth(
         Router::new()
             .route("/import", post(import_pota_reference_ja))

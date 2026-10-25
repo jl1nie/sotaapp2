@@ -2,6 +2,7 @@ use serde::Serialize;
 use typeshare::typeshare;
 
 pub mod activation;
+pub mod admin_user;
 pub mod aprslog;
 pub mod event;
 pub mod geomag;
