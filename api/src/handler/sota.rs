@@ -1,3 +1,4 @@
+use super::cache::{cached, LIVE_SECS, SEARCH_SECS, VERSION_SECS};
 use axum::{
     body::Body,
     extract::{Multipart, Path, Query, State},
@@ -614,9 +615,26 @@ pub fn build_sota_routers(auth: &AdminAuth) -> Router<AppState> {
         auth,
     );
 
+    // 共有キャッシュ(Cloudflare)に覚えさせるもの。地図の本体(/maps)は、版の問い合わせだけが新しく
+    // 古い地図を保存してしまうのを避けるため、覚えさせない
+    let cacheable = Router::new()
+        .merge(cached(
+            Router::new()
+                .route("/spots", get(show_sota_spots))
+                .route("/alerts", get(show_sota_alerts)),
+            LIVE_SECS,
+        ))
+        .merge(cached(
+            Router::new().route("/summits/search", get(search_sota_reference)),
+            SEARCH_SECS,
+        ))
+        .merge(cached(
+            Router::new().route("/maps/versions", get(show_map_versions)),
+            VERSION_SECS,
+        ));
+
     let public = Router::new()
-        .route("/spots", get(show_sota_spots))
-        .route("/alerts", get(show_sota_alerts))
+        .merge(cacheable)
         .route("/summits", get(show_all_sota_reference))
         .route("/summits/{summit_code}", get(show_sota_reference))
         .route("/summits/{summit_code}/pota", get(show_summit_pota))
@@ -626,8 +644,6 @@ pub fn build_sota_routers(auth: &AdminAuth) -> Router<AppState> {
             "/maps",
             get(show_summit_maps).layer(CompressionLayer::new()),
         )
-        .route("/maps/versions", get(show_map_versions))
-        .route("/summits/search", get(search_sota_reference))
         .route(
             "/award/10th-anniversary/judge",
             post(judge_10th_anniversary_award),

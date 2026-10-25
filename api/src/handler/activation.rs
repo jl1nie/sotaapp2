@@ -1,3 +1,4 @@
+use super::cache::{cached, LIVE_SECS};
 use aprs_message::AprsCallsign;
 use axum::{
     http::header,
@@ -257,15 +258,21 @@ async fn show_aprs_track(
 }
 
 pub fn build_activation_routers() -> Router<AppState> {
+    // 数十秒ごとに変わるものは、共有キャッシュ(Cloudflare)に覚えさせる(MyACT が毎分呼ぶ)
+    let live = cached(
+        Router::new()
+            .route("/alerts", get(show_all_alerts))
+            .route("/alerts/sota", get(show_sota_alerts))
+            .route("/alerts/pota", get(show_pota_alerts))
+            .route("/spots", get(show_all_spots))
+            .route("/spots/sota", get(show_sota_spots))
+            .route("/spots/pota", get(show_pota_spots))
+            .route("/aprs/track", get(show_aprs_track)),
+        LIVE_SECS,
+    );
     let routers = Router::new()
-        .route("/alerts", get(show_all_alerts))
-        .route("/alerts/sota", get(show_sota_alerts))
-        .route("/alerts/pota", get(show_pota_alerts))
-        .route("/spots", get(show_all_spots))
-        .route("/spots/sota", get(show_sota_spots))
-        .route("/spots/pota", get(show_pota_spots))
-        .route("/aprs/log", get(show_aprs_log))
-        .route("/aprs/track", get(show_aprs_track));
+        .merge(live)
+        .route("/aprs/log", get(show_aprs_log));
     Router::new().nest("/activation", routers)
 }
 

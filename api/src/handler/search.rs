@@ -1,3 +1,4 @@
+use super::cache::{cached, SEARCH_SECS};
 use axum::{routing::get, Json, Router};
 use shaku_axum::Inject;
 use utoipa::OpenApi;
@@ -113,10 +114,13 @@ async fn search_reference_breif(
 }
 
 pub fn build_search_routers() -> Router<AppState> {
-    let routers = Router::new()
-        .route("/", get(search_reference))
-        .route("/full", get(search_reference_full))
-        .route("/brief", get(search_reference_breif));
+    let routers = cached(
+        Router::new()
+            .route("/", get(search_reference))
+            .route("/full", get(search_reference_full))
+            .route("/brief", get(search_reference_breif)),
+        SEARCH_SECS,
+    );
 
     Router::new().nest("/search", routers)
 }

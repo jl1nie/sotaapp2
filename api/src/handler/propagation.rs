@@ -1,3 +1,4 @@
+use super::cache::{cached, GEOMAG_SECS};
 use axum::{routing::get, Json, Router};
 use shaku_axum::Inject;
 
@@ -17,6 +18,6 @@ async fn get_geomag(
 }
 
 pub fn build_propagation_routers() -> Router<AppState> {
-    let routers = Router::new().route("/geomag", get(get_geomag));
+    let routers = cached(Router::new().route("/geomag", get(get_geomag)), GEOMAG_SECS);
     Router::new().nest("/propagation", routers)
 }

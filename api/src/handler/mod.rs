@@ -2,6 +2,7 @@ pub mod activation;
 pub mod admin;
 pub mod auth;
 pub mod award_admin;
+pub mod cache;
 pub mod fle;
 pub mod health;
 pub mod locator;
