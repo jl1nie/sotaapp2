@@ -12,7 +12,7 @@
 		type SummitReviewDetailView, type SummitRow
 	} from '$lib/summit-review/api';
 	import {
-		COVERAGE_LABEL, buildServedMap, canConfirm, evidenceLines, formatTime, initialChoices,
+		COVERAGE_LABEL, buildServedMap, canConfirm, changedFromEstimate, evidenceLines, formatTime, initialChoices,
 		isDirty, orphanPrevious, pairKey, previousFor, remaining, statusLine, type Choices
 	} from '$lib/summit-review/logic';
 	import { asSummitMap } from '$lib/summit-review/mapDraw';
@@ -431,6 +431,7 @@
 								<tbody class="divide-y divide-slate-700/30">
 									{#each pairs as p (pairKey(p))}
 										{@const chosen = choices[pairKey(p)]}
+										{@const changed = changedFromEstimate(p, choices)}
 										{@const prev = previousFor(p, detail.previousVerdicts) ?? (detail.status === 'rereview' ? p.verdict : undefined)}
 										<tr class={p.needsReview && !chosen ? 'bg-amber-500/10' : ''}>
 											<td class="px-3 py-2 align-top">
@@ -468,6 +469,20 @@
 														</label>
 													{/each}
 												</div>
+												{#if changed}
+													<!-- 推定と違う答え。推定に戻せる -->
+													<div class="mt-1 flex items-center gap-2 px-2 text-xs">
+														<span class="rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">推定から変更(推定: {COVERAGE_LABEL[p.estimate]})</span>
+														<button
+															type="button"
+															class="text-cyan-400 underline disabled:opacity-50"
+															disabled={saving}
+															on:click={() => choose(p, p.estimate)}
+														>
+															推定に戻す
+														</button>
+													</div>
+												{/if}
 											</td>
 										</tr>
 									{/each}
@@ -493,6 +508,7 @@
 							</div>
 							<div>
 								<h3 class="text-sm text-slate-300 mb-1">配信される地図(選ぶたびに変わります)</h3>
+								<p class="text-xs text-slate-400 mb-1">選んでいない組は、推定で表示しています。</p>
 								<div class="max-w-md">
 									<FinalMap map={served} summitCode={detail.summitCode} summitName={detail.summitName} />
 								</div>

@@ -3,6 +3,8 @@ import type { PairView, SummitReviewDetailView } from './api';
 import {
 	buildServedMap,
 	canConfirm,
+	changedFromEstimate,
+	effectiveCoverage,
 	evidenceLines,
 	formatTime,
 	initialChoices,
@@ -196,12 +198,39 @@ describe('buildServedMap', () => {
 		expect(parks.map((x) => x.properties.code)).toEqual(['JP-1289']);
 	});
 
-	it('未選択の組はなしと同じ。入力の地図は変えない', () => {
-		const none = buildServedMap(base, pairs, {});
-		expect(none.features.filter((x) => x.properties.kind === 'park')).toHaveLength(0);
+	it('未選択の組は推定で描く(選んだ組だけ、選んだ答え)。入力の地図は変えない', () => {
+		// 推定は 3 組とも part(pair の既定)。何も選ばなければ、3 組が part で出る
+		const est = buildServedMap(base, pairs, {});
+		const muni = est.features.find((x) => x.properties.kind === 'muni' && x.properties.key === '14201')!;
+		expect(muni.properties.pota).toEqual([
+			{ code: 'JP-0001', coverage: 'part' },
+			{ code: 'JP-0002', name: '三', coverage: 'part' },
+			{ code: 'JP-1289', name: '丹沢', coverage: 'part' }
+		]);
+		expect(est.features.filter((x) => x.properties.kind === 'park').map((x) => x.properties.code)).toEqual([
+			'JP-1289',
+			'JP-0001'
+		]);
+		// 1 組だけ選ぶと、その組だけが変わる
+		const one = buildServedMap(base, pairs, { '14201|JP-0002': 'none' });
+		const m1 = one.features.find((x) => x.properties.kind === 'muni' && x.properties.key === '14201')!;
+		expect((m1.properties.pota as { code: string }[]).map((q) => q.code)).toEqual(['JP-0001', 'JP-1289']);
 		expect(base.features.some((x) => x.properties.kind === 'peak')).toBe(true);
 		expect(
 			(base.features.find((x) => x.properties.kind === 'muni')!.properties.pota as unknown[]).length
 		).toBe(1);
+	});
+});
+
+describe('effectiveCoverage / changedFromEstimate', () => {
+	const p = pair({ estimate: 'all' });
+	it('選んでいなければ推定。選べばその答え', () => {
+		expect(effectiveCoverage(p, {})).toBe('all');
+		expect(effectiveCoverage(p, { '14201|JP-1289': 'none' })).toBe('none');
+	});
+	it('推定と違う答えを選んだときだけ、変更とする(未選択・推定と同じは変更ではない)', () => {
+		expect(changedFromEstimate(p, {})).toBe(false);
+		expect(changedFromEstimate(p, { '14201|JP-1289': 'all' })).toBe(false);
+		expect(changedFromEstimate(p, { '14201|JP-1289': 'part' })).toBe(true);
 	});
 });
