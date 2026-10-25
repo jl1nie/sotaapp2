@@ -1,3 +1,4 @@
+use super::cache::{cached, LIVE_SECS, SEARCH_SECS};
 use axum::{
     extract::{Multipart, Path, Query, State},
     http::{header, StatusCode},
@@ -376,11 +377,19 @@ pub fn build_pota_routers(auth: &AdminAuth) -> Router<AppState> {
         .route("/log-share/{act_id}/{hntr_id}", get(reqeust_shareid))
         .route("/log-share/{share_id}", get(obtain_shareid))
         .route("/log-stat", get(log_stat))
-        .route("/spots", get(show_pota_spots))
-        .route("/alerts", get(show_pota_alerts))
         .route("/parks", get(show_all_pota_reference))
-        .route("/parks/search", get(find_pota_reference))
-        .route("/parks/{park_code}", get(show_pota_reference));
+        .route("/parks/{park_code}", get(show_pota_reference))
+        // 数十秒ごとに変わるスポット・アラートと、ほとんど変わらない検索は、共有キャッシュに覚えさせる
+        .merge(cached(
+            Router::new()
+                .route("/spots", get(show_pota_spots))
+                .route("/alerts", get(show_pota_alerts)),
+            LIVE_SECS,
+        ))
+        .merge(cached(
+            Router::new().route("/parks/search", get(find_pota_reference)),
+            SEARCH_SECS,
+        ));
 
     let routers = Router::new().merge(protected).merge(public);
 

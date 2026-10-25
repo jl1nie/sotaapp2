@@ -1,3 +1,4 @@
+use super::cache::{cached, LOCATOR_SECS};
 use axum::{
     extract::Multipart,
     routing::{get, post},
@@ -55,8 +56,12 @@ pub fn build_locator_routers(auth: &AdminAuth) -> Router<AppState> {
         auth,
     );
 
+    // 市区町村と JCC/JCG の表は、管理者が CSV を取り込んだときだけ変わる
     let public = Router::new()
-        .route("/jcc-jcg", get(find_century_code))
+        .merge(cached(
+            Router::new().route("/jcc-jcg", get(find_century_code)),
+            LOCATOR_SECS,
+        ))
         .route("/mapcode", get(find_map_code));
 
     let routers = Router::new().merge(protected).merge(public);
