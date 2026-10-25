@@ -7,6 +7,19 @@ export const pairKey = (p: { muniKey: string; potaCode: string }): string => `${
 
 export type Choices = Record<string, Coverage>;
 
+/** 配信される答え: 選んだ答え。選んでいない組は推定(確定するまで、今の配信と同じ) */
+export const effectiveCoverage = (p: Pick<PairView, 'muniKey' | 'potaCode' | 'estimate'>, choices: Choices): Coverage =>
+	choices[pairKey(p)] ?? p.estimate;
+
+/** 選んだ答えが、推定から変わっているか(選んでいなければ変わっていない) */
+export function changedFromEstimate(
+	p: Pick<PairView, 'muniKey' | 'potaCode' | 'estimate'>,
+	choices: Choices
+): boolean {
+	const c = choices[pairKey(p)];
+	return c !== undefined && c !== p.estimate;
+}
+
 export const COVERAGE_LABEL: Record<Coverage, string> = { all: '全部', part: '一部', none: 'なし' };
 
 /**
@@ -110,7 +123,10 @@ export function buildServedMap(
 	pairs: PairView[],
 	choices: Choices
 ): SummitMap {
-	const coverageOf = (key: string, code: string): Coverage | undefined => choices[`${key}|${code}`];
+	// 選んでいない組は推定で描く(確定するまでの配信と同じ。選ぶたびに、その組だけが変わる)
+	const estimateOf = new Map(pairs.map((p) => [pairKey(p), p.estimate]));
+	const coverageOf = (key: string, code: string): Coverage | undefined =>
+		choices[`${key}|${code}`] ?? estimateOf.get(`${key}|${code}`);
 	const features: Feature[] = [];
 	for (const f of baseMap.features) {
 		const kind = f.properties.kind;
