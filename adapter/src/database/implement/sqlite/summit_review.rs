@@ -17,10 +17,16 @@ use sqlx::{QueryBuilder, Row, Sqlite, SqliteConnection};
 /// SQLite の変数の上限(32766)に収まる、IN (...) の 1 回あたりの件数
 const IN_CHUNK: usize = 500;
 
-/// 公園は pota_code ごとに 1 行にする(pota_references の主キーは wwff_code も含むので、重複しうる)
-const PARKS: &str =
-    "(SELECT pota_code, MIN(park_name_j) AS park_name_j, MIN(park_inactive) AS park_inactive \
-                     FROM pota_references GROUP BY pota_code)";
+/// 公園の名前と有効かどうかを、`e.pota_code` で索引(idx_pota_references_code)を引いて求める。
+/// pota_references の主キーは wwff_code も含むので、同じ pota_code の行が重複しうる。名前は MIN、
+/// 有効は「1 行でも有効なら有効」(MIN(park_inactive) = 0)。行がなければ NULL(= 有効でない)。
+///
+/// pota_references は約 9.7 万行ある。`GROUP BY pota_code` の副問い合わせを JOIN すると、呼ぶたびに全行を走査し、
+/// 一時的な索引まで作る(本番の小さなマシンで、/pota が数秒かかった)。必ずこの相関サブクエリを使う。
+const PARK_NAME: &str =
+    "(SELECT MIN(p.park_name_j) FROM pota_references AS p WHERE p.pota_code = e.pota_code)";
+const PARK_INACTIVE: &str =
+    "(SELECT MIN(p.park_inactive) FROM pota_references AS p WHERE p.pota_code = e.pota_code)";
 
 fn at(ts: i64) -> DateTime<Utc> {
     DateTime::from_timestamp(ts, 0).unwrap_or_default()
@@ -218,23 +224,28 @@ pub async fn import_summit_estimates(
 
 // ---- 配信の答え ----
 
+/// 配信の答え(目視があれば目視、なければ推定。all/part で、有効な公園の組だけ)を引く SQL
+fn served_sql() -> String {
+    format!(
+        r#"
+        SELECT e.summit_code, e.muni_key, e.muni_name, e.pota_code, {PARK_NAME} AS park_name,
+               COALESCE(v.coverage, e.coverage) AS coverage, (v.coverage IS NOT NULL) AS verified
+        FROM summit_pota_estimates AS e
+        JOIN sota_references AS s ON s.summit_code = e.summit_code
+        LEFT JOIN summit_pota_verdicts AS v
+          ON v.summit_code = e.summit_code AND v.muni_key = e.muni_key AND v.pota_code = e.pota_code
+        WHERE e.summit_code = $1 AND COALESCE(v.coverage, e.coverage) IN ('all', 'part')
+          AND {PARK_INACTIVE} = 0
+        ORDER BY e.muni_key, e.pota_code
+    "#
+    )
+}
+
 pub async fn find_summit_pota(
     pool: &SqlitePool,
     summit_code: &SummitCode,
 ) -> AppResult<Vec<SummitPota>> {
-    let sql = format!(
-        r#"
-        SELECT e.summit_code, e.muni_key, e.muni_name, e.pota_code, p.park_name_j AS park_name,
-               COALESCE(v.coverage, e.coverage) AS coverage, (v.coverage IS NOT NULL) AS verified
-        FROM summit_pota_estimates AS e
-        JOIN sota_references AS s ON s.summit_code = e.summit_code
-        JOIN {PARKS} AS p ON p.pota_code = e.pota_code AND p.park_inactive = 0
-        LEFT JOIN summit_pota_verdicts AS v
-          ON v.summit_code = e.summit_code AND v.muni_key = e.muni_key AND v.pota_code = e.pota_code
-        WHERE e.summit_code = $1 AND COALESCE(v.coverage, e.coverage) IN ('all', 'part')
-        ORDER BY e.muni_key, e.pota_code
-    "#
-    );
+    let sql = served_sql();
     let rows = sqlx::query(&sql)
         .bind(summit_code.inner_ref())
         .fetch_all(pool)
@@ -263,13 +274,12 @@ pub async fn find_composed_pairs(
     for chunk in codes.chunks(IN_CHUNK) {
         let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(format!(
             r#"
-            SELECT e.summit_code, e.muni_key, e.pota_code, p.park_name_j AS park_name,
+            SELECT e.summit_code, e.muni_key, e.pota_code, {PARK_NAME} AS park_name,
                    COALESCE(v.coverage, e.coverage) AS coverage
             FROM summit_pota_estimates AS e
-            JOIN {PARKS} AS p ON p.pota_code = e.pota_code AND p.park_inactive = 0
             LEFT JOIN summit_pota_verdicts AS v
               ON v.summit_code = e.summit_code AND v.muni_key = e.muni_key AND v.pota_code = e.pota_code
-            WHERE e.summit_code IN ("#
+            WHERE {PARK_INACTIVE} = 0 AND e.summit_code IN ("#
         ));
         let mut sep = qb.separated(", ");
         for c in chunk {
@@ -564,9 +574,8 @@ pub async fn find_summit_review_detail(
         r#"
         SELECT e.summit_code, e.muni_key, e.muni_name, e.pota_code, e.coverage, e.pct, e.px,
                e.tot_px, e.dist_m, e.noise, e.shallow, e.hint, e.needs_review, e.note,
-               p.park_name_j AS park_name, (p.pota_code IS NULL OR p.park_inactive <> 0) AS park_inactive
+               {PARK_NAME} AS park_name, (COALESCE({PARK_INACTIVE}, 1) <> 0) AS park_inactive
         FROM summit_pota_estimates AS e
-        LEFT JOIN {PARKS} AS p ON p.pota_code = e.pota_code
         WHERE e.summit_code = $1 ORDER BY e.muni_key, e.pota_code
     "#
     );
@@ -1016,6 +1025,66 @@ mod tests {
         )
         .await
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn serving_query_looks_parks_up_by_index_not_by_scanning() {
+        // pota_references は約 9.7 万行。全行を走査したり一時的な索引を作ったりすると、本番の小さなマシンで /pota が数秒かかる
+        let (pool, _d) = setup().await;
+        let plan = sqlx::query(&format!("EXPLAIN QUERY PLAN {}", served_sql()))
+            .bind("JA/KN-017")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        let detail: Vec<String> = plan.iter().map(|r| r.get::<String, _>("detail")).collect();
+        for d in &detail {
+            assert!(!d.contains("SCAN pota_references"), "{detail:?}");
+            assert!(!d.contains("AUTOMATIC"), "{detail:?}");
+        }
+        assert!(
+            detail
+                .iter()
+                .any(|d| d.contains("SEARCH p USING") && d.contains("idx_pota_references_code")),
+            "{detail:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn duplicated_park_rows_are_served_once_and_active_wins() {
+        // 同じ pota_code に複数の行(wwff_code 違い)があっても、1 組は 1 行。1 行でも有効なら有効
+        let (pool, _d) = setup().await;
+        add_summit(&pool, "JA/KN-017").await;
+        add_park(&pool, "JP-1", 1).await;
+        sqlx::query(
+            "INSERT INTO pota_references(pota_code, wwff_code, park_name, park_name_j, park_location, \
+             park_locid, park_type, park_inactive, \"update\") \
+             VALUES('JP-1', 'JAFF-1', 'p', 'あ公園', '', '', '', 0, '2026-01-01 00:00:00')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        import_summit_estimates(
+            &pool,
+            vec![est("JA/KN-017", "JCC#1", "JP-1", ParkCoverage::All)],
+            vec![meta("JA/KN-017", "r")],
+            false,
+        )
+        .await
+        .unwrap();
+        let rows = find_summit_pota(&pool, &SummitCode::new("JA/KN-017".into()))
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].park_name.as_deref(), Some("あ公園")); // MIN
+        let d = find_summit_review_detail(&pool, &SummitCode::new("JA/KN-017".into()))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!d.pairs[0].park_inactive);
+        let composed = find_composed_pairs(&pool, &["JA/KN-017".to_string()])
+            .await
+            .unwrap();
+        assert_eq!(composed["JA/KN-017"].len(), 1);
     }
 
     #[tokio::test]
