@@ -1,10 +1,10 @@
 # 山頂の地図と POTA の判定の管理画面: 検討の経緯
 
-記録: 2026-10-25。続きの作業はここから始める。
+記録: 2026-10-25。続きの作業はここから始める(「今の状態と次にやること」へ)。
 
 - 元の計画: [summit-map-admin-plan.md](summit-map-admin-plan.md)
-- 詳細設計(確認待ち): [summit-map-admin-design.md](summit-map-admin-design.md)
-- ブランチ: `feat/summit-review`(`docs/summit-map-admin-plan` から切った。この 2 つの文書はまだコミットしていない)
+- 詳細設計(実装済み): [summit-map-admin-design.md](summit-map-admin-design.md)
+- バッチ・移行の手順書(sotalive-monorepo): `docs/summit-batch.md`
 
 ## 進め方の決まり(利用者の指示)
 
@@ -105,18 +105,36 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 
 ## 今の状態と次にやること
 
-1. **確認は済んだ**(2026-10-25): 目視の移行(計画 7 章)が済むまで本番に出さない。もう一人の管理者は段階 2 で新しい URL に移る。
-2. **実装は `feat/summit-review` に未コミットである**(Rust の 1〜7 段目、管理画面、テスト。`cargo test --workspace` と clippy が通る。管理画面は `npm run check`・`build`・vitest が通る)。実サーバーでの通し(取り込み → 確定 → 配信 → 取り消し)も確かめた。`reviewer` の指摘のうち、`full` が地図を消す・CSRF・`BEGIN IMMEDIATE`・JWKS の取り直しの待ち・最後の admin は直した。
-3. **残っていること**:
-   - 利用者の操作: `admin.sotalive.net` の DNS・`fly certs add`・Zero Trust のアプリ・Fly.io の secrets(設計 1 章)。
-   - 確定・取り消しで、tx の外で読んだ下地から配信用を作る(確定の最中に地図が入れ直されると、配信用が古い下地から作られる)。管理者が 2 人なので後回しにした。
-   - `summit_pota.verified=1` の 98 行は、マイグレーションの DROP で消える。目視の移行(7 章)の元の判定表が repo の外にあるので、デプロイの前に残っているか確かめる(なければ DROP の前に `summit_pota_verdicts` に写す)。
-   - コミット・PR(`static/` と `data/` は入れない)。PR の説明に、設計 1 章の手順と「7 章が済むまで本番に出さない」を書く。
-4. そのあとの PR:
-   - FLEonline の地図の取り直し(`apps/fle/src/lib/mapStore.ts` の `REFRESH_MS` は今 30 日。`/sota/maps/versions` を見て取り直す。monorepo)
-   - バッチの変更(注釈・判定用の層・`input_rev`・版の列。`explore/export_sotaapp.py` と `review2_data.py` を `tools/jaffpota` に移す)と、目視の移行(計画 7 章)
-   - 認証の移行の段階 3・4
-   - 案 C(公園ごとの区域の指紋)、報告の受け口(利用者が増えてから)
+### 済んだこと(2026-10-25)
+
+| 項目 | 場所 |
+|---|---|
+| 管理画面の実装(推定と目視を分けた表、見直しの API と画面、Cloudflare Access の認証、役割 admin / reviewer) | sotaapp2 PR #42 |
+| `/pota` の速度の修正(公園の重複を除く副問い合わせが、呼ぶたびに `pota_references` の約 9.7 万行を走査していた) | sotaapp2 PR #43 |
+| メールアドレスの伏せ字(管理画面とログ) | sotaapp2 PR #44 |
+| バッチの出力を新しい形式にし、今の目視を移す道具(`summit_export`・`migrate_verdicts`・`verify_served`) | sotalive-monorepo PR #119 |
+| 推定・地図・目視の移行・検証を 1 本で実行するスクリプト(`tools/jaffpota/scripts/load_summit_data.sh`) | sotalive-monorepo PR #120 |
+
+本番(2026-10-25): Deploy 済み。推定 3585 行(2454 山頂、なしの組 132)、地図 7069 山頂、目視 69 山頂(177 組)を移行済み。
+認証の移行は**段階 2 まで完了**(Access で入れる。管理者 2 人を `admin_users` に登録済み。もう一人の確認待ち)。Access のチームドメインは、Fly.io の secret `CF_ACCESS_TEAM_DOMAIN`、アプリの識別子は `CF_ACCESS_AUD`(値はリポジトリに書かない)。
+ログイン方法は、Cloudflare(アカウントのログイン)と One-time PIN(メールの番号)。Google を足すのは任意。
+
+### 次にやること(候補)
+
+1. **認証の段階 3**: ログの `method=Firebase` が 2〜4 週間なくなったら、古い `/admin-console` を新しい URL への案内だけにし、Firebase のトークンを受け付けない。段階 4 で `fireauth`・ログイン画面・Firebase の設定を消す。
+2. **FLEonline の地図の取り直し**: `apps/fle/src/lib/mapStore.ts` の `REFRESH_MS` は今 30 日。`GET /sota/maps/versions` を見て、変わった地域だけ取り直す(sotalive-monorepo)。
+3. **バッチの並列化**: 山頂ごとに独立なので、`--jobs` で `fork` の並列にできる(約 6 分 → 1〜2 分の見込み。出力が直列版とバイト単位で同じことをテストで固定する)。増分の実行(前回の `input_rev` と比べて、変わった山頂だけを書き出す)は、運用が回り始めてから。
+4. **出していないもの**: `peak`(山頂の最高点。標高データが要る)、`change_note`(前の入力との差分)。上流(`batch_zones.py`・`review_data.py`・`triage.py`・`heur.py`)は、手元の `explore/` のまま。
+5. **確定・取り消しの競合**: 確定の最中に地図が入れ直されると、tx の外で読んだ下地から配信用の地図が作られる(`reviewer` の指摘 4)。管理者が少人数なので後回しにした。
+6. 案 C(公園ごとの区域の指紋)、報告の受け口(利用者が増えてから)。
+7. 管理画面の実画面の確認(伏せ字、見直しのページ)。`npm run build` が追跡されている `static/` を書き換えるので、手元ではビルドしていない。
+
+### 運用で分かったこと
+
+- 本番は `shared-cpu-1x`(メモリ 256 MB)の 1 台。**クエリは全行の走査を避ける**(テーブルの規模は、ステージングでも本番と同じにして測る)。実行計画のテストで退行を防ぐ(`serving_query_looks_parks_up_by_index_not_by_scanning`)。
+- **本番に対する検証は標本にする**(全山頂は約 1.4 万リクエスト。`verify_served --sample 300 --workers 2`)。全山頂の検証は、手元のステージングでだけ実行する。
+- ステージングの DB の写しは、`cp` でなく `sqlite3 ".backup"` で取る(WAL の取りこぼしを避ける)。本番の写し(10/24 の保存)は、`summit_pota` を作るマイグレーションより前なので、旧の出力から移行前の状態を再現して使った。
+- Access のチームドメインを変えると、ログイン済みのセッションの発行元(`iss`)が古いままになり、`InvalidIssuer` で弾かれる。シークレットウィンドウか、Cookie の削除で入り直す。画面に出る組織名は、チームドメインとは別の項目(設定 → カスタムページ)。
 
 ## 調べるときに見た場所
 
