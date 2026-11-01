@@ -48,7 +48,6 @@ cp .env.example .env
 
 | 変数 | 説明 | 取得方法 |
 |------|------|----------|
-| `FIREBASE_API_KEY` | Firebase認証用APIキー | [Firebase Console](https://console.firebase.google.com/) → プロジェクト設定 → ウェブAPIキー |
 | `APRSUSER` | APRSコールサイン | 自分のコールサイン + SSID（例: `JA1XXX-10`） |
 | `APRSPASSWORD` | APRSパスコード | [Passcode Generator](https://apps.magicbug.co.uk/passcode/) で生成 |
 

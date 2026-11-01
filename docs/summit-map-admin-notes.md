@@ -93,8 +93,10 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 
 1. 管理の専用ホスト `admin.sotalive.net` を足し、Access でホスト全体を守る。バックエンドは Access の署名と Firebase のトークンのどちらでも通す(Firebase は今と同じく admin)。古い `/admin-console` は今のまま。
 2. 2 人のメールを役割の表と Access に入れて、移ってもらう。どちらで入ったかをログで見る。
-3. Firebase の利用が 2〜4 週間なくなったら、古い入り口を案内だけにして、Firebase を受け付けない。
+3. 古い入り口を案内だけにして、Firebase を受け付けない。
 4. `fireauth` などを消す。
+
+**段階 3・4 は 2026-11-01 にまとめて行った**(Firebase のアカウントは管理者 2 人だけで、2 人とも Access で入れると確認できたため、ログを 2〜4 週間見る待ちは省いた)。`fireauth`・`vendor/fireauth`・`/api/v2/auth/signin`・`FIREBASE_API_KEY`・ログイン画面を消し、`/admin-console` は `admin.sotalive.net` への案内だけになった。Access が使えないときの別の入り口はない。
 
 ホスト全体を Access で守るので、管理の API を `/api/v2/admin` にまとめる手直しは要らなくなった。
 
@@ -124,7 +126,7 @@ full と 2 m 簡略化の差(最大 2 m)は、境界付近の判定の幅(FLE �
 
 ### 次にやること(候補)
 
-1. **認証の段階 3**: ログの `method=Firebase` が 2〜4 週間なくなったら、古い `/admin-console` を新しい URL への案内だけにし、Firebase のトークンを受け付けない。段階 4 で `fireauth`・ログイン画面・Firebase の設定を消す。
+1. (済み 2026-11-01)認証の段階 3・4: Firebase の撤去。
 2. (済み)FLEonline の地図の取り直し: 地図を開いたとき、版が変わった地域だけ取り直す(sotalive-monorepo PR #121)。
 3. (済み)バッチの並列化(sotalive-monorepo PR #122)。残りは、増分の実行(前回の `input_rev` と比べて、変わった山頂だけを書き出す。運用が回り始めてから)。
 4. **出していないもの**: `peak`(山頂の最高点。標高データが要る)、`change_note`(前の入力との差分)。上流(`batch_zones.py`・`review_data.py`・`triage.py`・`heur.py`)は、手元の `explore/` のまま。

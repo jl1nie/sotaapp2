@@ -70,7 +70,7 @@ pub struct AccessKeys {
 }
 
 impl AccessKeys {
-    /// どちらかが None なら、Access の検証は無効(Firebase だけ)
+    /// どちらかが None なら、Access の検証は無効(管理画面には誰も入れない)
     pub fn new(team_domain: Option<String>, aud: Option<String>) -> Self {
         let team_domain = team_domain.map(|d| d.trim_end_matches('/').to_string());
         let url = format!(

@@ -27,7 +27,6 @@ docker run -d \
   --name "$CONTAINER_NAME" \
   -p "${HOST_PORT}:8080" \
   -e DATABASE_URL="sqlite:/tmp/test.db?mode=rwc" \
-  -e FIREBASE_API_KEY="test-key" \
   -e APRSUSER="testuser" \
   -e APRSPASSWORD="testpass" \
   -e MIGRATION_PATH="/app/migrations" \

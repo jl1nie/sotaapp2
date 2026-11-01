@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/auth';
-	import LoginForm from '$lib/components/LoginForm.svelte';
+	import AccessNotice from '$lib/components/AccessNotice.svelte';
 	import AdminDashboard from '$lib/components/AdminDashboard.svelte';
 
 	let isAuthenticated = false;
@@ -32,5 +32,5 @@
 {:else if isAuthenticated && role !== 'reviewer'}
 	<AdminDashboard />
 {:else if !isAuthenticated}
-	<LoginForm />
+	<AccessNotice />
 {/if}

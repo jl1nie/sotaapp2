@@ -3,7 +3,6 @@ use axum::{http::HeaderValue, Router};
 use chrono::Local;
 use clap::{Parser, Subcommand};
 use common::config::AppConfig;
-use fireauth::FireAuth;
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
@@ -183,9 +182,7 @@ async fn bootstrap() -> Result<()> {
     let app_state = AppState::new(module, config.clone(), share_kvs);
     let job_state = app_state.clone();
 
-    let firebase = FireAuth::new(config.firebase_api_key.clone());
     let admin_auth = AdminAuth::new(
-        firebase,
         app_state.access_verifier(),
         app_state.admin_users(),
         config.admin_dev_email.clone(),
@@ -193,6 +190,14 @@ async fn bootstrap() -> Result<()> {
     if config.cf_access_team_domain.is_some() != config.cf_access_aud.is_some() {
         tracing::warn!(
             "CF_ACCESS_TEAM_DOMAIN と CF_ACCESS_AUD は両方そろわないと効きません(Access の検証は無効のまま)"
+        );
+    }
+    if config.cf_access_team_domain.is_none()
+        && config.cf_access_aud.is_none()
+        && config.admin_dev_email.is_none()
+    {
+        tracing::warn!(
+            "Cloudflare Access が設定されていないので、管理画面には誰も入れません(CF_ACCESS_TEAM_DOMAIN と CF_ACCESS_AUD)"
         );
     }
     if config.admin_dev_email.is_some() {

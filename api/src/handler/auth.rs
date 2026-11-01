@@ -4,17 +4,13 @@ use axum::extract::State;
 use axum::http::{header, HeaderMap, Method, Request, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::IntoResponse;
-use axum::Json;
-use axum::{routing::post, Router};
-use fireauth::FireAuth;
+use axum::Router;
 use serde::Serialize;
 
 use super::multipart::admin_upload_limit;
-use crate::model::auth::AuthRequest;
 use domain::model::admin_user::AdminRole;
 use domain::model::id::UserId;
 use domain::repository::access::AccessTokenVerifier;
-use registry::AppState;
 use service::services::AdminUserService;
 
 /// Cloudflare Access が付ける署名のヘッダーと Cookie
@@ -25,7 +21,6 @@ const ACCESS_COOKIE: &str = "CF_Authorization";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthMethod {
-    Firebase,
     Access,
     /// 手元の開発用(デバッグビルドの `ADMIN_DEV_EMAIL`)
     Dev,
@@ -39,10 +34,9 @@ pub struct AdminIdentity {
     pub method: AuthMethod,
 }
 
-/// 管理画面の認証に必要なもの(Firebase と、ポートを通した Access・役割の表)
+/// 管理画面の認証に必要なもの(ポートを通した Access・役割の表)
 #[derive(Clone)]
 pub struct AdminAuth {
-    pub fire: FireAuth,
     access: Arc<dyn AccessTokenVerifier>,
     users: Arc<dyn AdminUserService>,
     dev_email: Option<String>,
@@ -50,20 +44,18 @@ pub struct AdminAuth {
 
 impl AdminAuth {
     pub fn new(
-        fire: FireAuth,
         access: Arc<dyn AccessTokenVerifier>,
         users: Arc<dyn AdminUserService>,
         dev_email: Option<String>,
     ) -> Self {
         Self {
-            fire,
             access,
             users,
             dev_email,
         }
     }
 
-    /// 署名(Access)か Bearer(Firebase)から、誰かを決める。
+    /// Access の署名から、誰かを決める。
     /// 返す `UserId` は、今のハンドラー(ログの取り込み・削除)のため
     pub async fn authenticate(
         &self,
@@ -80,45 +72,29 @@ impl AdminAuth {
             ));
         }
 
-        if self.access.is_enabled() {
-            if let Some(token) = access_token(headers) {
-                let id = self
-                    .access
-                    .verify(&token)
-                    .await
-                    .map_err(|_| StatusCode::UNAUTHORIZED)?;
-                // 署名が通っても、役割の表にいない人は入れない
-                let user = self
-                    .users
-                    .find_user(&id.email)
-                    .await
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-                    .ok_or(StatusCode::FORBIDDEN)?;
-                return Ok((
-                    AdminIdentity {
-                        email: user.email.clone(),
-                        role: user.role,
-                        method: AuthMethod::Access,
-                    },
-                    UserId::from(format!("access:{}", user.email)),
-                ));
-            }
+        if !self.access.is_enabled() {
+            return Err(StatusCode::UNAUTHORIZED);
         }
-
-        let token = bearer_token(headers).ok_or(StatusCode::UNAUTHORIZED)?;
-        let user = self
-            .fire
-            .get_user_info(token)
+        let token = access_token(headers).ok_or(StatusCode::UNAUTHORIZED)?;
+        let id = self
+            .access
+            .verify(&token)
             .await
             .map_err(|_| StatusCode::UNAUTHORIZED)?;
-        // Firebase で入った人は、今までどおり admin
+        // 署名が通っても、役割の表にいない人は入れない
+        let user = self
+            .users
+            .find_user(&id.email)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::FORBIDDEN)?;
         Ok((
             AdminIdentity {
-                email: user.email.to_lowercase(),
-                role: AdminRole::Admin,
-                method: AuthMethod::Firebase,
+                email: user.email.clone(),
+                role: user.role,
+                method: AuthMethod::Access,
             },
-            UserId::from(user.local_id),
+            UserId::from(format!("access:{}", user.email)),
         ))
     }
 }
@@ -129,13 +105,6 @@ pub fn mask_email(email: &str) -> String {
         Some(i) if i > 0 => format!("{}***{}", email.chars().next().unwrap_or('*'), &email[i..]),
         _ => "***".to_string(),
     }
-}
-
-fn bearer_token(headers: &HeaderMap) -> Option<&str> {
-    headers
-        .get(header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
 }
 
 /// 署名は、ヘッダー `Cf-Access-Jwt-Assertion`、なければ Cookie `CF_Authorization`
@@ -224,7 +193,7 @@ async fn auth_middle(
 ) -> Result<impl IntoResponse, StatusCode> {
     let (identity, user_id) = layer.auth.authenticate(req.headers()).await?;
 
-    // 段階 2 で、Firebase がまだ使われているかを見るため
+    // 誰がどこを呼んだかの記録
     tracing::info!(
         method = ?identity.method,
         email = %mask_email(&identity.email),
@@ -245,101 +214,9 @@ async fn auth_middle(
     Ok(next.run(req).await)
 }
 
-pub async fn sign_in(
-    State(auth_service): State<FireAuth>,
-    Json(creds_request): Json<AuthRequest>,
-) -> impl IntoResponse {
-    tracing::info!("auth signin email={}", mask_email(&creds_request.email));
-
-    match auth_service
-        .sign_in_email(
-            creds_request.email.as_str(),
-            creds_request.password.as_str(),
-            true,
-        )
-        .await
-    {
-        Ok(response) => (
-            StatusCode::OK,
-            [(header::AUTHORIZATION, response.id_token)],
-            "Successfully LoggedIn",
-        ),
-        Err(ex) => {
-            tracing::warn!("Sign-in failed: {:?}", ex);
-            (
-                StatusCode::UNAUTHORIZED,
-                [(header::AUTHORIZATION, String::new())],
-                "Invalid Credentials",
-            )
-        }
-    }
-}
-
-pub fn build_auth_routers(auth: &AdminAuth) -> Router<AppState> {
-    let routers = Router::new()
-        .route("/signin", post(sign_in))
-        .with_state(auth.fire.clone());
-    Router::new().nest("/auth", routers)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// AuthRequestのJSONデシリアライズテスト
-    #[test]
-    fn test_auth_request_deserialize() {
-        let json = r#"{"email": "test@example.com", "password": "secret123"}"#;
-        let req: AuthRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.email, "test@example.com");
-        assert_eq!(req.password, "secret123");
-    }
-
-    /// AuthRequestの必須フィールド欠落テスト
-    #[test]
-    fn test_auth_request_missing_email() {
-        let json = r#"{"password": "secret123"}"#;
-        let result: Result<AuthRequest, _> = serde_json::from_str(json);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_auth_request_missing_password() {
-        let json = r#"{"email": "test@example.com"}"#;
-        let result: Result<AuthRequest, _> = serde_json::from_str(json);
-        assert!(result.is_err());
-    }
-
-    /// 認証ミドルウェア: Authorizationヘッダーなしで401を返すテスト
-    #[tokio::test]
-    async fn test_auth_middleware_rejects_missing_header() {
-        // FireAuthを必要としないダミーハンドラでミドルウェアの振る舞いをテスト
-        // Note: 実際のauth_middleはFireAuthが必要なため、ここではヘッダー解析ロジックのみテスト
-
-        // Bearerトークンなしのリクエストではエラーになることを確認
-        let header_value = "Basic invalid";
-        let result = header_value.strip_prefix("Bearer ");
-        assert!(result.is_none());
-    }
-
-    /// Bearerトークン抽出ロジックのテスト
-    #[test]
-    fn test_bearer_token_extraction() {
-        // 正常なBearerトークン
-        let header = "Bearer abc123token";
-        let token = header.strip_prefix("Bearer ");
-        assert_eq!(token, Some("abc123token"));
-
-        // Bearerプレフィックスなし
-        let header = "abc123token";
-        let token = header.strip_prefix("Bearer ");
-        assert!(token.is_none());
-
-        // 空のトークン
-        let header = "Bearer ";
-        let token = header.strip_prefix("Bearer ");
-        assert_eq!(token, Some(""));
-    }
 
     // ---- 役割の分け方(偽の検証器と偽の役割の表で確かめる) ----
 
@@ -405,7 +282,6 @@ mod tests {
 
     fn auth(enabled: bool, dev_email: Option<&str>) -> AdminAuth {
         AdminAuth::new(
-            FireAuth::new("dummy-key".to_string()),
             Arc::new(FakeVerifier { enabled }),
             Arc::new(FakeUsers),
             dev_email.map(str::to_string),
@@ -504,7 +380,7 @@ mod tests {
 
     #[tokio::test]
     async fn access_header_is_ignored_when_access_is_not_configured() {
-        // Access の設定がない(Firebase だけ)とき、署名のヘッダーを信用しない
+        // Access の設定がないとき、署名のヘッダーを信用しない
         let app = app(&auth(false, None));
         let h = [("Cf-Access-Jwt-Assertion", "admin-token")];
         assert_eq!(call(&app, "/review", &h).await.0, StatusCode::UNAUTHORIZED);
@@ -516,6 +392,20 @@ mod tests {
         let (s, body) = call(&app, "/admin-only", &[]).await;
         assert_eq!(s, StatusCode::OK);
         assert_eq!(body, "dev@example.com:admin:Dev");
+    }
+
+    #[tokio::test]
+    async fn bearer_token_alone_is_401() {
+        // 以前の Firebase のトークン。もう受け付けない
+        for enabled in [true, false] {
+            let app = app(&auth(enabled, None));
+            let h = [("Authorization", "Bearer some-firebase-id-token")];
+            assert_eq!(
+                call(&app, "/admin-only", &h).await.0,
+                StatusCode::UNAUTHORIZED
+            );
+            assert_eq!(call(&app, "/review", &h).await.0, StatusCode::UNAUTHORIZED);
+        }
     }
 
     #[test]

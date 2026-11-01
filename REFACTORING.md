@@ -14,7 +14,7 @@
 ### #3 設定ファイルの改善 (Common層) ✅
 - `common/src/config.rs` でヘルパー関数を追加
 - `anyhow::Context` による意味のあるエラーメッセージ
-- 必須環境変数: `DATABASE_URL`, `FIREBASE_API_KEY`, `APRSUSER`, `APRSPASSWORD`
+- 必須環境変数: `DATABASE_URL`, `APRSUSER`, `APRSPASSWORD`
 - その他はすべてデフォルト値を設定
 
 ### #4 エラー型の整理 (Common層) ✅
@@ -438,7 +438,7 @@ Transaction error in 'commit create_reference sota postgis': ...
 **未対応** (DIモック必要・優先度低):
 | ハンドラ | ファイル | 理由 |
 |---------|---------|------|
-| SOTA ログアップロード | `api/src/handler/sota.rs` | Firebase + Shaku DI依存 |
+| SOTA ログアップロード | `api/src/handler/sota.rs` | Shaku DI依存 |
 | POTA ログアップロード | `api/src/handler/pota.rs` | Shaku DI依存 |
 | 検索機能 | `api/src/handler/search.rs` | Shaku DI依存 |
 

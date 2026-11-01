@@ -10,7 +10,6 @@ pub struct AppConfig {
     pub run_migration: bool,
     pub migration_path: String,
     pub cors_origin: Option<String>,
-    pub firebase_api_key: String,
     pub auth_token_ttl: Duration,
     /// Cloudflare Access のチームのドメイン(例 https://team.cloudflareaccess.com)。
     /// これと `cf_access_aud` の両方があるときだけ、Access の署名を検証する
@@ -135,12 +134,7 @@ fn env_or(key: &str, default: &str) -> String {
 }
 
 /// 必須環境変数のリスト
-const REQUIRED_ENV_VARS: &[&str] = &[
-    "DATABASE_URL",
-    "FIREBASE_API_KEY",
-    "APRSUSER",
-    "APRSPASSWORD",
-];
+const REQUIRED_ENV_VARS: &[&str] = &["DATABASE_URL", "APRSUSER", "APRSPASSWORD"];
 
 impl AppConfig {
     /// 必須環境変数を事前検証
@@ -170,7 +164,6 @@ impl AppConfig {
             log_level: env_or("LOG_LEVEL", "info,aprs_message=error"),
             database: env_required("DATABASE_URL")?,
             migration_path: env_or("MIGRATION_PATH", "./migrations"),
-            firebase_api_key: env_required("FIREBASE_API_KEY")?,
 
             // オプションの設定
             run_migration: env_parse_or("RUN_MIGRATION", false),
