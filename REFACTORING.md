@@ -418,7 +418,7 @@ Transaction error in 'commit create_reference sota postgis': ...
 **対策**: 純粋関数とビューモデル変換のユニットテストを追加
 
 **Phase 1 完了** (純粋関数・ビューモデル):
-- `api/src/handler/auth.rs`: AuthRequestデシリアライズ、Bearerトークン抽出テスト (5テスト)
+- `api/src/handler/auth.rs`: 役割の分け方・CSRF・Bearer だけの要求が 401 になることのテスト(Firebase の撤去前は AuthRequest・Bearer 抽出の 5 テストだった)
 - `api/src/handler/activation.rs`: apply_common_filters純粋関数テスト (14テスト)
 - `api/src/model/param.rs`: GetParamバリデーション、build_findref_queryテスト (27テスト)
 - `api/src/model/sota.rs`: SotaRefView/SotaSearchView変換、JSONシリアライズテスト (8テスト)
