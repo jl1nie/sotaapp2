@@ -47,7 +47,6 @@ services:
       APRSUSER: ${APRSUSER}
       APRSPASSWORD: ${APRSPASSWORD}
       APRSHOST: ${APRSHOST}
-      FIREBASE_API_KEY: ${FIREBASE_API_KEY}
       MACKEREL_APIKEY: ${MACKEREL_APIKEY}
     #depends_on:
     #  - redis

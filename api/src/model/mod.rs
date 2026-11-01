@@ -1,7 +1,6 @@
 pub mod activation;
 pub mod alerts;
 pub mod aprslog;
-pub mod auth;
 pub mod award;
 pub mod geomag;
 pub mod import;

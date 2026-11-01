@@ -6,6 +6,8 @@
 
 FLEonline の利用者から地図の誤り(DM で届く)を受けたとき、管理画面で答えを直し、直したものがすぐ利用者に届くようにする。直す人は、今の管理者 2 人と、のちに頼む数人。
 
+> **2026-11-01 の注**: 段階 3・4 を済ませ、Firebase は撤去した。以下の Firebase との併用の記述(段階 1〜2 の設計)は、当時の記録として残す。今は Access だけで、署名がなければ 401(`docs/summit-map-admin-notes.md` §5)。
+
 この設計で作るもの(sotaapp2 の 1 つの PR):
 
 1. **認証の移行の段階 1**(2 章): 管理の専用ホスト `admin.sotalive.net` を Cloudflare Access で守り、今の Firebase の入り口と**両方**使えるようにする。役割(admin / reviewer)を足す。

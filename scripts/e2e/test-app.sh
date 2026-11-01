@@ -22,7 +22,6 @@ run_test_grep "APP-002" "Missing env vars shows error message" "必須環境変�
 run_test "APP-003" "Database migration succeeds" \
   docker_run \
     -e DATABASE_URL="sqlite:/tmp/test.db?mode=rwc" \
-    -e FIREBASE_API_KEY="test-key" \
     -e APRSUSER="testuser" \
     -e APRSPASSWORD="testpass" \
     -e MIGRATION_PATH="/app/migrations" \

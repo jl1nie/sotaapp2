@@ -217,7 +217,6 @@ services:
       - "8080:8080"
     environment:
       DATABASE_URL: "sqlite:/tmp/test.db?mode=rwc"
-      FIREBASE_API_KEY: "test-key"
       APRSUSER: "testuser"
       APRSPASSWORD: "testpass"
       MIGRATION_PATH: "/app/migrations"

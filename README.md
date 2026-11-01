@@ -30,7 +30,7 @@ SOTAApp2は、アマチュア無線のアワードプログラム（SOTA、POTA�
 
 #### 🌐 API層（`api/`）
 - **責務**: RESTエンドポイント、認証・認可、リクエスト/レスポンス処理
-- **技術**: Axum、Firebase Auth、CORS
+- **技術**: Axum、Cloudflare Access(管理画面)、CORS
 - **主要コンポーネント**:
   - ハンドラー（SOTA、POTA、認証、ヘルスチェック）
   - ミドルウェア（認証、CORS）
@@ -95,7 +95,7 @@ SOTAApp2は、アマチュア無線のアワードプログラム（SOTA、POTA�
 - **言語**: Rust 2021 Edition
 - **Webフレームワーク**: Axum 0.8
 - **データベース**: SQLite / PostgreSQL（SQLx）
-- **認証**: Firebase Authentication
+- **認証**: Cloudflare Access(管理画面)
 - **DI**: Shaku
 - **非同期**: Tokio
 - **ログ**: tracing
@@ -316,7 +316,7 @@ const view = await getMapView({ lat, lon, tile: 'gsi' });
 | 変数名 | 説明 | デフォルト |
 |--------|------|-----------|
 | `DATABASE_URL` | データベースURL | `sqlite:sotaapp2.db` |
-| `FIREBASE_API_KEY` | Firebase APIキー | - |
+| `CF_ACCESS_TEAM_DOMAIN` / `CF_ACCESS_AUD` | Cloudflare Access のチームのドメインとアプリの識別子(両方そろうと管理画面の署名を検証) | - |
 | `HOST` | バインドホスト | `0.0.0.0` |
 | `PORT` | ポート番号 | `8080` |
 | `LOG_LEVEL` | ログレベル | `info` |
@@ -428,8 +428,6 @@ makers fly-db-optimize
 本プロジェクトは [Apache License 2.0](LICENSE) の下で公開されています。
 
 Copyright 2024-2026 Minoru Tomobe (JL1NIE)
-
-取り込んだ `vendor/fireauth` は、元のライセンス(WTFPL。`vendor/fireauth/LICENSE`)のままです。
 
 ## 📞 サポート
 

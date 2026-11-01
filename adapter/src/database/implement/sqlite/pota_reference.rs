@@ -835,7 +835,6 @@ mod tests {
                 run_migration: false,
                 migration_path: String::new(),
                 cors_origin: None,
-                firebase_api_key: String::new(),
                 auth_token_ttl: d0,
                 cf_access_team_domain: None,
                 cf_access_aud: None,

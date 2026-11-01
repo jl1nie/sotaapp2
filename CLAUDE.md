@@ -57,7 +57,7 @@ API → Service → Domain ← Adapter
 
 ### Layer Structure
 
-- **api/** - REST endpoints (Axum), authentication middleware (Firebase Auth), request/response DTOs
+- **api/** - REST endpoints (Axum), authentication middleware (Cloudflare Access), request/response DTOs
 - **service/** - Business logic, use cases (`UserService`, `AdminService`, `AdminPeriodicService`)
 - **domain/** - Core entities and value objects (`Activation`, `SOTAReference`, `POTAReference`, `AprsLog`)
 - **adapter/** - External integrations: SQLite/PostgreSQL (SQLx), APRS-IS, external APIs (SOTA/POTA/geomag)
@@ -81,7 +81,7 @@ API → Service → Domain ← Adapter
 
 - Web framework: Axum 0.8
 - Database: SQLx with SQLite/PostgreSQL
-- Auth: Firebase Authentication
+- Auth: Cloudflare Access (admin console)
 - DI: Shaku
 - Async runtime: Tokio
 - APRS parsing: aprs-message (custom fork)

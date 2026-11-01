@@ -123,6 +123,10 @@ clean_checkout() {
   local status=$?
   git worktree remove --force "$dir" >/dev/null 2>&1
   rm -rf "$dir"
+  # 使い捨ての worktree で作った自分たちのクレートのバイナリは、消えた /tmp のパスを持つ
+  # (テストの env!("CARGO_MANIFEST_DIR") など)。共有の target に残すと、次の実行がそれを再利用して
+  # フィクスチャが見つからず落ちる。外部のクレートは残し、自分たちのクレートだけ消す
+  cargo clean -p api -p service -p adapter -p common -p domain -p registry -p sotaapp2 >/dev/null 2>&1
   return $status
 }
 
