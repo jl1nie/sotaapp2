@@ -1,5 +1,7 @@
 <script lang="ts">
 	const ADMIN_URL = 'https://admin.sotalive.net/admin-console';
+	/** Access は通ったが、役割の表にいない */
+	export let forbidden = false;
 </script>
 
 <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -13,17 +15,31 @@
 			<h1 class="text-2xl font-bold text-white">Admin Console</h1>
 			<p class="text-slate-400 mt-2">SOTA/POTA Reference Manager</p>
 
-			<p class="text-slate-300 mt-6 text-sm leading-relaxed">
-				管理画面は、専用のアドレスから入ります。<br />
-				メールの番号か Google でログインします。
-			</p>
+			{#if forbidden}
+				<p class="text-slate-300 mt-6 text-sm leading-relaxed">
+					ログインはできましたが、このメールアドレスには、管理画面の役割が登録されていません。<br />
+					登録したものと別のメールや Google アカウントで入っていないか、確かめてください。
+				</p>
 
-			<a
-				href={ADMIN_URL}
-				class="mt-6 inline-block w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg shadow-emerald-500/25 transition-all duration-200"
-			>
-				admin.sotalive.net で入る
-			</a>
+				<a
+					href="/cdn-cgi/access/logout"
+					class="mt-6 inline-block w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg shadow-emerald-500/25 transition-all duration-200"
+				>
+					ログアウトして、別のアカウントで入る
+				</a>
+			{:else}
+				<p class="text-slate-300 mt-6 text-sm leading-relaxed">
+					管理画面は、専用のアドレスから入ります。<br />
+					メールの番号か Google でログインします。
+				</p>
+
+				<a
+					href={ADMIN_URL}
+					class="mt-6 inline-block w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg shadow-emerald-500/25 transition-all duration-200"
+				>
+					admin.sotalive.net で入る
+				</a>
+			{/if}
 		</div>
 	</div>
 </div>

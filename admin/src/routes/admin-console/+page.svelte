@@ -8,6 +8,7 @@
 	let isAuthenticated = false;
 	let loading = true;
 	let role: string | null = null;
+	let forbidden = false;
 
 	onMount(() => {
 		auth.init();
@@ -17,6 +18,7 @@
 		isAuthenticated = state.isAuthenticated;
 		loading = state.loading;
 		role = state.role;
+		forbidden = state.forbidden;
 		// reviewer にはダッシュボードを出さず、見直しのページだけ
 		if (state.isAuthenticated && state.role === 'reviewer') goto('/admin-console/summit-maps', { replaceState: true });
 	});
@@ -32,5 +34,5 @@
 {:else if isAuthenticated && role !== 'reviewer'}
 	<AdminDashboard />
 {:else if !isAuthenticated}
-	<AccessNotice />
+	<AccessNotice {forbidden} />
 {/if}

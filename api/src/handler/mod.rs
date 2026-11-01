@@ -13,6 +13,7 @@ pub mod pota;
 pub mod propagation;
 pub mod search;
 pub mod sota;
+pub mod static_files;
 pub mod v2;
 pub mod wspr;
 
