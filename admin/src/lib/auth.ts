@@ -8,6 +8,8 @@ interface AuthState {
 	role: AdminRole | null;
 	method: AuthMethod | null;
 	isAuthenticated: boolean;
+	/** Access は通ったが、役割の表にいない(whoami が 403) */
+	forbidden: boolean;
 	loading: boolean;
 }
 
@@ -16,6 +18,7 @@ const EMPTY: AuthState = {
 	role: null,
 	method: null,
 	isAuthenticated: false,
+	forbidden: false,
 	loading: false
 };
 
@@ -47,8 +50,13 @@ function createAuthStore() {
 					role: w.role,
 					method: w.method.toLowerCase() === 'dev' ? 'dev' : 'access',
 					isAuthenticated: true,
+					forbidden: false,
 					loading: false
 				});
+				return;
+			}
+			if (res.status === 403) {
+				set({ ...EMPTY, forbidden: true });
 				return;
 			}
 		} catch {

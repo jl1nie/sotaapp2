@@ -8,10 +8,7 @@ use std::{
     sync::Arc,
 };
 use tokio::{net::TcpListener, sync::watch};
-use tower_http::{
-    cors::{Any, CorsLayer},
-    services::{ServeDir, ServeFile},
-};
+use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
 use adapter::{
@@ -240,7 +237,7 @@ async fn bootstrap() -> Result<()> {
     let app = app
         .with_state(app_state)
         .layer(cors)
-        .fallback_service(ServeDir::new("static").fallback(ServeFile::new("static/index.html")));
+        .fallback_service(api::handler::static_files::static_router("static"));
 
     let ip_addr: IpAddr = config.host.parse().context("無効なIPアドレス")?;
     let addr = SocketAddr::new(ip_addr, config.port);
