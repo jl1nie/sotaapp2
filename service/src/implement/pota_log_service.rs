@@ -64,10 +64,18 @@ impl PotaLogService for PotaLogServiceImpl {
 
         if data.contains("Attempts") {
             let requests: Vec<POTAActivatorLogCSV> = csv_reader(data, false, 1)?;
+            let total = requests.len();
             let newlog: Vec<_> = requests
                 .into_iter()
                 .filter_map(|l| POTAActivatorLogCSV::to_log(log_id, l))
                 .collect();
+            if newlog.len() < total {
+                tracing::warn!(
+                    "upload activator log: {} of {} rows skipped (unreadable date)",
+                    total - newlog.len(),
+                    total
+                );
+            }
 
             let query = DeleteLog {
                 log_id: Some(log_id),
@@ -79,10 +87,18 @@ impl PotaLogService for PotaLogServiceImpl {
             update_id.log_kind = Some(POTALogKind::ActivatorLog);
         } else {
             let requests: Vec<POTAHunterLogCSV> = csv_reader(data, false, 1)?;
+            let total = requests.len();
             let newlog: Vec<_> = requests
                 .into_iter()
                 .filter_map(|l| POTAHunterLogCSV::to_log(log_id, l))
                 .collect();
+            if newlog.len() < total {
+                tracing::warn!(
+                    "upload hunter log: {} of {} rows skipped (unreadable date)",
+                    total - newlog.len(),
+                    total
+                );
+            }
 
             let query = DeleteLog {
                 log_id: Some(log_id),

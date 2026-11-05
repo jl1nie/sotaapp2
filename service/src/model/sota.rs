@@ -53,9 +53,9 @@ impl From<SOTASummitCSV> for SotaReference {
         // デフォルト日付（1970-01-01）をフォールバックとして使用
         let default_date = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).expect("valid default date");
         Self {
-            summit_code,
-            association_name,
-            region_name,
+            summit_code: summit_code.trim().to_string(),
+            association_name: association_name.trim().to_string(),
+            region_name: region_name.trim().to_string(),
             summit_name,
             summit_name_j: None,
             city: None,
@@ -250,4 +250,35 @@ pub fn parse_summit_map_line(line: &str) -> Result<SummitMap, String> {
         summit_code: code.to_string(),
         geojson: line.to_string(),
     })
+}
+
+#[cfg(test)]
+mod summit_csv_tests {
+    use super::*;
+
+    #[test]
+    fn summit_csv_trims_codes() {
+        let r = SotaReference::from(SOTASummitCSV {
+            summit_code: "JA/ST-001 ".into(),
+            association_name: " Japan".into(),
+            region_name: "Saitama ".into(),
+            summit_name: "x".into(),
+            alt_m: 1,
+            alt_ft: 3,
+            grid_ref1: "".into(),
+            grid_ref2: "".into(),
+            longitude: 139.0,
+            latitude: 35.0,
+            points: 1,
+            bonus_points: 0,
+            valid_from: "01/01/2020".into(),
+            valid_to: "31/12/2099".into(),
+            activation_count: 0,
+            activation_date: None,
+            activation_call: None,
+        });
+        assert_eq!(r.summit_code, "JA/ST-001");
+        assert_eq!(r.association_name, "Japan");
+        assert_eq!(r.region_name, "Saitama");
+    }
 }
