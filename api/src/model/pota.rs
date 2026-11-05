@@ -42,8 +42,8 @@ impl From<CreateRefRequest> for Vec<PotaReference> {
         } = value;
         let update: DateTime<Utc> = Utc::now();
         vec![PotaReference {
-            pota_code,
-            wwff_code,
+            pota_code: pota_code.trim().to_string(),
+            wwff_code: wwff_code.trim().to_string(),
             park_name,
             park_name_j,
             park_location,
@@ -116,8 +116,8 @@ impl From<UpdateRefRequest> for Vec<PotaReference> {
         } = value;
         let update: DateTime<Utc> = Utc::now();
         vec![PotaReference {
-            pota_code,
-            wwff_code,
+            pota_code: pota_code.trim().to_string(),
+            wwff_code: wwff_code.trim().to_string(),
             park_name,
             park_name_j,
             park_location,
@@ -370,6 +370,21 @@ mod tests {
     use super::*;
     use chrono::{NaiveDate, Utc};
     use domain::model::pota::{PotaRefLog, PotaReference};
+
+    #[test]
+    fn create_and_update_requests_trim_codes() {
+        let json = r#"{"potaCode":"JP-2164 ","wwffCode":" JAFF-1 ","parkName":"x","parkNameJ":"x",
+            "parkLocation":"","parkLocid":"JP-FI","parkType":"","parkInactive":false,
+            "parkArea":0,"longitude":136.0,"latitude":36.0}"#;
+        let c: CreateRefRequest = serde_json::from_str(json).unwrap();
+        let r: Vec<PotaReference> = c.into();
+        assert_eq!(r[0].pota_code, "JP-2164");
+        assert_eq!(r[0].wwff_code, "JAFF-1");
+        let u: UpdateRefRequest = serde_json::from_str(json).unwrap();
+        let r: Vec<PotaReference> = u.into();
+        assert_eq!(r[0].pota_code, "JP-2164");
+        assert_eq!(r[0].wwff_code, "JAFF-1");
+    }
 
     fn create_test_pota_reference() -> PotaReference {
         PotaReference {

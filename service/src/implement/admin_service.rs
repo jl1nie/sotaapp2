@@ -46,6 +46,16 @@ fn is_valid_summit(r: &SotaReference) -> bool {
     today <= r.valid_to && today >= r.valid_from
 }
 
+/// 有効な山頂が1件もないファイル(空・列のずれ・期間外のみ)では、既存の山頂を消さずに中止する
+fn ensure_any_valid_summit(valid: usize, total: usize) -> AppResult<()> {
+    if valid == 0 {
+        return Err(AppError::UnprocessableEntity(format!(
+            "有効な山頂が1件もないため、取り込みを中止しました(読み取った行数: {total})"
+        )));
+    }
+    Ok(())
+}
+
 #[async_trait]
 impl AdminService for AdminServiceImpl {
     async fn import_summit_list(
@@ -53,6 +63,7 @@ impl AdminService for AdminServiceImpl {
         UploadSOTASummit { data }: UploadSOTASummit,
     ) -> AppResult<usize> {
         let csv: Vec<SOTASummitCSV> = csv_reader(data, false, 2)?;
+        let total = csv.len();
         let req: Vec<_> = csv
             .into_iter()
             .map(SotaReference::from)
@@ -60,6 +71,14 @@ impl AdminService for AdminServiceImpl {
             .collect();
 
         let count = req.len();
+        if total > count {
+            tracing::warn!(
+                "import summit list: {} of {} rows skipped (outside valid period)",
+                total - count,
+                total
+            );
+        }
+        ensure_any_valid_summit(count, total)?;
         tracing::info!("import {} references.", count);
         self.sota_repo
             .delete_reference(DeleteRef::DeleteAll)
@@ -484,6 +503,13 @@ mod tests {
             city: None,
             city_j: None,
         }
+    }
+
+    #[test]
+    fn ensure_any_valid_summit_rejects_empty() {
+        assert!(ensure_any_valid_summit(0, 0).is_err());
+        assert!(ensure_any_valid_summit(0, 100).is_err());
+        assert!(ensure_any_valid_summit(1, 100).is_ok());
     }
 
     #[test]
