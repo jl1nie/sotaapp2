@@ -40,12 +40,12 @@ impl From<POTACSVFile> for PotaReference {
         let lon = longitude.unwrap_or_default();
         let lat = latitude.unwrap_or_default();
         Self {
-            pota_code: pota_code.unwrap_or_default(),
-            wwff_code: wwff_code.unwrap_or_default(),
+            pota_code: pota_code.unwrap_or_default().trim().to_string(),
+            wwff_code: wwff_code.unwrap_or_default().trim().to_string(),
             park_name,
             park_name_j,
             park_location,
-            park_locid: park_locid.unwrap_or_default(),
+            park_locid: park_locid.unwrap_or_default().trim().to_string(),
             park_type,
             park_inactive: park_inactive.is_some(),
             park_area,
@@ -87,7 +87,7 @@ impl TryFrom<POTAAllCSVFile> for PotaReference {
         let park_inactive = !&active.contains("1");
 
         Ok(Self {
-            pota_code: reference.clone(),
+            pota_code: reference.trim().to_string(),
             wwff_code: "".to_string(),
             park_name: name.clone(),
             park_name_j: name,
@@ -141,7 +141,7 @@ impl POTAActivatorLogCSV {
             dx_entity,
             location,
             hasc,
-            pota_code,
+            pota_code: pota_code.trim().to_string(),
             park_name,
             first_qso_date: date,
             attempts,
@@ -179,7 +179,7 @@ impl POTAHunterLogCSV {
             dx_entity,
             location,
             hasc,
-            pota_code,
+            pota_code: pota_code.trim().to_string(),
             park_name,
             first_qso_date: date,
             qsos,
@@ -236,4 +236,46 @@ pub struct UploadPOTALog {
     pub activator_logid: String,
     pub hunter_logid: String,
     pub data: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pota_csv_trims_code() {
+        let r: PotaReference = POTACSVFile {
+            pota_code: Some("JP-2164 ".into()),
+            wwff_code: Some(" ".into()),
+            park_name: "x".into(),
+            park_name_j: "x".into(),
+            park_location: "".into(),
+            park_locid: Some("JP-FI ".into()),
+            park_type: "".into(),
+            park_inactive: None,
+            park_area: 0,
+            longitude: Some(136.0),
+            latitude: Some(36.0),
+        }
+        .into();
+        assert_eq!(r.pota_code, "JP-2164");
+        assert_eq!(r.wwff_code, "");
+        assert_eq!(r.park_locid, "JP-FI");
+    }
+
+    #[test]
+    fn pota_all_csv_trims_code() {
+        let r = PotaReference::try_from(POTAAllCSVFile {
+            reference: "JP-2164 ".into(),
+            name: "x".into(),
+            active: "1".into(),
+            entity_id: "".into(),
+            location_desc: "JP-FI".into(),
+            latitude: "36.0".into(),
+            longitude: "136.0".into(),
+            grid: "PM86".into(),
+        })
+        .unwrap();
+        assert_eq!(r.pota_code, "JP-2164");
+    }
 }
