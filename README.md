@@ -387,6 +387,8 @@ makers deploy-no-backup
 makers fly-deploy
 ```
 
+GitHub Actions の `deploy.yml` でも、デプロイ前に DB の写しを Cloudflare R2 に保存する。毎週の定期バックアップ(`backup.yml`)もある。保存先と復元の手順は [docs/backup.md](docs/backup.md)。
+
 ### データベース管理
 
 ```bash
