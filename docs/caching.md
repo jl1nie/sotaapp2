@@ -27,6 +27,8 @@ Cloudflare がそれに従って応答を覚える(`api/src/handler/cache.rs` �
 
 ## Cloudflare のキャッシュルール(必須。設定済み: 2026-10-25)
 
+> このルールは、[sotalive-monorepo](https://github.com/jl1nie/sotalive-monorepo) の `infra/zone.tf`(OpenTofu)で持っている。変えるときは、ダッシュボードでなく `zone.tf` を直して `tofu apply` する(コンソールで変えると、`plan` に差分が出る)。以下は、ルールの内容と、その理由。
+
 Cloudflare は、JSON の API 応答を**既定ではキャッシュしない**(`cf-cache-status: DYNAMIC`)。ヘッダーを付けるだけでは、Fly.io までの要求は減らない。
 次のキャッシュルールを足す(ダッシュボード → `sotalive.net` → キャッシュ → Cache Rules):
 
