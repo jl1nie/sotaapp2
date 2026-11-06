@@ -26,6 +26,16 @@ swap_size_mb = 256
   min_machines_running = 1
   processes = ['app']
 
+  # 同時に処理するリクエスト数の上限。小さいマシン(256MB・1 台)を、過負荷から守る最後の防波堤。
+  # - type = 'requests': 処理中のリクエスト数で測る(Fly のプロキシは接続を再利用するので、'connections' は負荷を反映しない)
+  # - hard_limit: 上限に達すると、そのマシンへ新しいリクエストを送らなくなる。緩く(100)から始めて、
+  #   メモリの使用量を見ながら下げる。soft_limit は複数台にしたときの負荷分散の目安(今は 1 台なので効かない)
+  # - 通常は Cloudflare のキャッシュとレート制限(sotalive-monorepo の infra/zone.tf)で、ここまで届かない
+  [http_service.concurrency]
+    type = 'requests'
+    soft_limit = 50
+    hard_limit = 100
+
 [checks]
   [checks.health]
     port = 8080
