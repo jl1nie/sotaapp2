@@ -2,12 +2,13 @@
 
 本番の DB(SQLite、Fly.io のボリューム `/data/sotaapp2.db`)の写しを、2 か所に取る。
 
-| 種類 | いつ | どこへ | 保存期間 |
+| 種類 | いつ | どこへ(R2 のバケット `sotaapp2-backup`) | 保存期間 |
 |---|---|---|---|
-| デプロイ前 | `deploy.yml` を実行したとき | GitHub Actions の artifact(`db-backup-<run>`) | 30 日 |
-| 定期 | 毎週 月曜 03:00 JST(`backup.yml`。手動でも実行できる) | Cloudflare R2 のバケット `sotaapp2-backup` の `weekly/` | 90 日(バケットのライフサイクルで自動削除) |
+| デプロイ前 | `deploy.yml` を実行したとき(`skip_backup` で飛ばせる) | `pre-deploy/sotaapp2_YYYYMMDD_HHMMSS.db.gz` | 7 日 |
+| 定期 | 毎週 月曜 03:00 JST(`backup.yml`。手動でも実行できる) | `weekly/sotaapp2_YYYYMMDD_HHMMSS.db.gz` | 90 日 |
 
-定期の保存は、`weekly/sotaapp2_YYYYMMDD_HHMMSS.db.gz`。取るたびに、gzip を解いて SQLite の整合性(`PRAGMA integrity_check`)を確かめ、R2 に置いたあとサイズが同じことを確かめる。
+どちらも同じ処理(`.github/actions/db-backup`)で、期限はバケットのライフサイクルで自動で決まる。取るたびに、gzip を解いて SQLite の整合性(`PRAGMA integrity_check`)を確かめ、R2 に置いたあとサイズが同じことを確かめる。
+マイグレーションを含まない変更(設定やコードだけ)のデプロイでは、`skip_backup` で飛ばしてよい。マイグレーションを含むときは、必ず取る。
 
 ## 必要な設定(一度だけ)
 
@@ -19,16 +20,17 @@ GitHub の Secrets(リポジトリの Settings → Secrets and variables → Act
 | `R2_ENDPOINT_URL` | `https://<Cloudflare のアカウント ID>.r2.cloudflarestorage.com`(末尾にバケット名や `/` を付けない) |
 | `R2_ACCESS_KEY_ID`・`R2_SECRET_ACCESS_KEY` | R2 の API トークン。権限は Object Read & Write、対象はバケット `sotaapp2-backup` だけ(ダッシュボード → R2 → Manage R2 API Tokens) |
 
-バケットとライフサイクル(`weekly/` は 90 日で削除)は、次のコマンドで作った:
+バケットとライフサイクル(`weekly/` は 90 日、`pre-deploy/` は 7 日で削除)は、次のコマンドで作った:
 
 ```bash
 npx wrangler r2 bucket create sotaapp2-backup
 npx wrangler r2 bucket lifecycle add sotaapp2-backup expire-weekly-90d weekly/ --expire-days 90
+npx wrangler r2 bucket lifecycle add sotaapp2-backup expire-predeploy-7d pre-deploy/ --expire-days 7
 ```
 
 ## 復元の手順
 
-1. 戻したい写しを選ぶ(R2 のダッシュボード、または `aws s3 ls s3://sotaapp2-backup/weekly/ --endpoint-url "$R2_ENDPOINT_URL"`)。
+1. 戻したい写しを選ぶ(R2 のダッシュボード、または `aws s3 ls s3://sotaapp2-backup/weekly/ --endpoint-url "$R2_ENDPOINT_URL"`。デプロイ直前に戻すなら `pre-deploy/`)。
 2. 手元に取り、解く:
    ```bash
    aws s3 cp s3://sotaapp2-backup/weekly/sotaapp2_YYYYMMDD_HHMMSS.db.gz . --endpoint-url "$R2_ENDPOINT_URL"

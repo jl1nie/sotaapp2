@@ -1,0 +1,117 @@
+name: DB backup to R2
+description: >-
+  本番の DB(Fly.io のボリューム)の整合した写しを取り、壊れていないか確かめて、Cloudflare R2 に置く。
+  weekly(backup.yml)と pre-deploy(deploy.yml)で共通。復元の手順は docs/backup.md
+
+inputs:
+  prefix:
+    description: R2 のキーの先頭(weekly か pre-deploy)。バケットのライフサイクルがこの名前で期限を決める
+    required: true
+  fly-api-token:
+    required: true
+  r2-endpoint:
+    required: true
+  r2-access-key-id:
+    required: true
+  r2-secret-access-key:
+    required: true
+  bucket:
+    required: false
+    default: sotaapp2-backup
+  fly-app:
+    required: false
+    default: sotaapp2
+
+outputs:
+  key:
+    description: R2 に置いたキー(例 weekly/sotaapp2_20261106_023040.db.gz)
+    value: ${{ steps.upload.outputs.key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Fly CLI
+      uses: superfly/flyctl-actions/setup-flyctl@master
+
+    - name: Snapshot and download
+      id: dump
+      shell: bash
+      env:
+        FLY_API_TOKEN: ${{ inputs.fly-api-token }}
+        FLY_APP: ${{ inputs.fly-app }}
+        PREFIX: ${{ inputs.prefix }}
+      run: |
+        set -euo pipefail
+        TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+        NAME="sotaapp2_${TIMESTAMP}.db"
+        # マシン上の写しの名前は、種類ごとに分ける(同時に走っても取り合わない。後始末も自分の分だけ)
+        TAG="${PREFIX//[^a-z0-9]/_}"
+        SNAPSHOT="/data/${TAG}_${TIMESTAMP}.db"
+        echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+        # 前の回が残していた写しがあれば消す(1 つ 155MB 程度。残るとボリュームを埋める)
+        timeout -k 10 60 flyctl ssh console -C "sh -c 'rm -f /data/${TAG}_*.db'" || echo "::warning::Could not remove old snapshots"
+
+        # 動いている DB の写しを、マシンの中で作る。VACUUM INTO は、WAL の分も含めた一貫した 1 つのファイルになる
+        if timeout -k 10 60 flyctl ssh console -C "sh -c 'command -v sqlite3 >/dev/null && echo HAS_SQLITE3 || echo NO_SQLITE3'" 2>&1 | grep -q HAS_SQLITE3; then
+          timeout -k 10 300 flyctl ssh console -C "sqlite3 /data/sotaapp2.db \"VACUUM INTO '${SNAPSHOT}'\""
+          SOURCE="${SNAPSHOT}"
+        else
+          echo "::warning::sqlite3 is not in the running image. Downloading the database file only (changes still in the WAL are not included)"
+          SOURCE=/data/sotaapp2.db
+        fi
+
+        # sftp get は止まることがある(2026-10-21: 155MB で 2 回続けて止まった)。
+        # ssh の標準出力で、gzip したものを受け取る。止まったら 5 分で打ち切り、10 秒後に KILL する(TERM では終わらない)
+        timeout -k 10 300 flyctl ssh console -C "gzip -c ${SOURCE}" > "./${NAME}.gz"
+
+        # 途中で切れたり、余計な出力が混じったりしていたら、gzip か SQLite の確認で落ちる
+        gunzip -c "./${NAME}.gz" > "./${NAME}"
+        python3 -c 'import sqlite3, sys; r = sqlite3.connect(sys.argv[1]).execute("PRAGMA integrity_check").fetchone()[0]; sys.exit(r != "ok")' "./${NAME}"
+        rm -f "./${NAME}"
+
+        SIZE=$(stat -c %s "./${NAME}.gz")
+        echo "Downloaded and verified: ${NAME}.gz (${SIZE} bytes)"
+        echo "file=${NAME}.gz" >> "$GITHUB_OUTPUT"
+        echo "size=${SIZE}" >> "$GITHUB_OUTPUT"
+
+    # 失敗・打ち切り・取り消しのときも、マシンの中の写しを消す
+    - name: Remove snapshot on the machine
+      if: always()
+      shell: bash
+      env:
+        FLY_API_TOKEN: ${{ inputs.fly-api-token }}
+        FLY_APP: ${{ inputs.fly-app }}
+        TAG: ${{ steps.dump.outputs.tag }}
+      run: |
+        [ -n "${TAG}" ] || exit 0
+        timeout -k 10 60 flyctl ssh console -C "sh -c 'rm -f /data/${TAG}_*.db'" || echo "::warning::Could not remove snapshots"
+
+    - name: Upload to R2
+      id: upload
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.r2-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.r2-secret-access-key }}
+        AWS_DEFAULT_REGION: auto
+        # R2 は、新しい AWS CLI が付けるチェックサムの追加ヘッダーを受け付けないことがある
+        AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+        AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        ENDPOINT: ${{ inputs.r2-endpoint }}
+        BUCKET: ${{ inputs.bucket }}
+        PREFIX: ${{ inputs.prefix }}
+        FILE: ${{ steps.dump.outputs.file }}
+        SIZE: ${{ steps.dump.outputs.size }}
+      run: |
+        set -euo pipefail
+        KEY="${PREFIX}/${FILE}"
+        aws s3 cp "./${FILE}" "s3://${BUCKET}/${KEY}" --endpoint-url "${ENDPOINT}"
+        # 置けたこと(サイズが同じこと)を確かめる
+        REMOTE=$(aws s3api head-object --bucket "${BUCKET}" --key "${KEY}" --endpoint-url "${ENDPOINT}" --query ContentLength --output text)
+        if [ "${REMOTE}" != "${SIZE}" ]; then
+          echo "::error::Size mismatch: local ${SIZE}, remote ${REMOTE}"
+          exit 1
+        fi
+        rm -f "./${FILE}"
+        echo "Uploaded: ${KEY} (${REMOTE} bytes)"
+        echo "key=${KEY}" >> "$GITHUB_OUTPUT"

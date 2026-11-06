@@ -58,80 +58,32 @@ jobs:
           fi
           echo "Image verified!"
 
-  # DBバックアップをローカルにダウンロード
+  # デプロイ前の DB の写しを、R2(sotaapp2-backup/pre-deploy/、7 日)に置く。処理は .github/actions/db-backup
+  # 週次の保存(backup.yml)と同じ方法。復元の手順は docs/backup.md
   backup-database:
     name: Backup Database
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.skip_backup != 'true' }}
     # 取得が止まっても、待ち続けない(止まったら失敗にして、デプロイしない)
     timeout-minutes: 15
+    # 週次のバックアップと重ならないようにする
+    concurrency:
+      group: fly-db-snapshot
+      cancel-in-progress: false
     outputs:
-      backup_file: ${{ steps.backup.outputs.backup_file }}
+      backup_file: ${{ steps.backup.outputs.key }}
 
     steps:
-      - name: Setup Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Download database backup
+      - uses: actions/checkout@v4
+      - name: Backup database to R2
         id: backup
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          BACKUP_FILE="sotaapp2_${TIMESTAMP}.db"
-          SNAPSHOT="/data/backup_${TIMESTAMP}.db"
-
-          # 前に打ち切った・取り消した回の写しが残っていたら消す(1つ 155MB。残るとボリュームを埋める)
-          timeout -k 10 60 flyctl ssh console -C "sh -c 'rm -f /data/backup_*.db'" || echo "::warning::Could not remove old snapshots"
-
-          # 動いている DB の写しを、マシンの中で作る。VACUUM INTO は、まだ DB に反映していない変更(WAL)も含めた、
-          # 一貫した1つのファイルになる。sqlite3 がない古いイメージでは、DB のファイルだけを取る(WAL の分は入らない)
-          if timeout -k 10 60 flyctl ssh console -C "sh -c 'command -v sqlite3 >/dev/null && echo HAS_SQLITE3 || echo NO_SQLITE3'" 2>&1 | grep -q HAS_SQLITE3; then
-            echo "Creating a consistent snapshot on the machine..."
-            timeout -k 10 300 flyctl ssh console -C "sqlite3 /data/sotaapp2.db \"VACUUM INTO '${SNAPSHOT}'\""
-            SOURCE="${SNAPSHOT}"
-          else
-            echo "::warning::sqlite3 is not in the running image. Downloading the database file only (changes still in the WAL are not included)"
-            SOURCE=/data/sotaapp2.db
-          fi
-
-          # sftp get は、つながったあと何も出さずに止まる(2026-10-21: 155MB で2回続けて止まった)。
-          # ssh の標準出力で、gzip したものを受け取る。止まったら 5 分で打ち切り、10 秒後に KILL する(TERM では終わらない)
-          echo "Downloading ${SOURCE}..."
-          status=0
-          timeout -k 10 300 flyctl ssh console -C "gzip -c ${SOURCE}" > "./${BACKUP_FILE}.gz" || status=$?
-          # 途中で切れたり、余計な出力が混じったりしていたら、gzip か SQLite の確認で落ちる
-          if [ "${status}" = 0 ]; then
-            if ! gunzip -c "./${BACKUP_FILE}.gz" > "./${BACKUP_FILE}" \
-              || ! python3 -c 'import sqlite3, sys; r = sqlite3.connect(sys.argv[1]).execute("PRAGMA integrity_check").fetchone()[0]; sys.exit(r != "ok")' "./${BACKUP_FILE}"; then
-              status=corrupt
-            fi
-          fi
-          rm -f "./${BACKUP_FILE}.gz"
-          if [ "${status}" != 0 ] || [ ! -s "${BACKUP_FILE}" ]; then
-            echo "::error::Database download failed (${status}). Not deploying. Run again, or with skip_backup to deploy without a backup"
-            exit 1
-          fi
-
-          SIZE=$(ls -lh "${BACKUP_FILE}" | awk '{print $5}')
-          echo "Downloaded: ${BACKUP_FILE} (${SIZE})"
-          echo "backup_file=${BACKUP_FILE}" >> $GITHUB_OUTPUT
-
-      # 失敗・打ち切り・取り消しのときも、マシンの中の写しを消す(前のステップの最後では、取り消されると走らない)
-      - name: Remove snapshot on the machine
-        if: always()
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          timeout -k 10 60 flyctl ssh console -C "sh -c 'rm -f /data/backup_*.db'" || echo "::warning::Could not remove snapshots"
-
-      - name: Upload backup as artifact
-        if: steps.backup.outputs.backup_file != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/db-backup
         with:
-          name: db-backup-${{ github.run_id }}
-          path: ${{ steps.backup.outputs.backup_file }}
-          retention-days: 30
+          prefix: pre-deploy
+          fly-api-token: ${{ secrets.FLY_API_TOKEN }}
+          r2-endpoint: ${{ secrets.R2_ENDPOINT_URL }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
 
   # Fly.io へデプロイ（CIでビルド済みのイメージを使用）
   deploy:
