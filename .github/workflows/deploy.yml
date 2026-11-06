@@ -58,7 +58,7 @@ jobs:
           fi
           echo "Image verified!"
 
-  # デプロイ前の DB の写しを、R2(sotaapp2-backup/pre-deploy/、30 日)に置く。処理は .github/actions/db-backup
+  # デプロイ前の DB の写しを、R2(sotaapp2-backup/pre-deploy/、7 日)に置く。処理は .github/actions/db-backup
   # 週次の保存(backup.yml)と同じ方法。復元の手順は docs/backup.md
   backup-database:
     name: Backup Database

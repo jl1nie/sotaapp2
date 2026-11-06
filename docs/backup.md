@@ -4,7 +4,7 @@
 
 | 種類 | いつ | どこへ(R2 のバケット `sotaapp2-backup`) | 保存期間 |
 |---|---|---|---|
-| デプロイ前 | `deploy.yml` を実行したとき(`skip_backup` で飛ばせる) | `pre-deploy/sotaapp2_YYYYMMDD_HHMMSS.db.gz` | 30 日 |
+| デプロイ前 | `deploy.yml` を実行したとき(`skip_backup` で飛ばせる) | `pre-deploy/sotaapp2_YYYYMMDD_HHMMSS.db.gz` | 7 日 |
 | 定期 | 毎週 月曜 03:00 JST(`backup.yml`。手動でも実行できる) | `weekly/sotaapp2_YYYYMMDD_HHMMSS.db.gz` | 90 日 |
 
 どちらも同じ処理(`.github/actions/db-backup`)で、期限はバケットのライフサイクルで自動で決まる。取るたびに、gzip を解いて SQLite の整合性(`PRAGMA integrity_check`)を確かめ、R2 に置いたあとサイズが同じことを確かめる。
@@ -20,12 +20,12 @@ GitHub の Secrets(リポジトリの Settings → Secrets and variables → Act
 | `R2_ENDPOINT_URL` | `https://<Cloudflare のアカウント ID>.r2.cloudflarestorage.com`(末尾にバケット名や `/` を付けない) |
 | `R2_ACCESS_KEY_ID`・`R2_SECRET_ACCESS_KEY` | R2 の API トークン。権限は Object Read & Write、対象はバケット `sotaapp2-backup` だけ(ダッシュボード → R2 → Manage R2 API Tokens) |
 
-バケットとライフサイクル(`weekly/` は 90 日、`pre-deploy/` は 30 日で削除)は、次のコマンドで作った:
+バケットとライフサイクル(`weekly/` は 90 日、`pre-deploy/` は 7 日で削除)は、次のコマンドで作った:
 
 ```bash
 npx wrangler r2 bucket create sotaapp2-backup
 npx wrangler r2 bucket lifecycle add sotaapp2-backup expire-weekly-90d weekly/ --expire-days 90
-npx wrangler r2 bucket lifecycle add sotaapp2-backup expire-predeploy-30d pre-deploy/ --expire-days 30
+npx wrangler r2 bucket lifecycle add sotaapp2-backup expire-predeploy-7d pre-deploy/ --expire-days 7
 ```
 
 ## 復元の手順

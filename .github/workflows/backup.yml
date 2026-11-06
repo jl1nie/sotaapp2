@@ -2,7 +2,7 @@ name: Weekly Backup
 
 # 毎週、本番の DB の写しを Cloudflare R2 のバケット(sotaapp2-backup)に保存する。
 # - 保存先: weekly/sotaapp2_YYYYMMDD_HHMMSS.db.gz。バケットのライフサイクルで、90 日後に自動で消える(約 3 か月分)
-# - デプロイ前の写しは、deploy.yml が pre-deploy/ に同じ方法で保存する(30 日)
+# - デプロイ前の写しは、deploy.yml が pre-deploy/ に同じ方法で保存する(7 日)
 # - 処理は .github/actions/db-backup。復元の手順は docs/backup.md
 #
 # 必要な Secrets: FLY_API_TOKEN、R2_ENDPOINT_URL、R2_ACCESS_KEY_ID、R2_SECRET_ACCESS_KEY

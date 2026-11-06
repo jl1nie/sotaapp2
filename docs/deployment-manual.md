@@ -181,7 +181,7 @@ fly deploy --image jl1nie/sotaapp2:v0.1.2
 
 ### バックアップ
 
-GitHub Actions が、デプロイ前(`pre-deploy/`、30 日)と毎週(`weekly/`、90 日)に、DB の写しを Cloudflare R2 に保存する。保存先・復元の手順は [docs/backup.md](backup.md)。
+GitHub Actions が、デプロイ前(`pre-deploy/`、7 日)と毎週(`weekly/`、90 日)に、DB の写しを Cloudflare R2 に保存する。保存先・復元の手順は [docs/backup.md](backup.md)。
 以下の `makers` のコマンドは、手元から行う、マシン上のボリュームへの写し(`/data/backup_*.db`)。
 
 ```bash
