@@ -23,6 +23,8 @@ concurrency:
 
 env:
   R2_BUCKET: sotaapp2-backup
+  # flyctl に、対象のアプリを教える(このジョブは fly.toml をチェックアウトしない)
+  FLY_APP: sotaapp2
 
 jobs:
   backup:
